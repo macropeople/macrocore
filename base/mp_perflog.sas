@@ -16,8 +16,8 @@
 
   @version 9.2
   @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+  @source https://github.com/Boemska/macrocore
+
 **/
 
 %macro mp_perflog(label,libds=work.mp_perflog

@@ -20,7 +20,7 @@
     libraries, with different engines, inconsistent results may be encountered.
 
   @version 9.2
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+  @author Allan Bowe
 **/
 
 %macro mf_getEngine(libref

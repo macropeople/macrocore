@@ -19,9 +19,7 @@
    - msg (system message if any issues)
 
   @version 9.2
-  @author Macro People Ltd
-  @copyright GNU GENERAL PUBLIC LICENSE v3
-
+  @author Allan Bowe
 **/
 
 %macro mp_dirlist(path=%sysfunc(pathname(work))

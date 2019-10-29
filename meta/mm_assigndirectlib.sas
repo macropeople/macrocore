@@ -14,29 +14,33 @@
       disconnect from MyAlias;
       quit;
 
+  <h4> Dependencies </h4>
+  @li mf_getengine.sas
+  @li mf_abort.sas
+
   @param libref the libref (not name) of the metadata library
   @param open_passthrough= provide an alias to produce the CONNECT TO statement
     for the relevant external database
   @param sql_options= an override default output fileref to avoid naming clash
   @param mDebug= set to 1 to show debug messages in the log
+  @param mAbort= set to 1 to call %mf_abort().
 
   @returns libname statement
 
   @version 9.2
-  @author Macro People Ltd
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+  @author Allan Bowe
 
 **/
 
 %macro mm_assigndirectlib(
      libref /* libref to assign from metadata */
-    ,debug=  /* set to YES for extra log info */
     ,open_passthrough= /* provide an alias to produce the
                           CONNECT TO statement for the
                           relevant external database */
     ,sql_options= /* add any options to add to proc sql statement eg outobs=
                       (only valid for pass through) */
     ,mDebug=0
+    ,mAbort=0
 )/*/STORE SOURCE*/;
 
 %local mD;
@@ -45,13 +49,24 @@
 %&mD.put Executing mm_assigndirectlib.sas;
 %&mD.put _local_;
 
+%if &mAbort=1 %then %let mAbort=;
+%else %let mAbort=%str(*);
+
 %&mD.put NOTE: Creating direct (non META) connection to &libref library;
 
-%if %upcase(&libref)=WORK %then %do;
+%local cur_engine;
+%let cur_engine=%mf_getengine(&libref);
+%if &cur_engine ne META and &cur_engine ne %then %do;
+  %put NOTE:  &libref already has a direct (&cur_engine) libname connection;
+  %return;
+%end;
+%else %if %upcase(&libref)=WORK %then %do;
   %put NOTE: We already have a direct connection to WORK :-) ;
   %return;
 %end;
+
 /* need to determine the library ENGINE first */
+%local engine;
 data _null_;
   length lib_uri engine $256;
   call missing (of _all_);
@@ -59,7 +74,7 @@ data _null_;
   rc1=metadata_getnobj("omsobj:SASLibrary?@Libref ='&libref'",1,lib_uri);
   /* get the Engine attribute of the previous object */
   rc2=metadata_getattr(lib_uri,'Engine',engine);
-  &mD.put rc1= lib_uri= rc2= engine=;
+  putlog "mm_assigndirectlib for &libref:" rc1= lib_uri= rc2= engine=;
   call symputx("liburi",lib_uri,'l');
   call symputx("engine",engine,'l');
 run;
@@ -83,15 +98,21 @@ run;
       i+1;
         rc3=metadata_getnasn("&liburi",'UsingPackages',i,up_uri);
     end;
-    cat_path = trim(cat_path) !! ");";
-    %&mD.put NOTE: Getting physical path for &libref library;
-    &mD.put rc3= up_uri= rc4= cat_path= path=;
-    %&mD.put NOTE: Libname cmd will be:;
-    %&mD.put libname &libref &filepath;
+    cat_path = trim(cat_path) !! ")";
+    &mD.putlog "NOTE: Getting physical path for &libref library";
+    &mD.putlog rc3= up_uri= rc4= cat_path= path=;
+    &mD.putlog "NOTE: Libname cmd will be:";
+    &mD.putlog "libname &libref" cat_path;
     call symputx("filepath",cat_path,'l');
   run;
 
-  libname &libref &filepath;
+  %if %sysevalf(&sysver<9.4) %then %do;
+   libname &libref &filepath;
+  %end;
+  %else %do;
+    /* apply the new filelocks option to cater for temporary locks */
+    libname &libref &filepath filelockwait=5;
+  %end;
 
 %end;
 %else %if &engine=REMOTE %then %do;
@@ -224,11 +245,142 @@ run;
     libname &libref ODBC DATASRC=&sql_dsn SCHEMA=&sql_schema;
   %end;
 %end;
+%else %if &engine=POSTGRES %then %do;
+  %put NOTE: Obtaining POSTGRES library details;
+  data _null_;
+    length database ignore_read_only_columns direct_exe preserve_col_names
+      preserve_tab_names server schema authdomain user password
+      prop name value uri urisrc $256.;
+    call missing (of _all_);
+    /* get database value */
+    prop='Connection.DBMS.Property.DB.Name.xmlKey.txt';
+    rc=metadata_getprop("&liburi",prop,database,"");
+    if database^='' then database='database='!!quote(trim(database));
+    call symputx('database',database,'l');
+
+    /* get IGNORE_READ_ONLY_COLUMNS value */
+    prop='Library.DBMS.Property.DBIROC.Name.xmlKey.txt';
+    rc=metadata_getprop("&liburi",prop,ignore_read_only_columns,"");
+    if ignore_read_only_columns^='' then ignore_read_only_columns=
+      'ignore_read_only_columns='!!ignore_read_only_columns;
+    call symputx('ignore_read_only_columns',ignore_read_only_columns,'l');
+
+    /* get DIRECT_EXE value */
+    prop='Library.DBMS.Property.DirectExe.Name.xmlKey.txt';
+    rc=metadata_getprop("&liburi",prop,direct_exe,"");
+    if direct_exe^='' then direct_exe='direct_exe='!!direct_exe;
+    call symputx('direct_exe',direct_exe,'l');
+
+    /* get PRESERVE_COL_NAMES value */
+    prop='Library.DBMS.Property.PreserveColNames.Name.xmlKey.txt';
+    rc=metadata_getprop("&liburi",prop,preserve_col_names,"");
+    if preserve_col_names^='' then preserve_col_names=
+      'preserve_col_names='!!preserve_col_names;
+    call symputx('preserve_col_names',preserve_col_names,'l');
+
+    /* get PRESERVE_TAB_NAMES value */
+    /* be careful with PRESERVE_TAB_NAMES=YES - it will mean your table will
+       become case sensitive!! */
+    prop='Library.DBMS.Property.PreserveTabNames.Name.xmlKey.txt';
+    rc=metadata_getprop("&liburi",prop,preserve_tab_names,"");
+    if preserve_tab_names^='' then preserve_tab_names=
+      'preserve_tab_names='!!preserve_tab_names;
+    call symputx('preserve_tab_names',preserve_tab_names,'l');
+
+    /* get SERVER value */
+    if metadata_getnasn("&liburi","LibraryConnection",1,uri)>0 then do;
+      prop='Connection.DBMS.Property.SERVER.Name.xmlKey.txt';
+      rc=metadata_getprop(uri,prop,server,"");
+    end;
+    if server^='' then server='server='!!server;
+    call symputx('server',server,'l');
+
+    /* get SCHEMA value */
+    if metadata_getnasn("&liburi","UsingPackages",1,uri)>0 then do;
+      rc=metadata_getattr(uri,"SchemaName",schema);
+    end;
+    if schema^='' then schema='schema='!!schema;
+    call symputx('schema',schema,'l');
+
+    /* get AUTHDOMAIN value */
+    /* this is only useful if the user account contains that auth domain
+    if metadata_getnasn("&liburi","DefaultLogin",1,uri)>0 then do;
+      rc=metadata_getnasn(uri,"Domain",1,urisrc);
+      rc=metadata_getattr(urisrc,"Name",authdomain);
+    end;
+    if authdomain^='' then authdomain='authdomain='!!quote(trim(authdomain));
+    */
+    call symputx('authdomain',authdomain,'l');
+
+    /* get user & pass */
+    if authdomain='' & metadata_getnasn("&liburi","DefaultLogin",1,uri)>0 then
+    do;
+      rc=metadata_getattr(uri,"UserID",user);
+      rc=metadata_getattr(uri,"Password",password);
+    end;
+    if user^='' then do;
+      user='user='!!quote(trim(user));
+      password='password='!!quote(trim(password));
+    end;
+    call symputx('user',user,'l');
+    call symputx('password',password,'l');
+
+    &md.put _all_;
+  run;
+
+  %if %length(&open_passthrough)>0 %then %do;
+    %put WARNING:  Passthrough option for postgres not yet supported;
+    %return;
+  %end;
+  %else %do;
+    %if &mdebug=1 %then %do;
+      %put NOTE: Executing the following:/;
+      %put NOTE- libname &libref POSTGRES &database &ignore_read_only_columns;
+      %put NOTE-   &direct_exe &preserve_col_names &preserve_tab_names;
+      %put NOTE-   &server &schema &authdomain &user &password //;
+    %end;
+    libname &libref POSTGRES &database &ignore_read_only_columns &direct_exe
+      &preserve_col_names &preserve_tab_names &server &schema &authdomain
+      &user &password;
+  %end;
+%end;
+%else %if &engine=ORACLE %then %do;
+  %put NOTE: Obtaining &engine library details;
+  data _null;
+    length assocuri1 assocuri2 assocuri3 authdomain path schema $256;
+    call missing (of _all_);
+
+    /* get auth domain */
+    rc=metadata_getnasn("&liburi",'LibraryConnection',1,assocuri1);
+    rc=metadata_getnasn(assocuri1,'Domain',1,assocuri2);
+    rc=metadata_getattr(assocuri2,"Name",authdomain);
+    call symputx('authdomain',authdomain,'l');
+
+    /* path */
+    rc=metadata_getprop(assocuri1,'Connection.Oracle.Property.PATH.Name.xmlKey.txt',path);
+    call symputx('path',path,'l');
+
+    /* schema */
+    rc=metadata_getnasn("&liburi",'UsingPackages',1,assocuri3);
+    rc=metadata_getattr(assocuri3,'SchemaName',schema);
+    call symputx('schema',schema,'l');
+  run;
+  %put NOTE: Executing the following:/; %put NOTE-;
+  %put NOTE- libname &libref ORACLE path=&path schema=&schema authdomain=&authdomain;
+  %put NOTE-;
+  libname &libref ORACLE path=&path schema=&schema authdomain=&authdomain;
+%end;
+%else %if &engine= %then %do;
+  %put NOTE: Libref &libref is not registered in metadata;
+  %&mAbort.mf_abort(
+    msg=ERROR: Libref &libref is not registered in metadata
+    ,mac=mm_assigndirectlib.sas);
+  %return;
+%end;
 %else %do;
-  %put NOTE: Engine &engine is currently unsupported;
-  %put NOTE- Please contact your support team.;
+  %put WARNING: Engine &engine is currently unsupported;
+  %put WARNING- Please contact your support team.;
   %return;
 %end;
 
 %mend;
-

@@ -14,6 +14,9 @@
 
       %mm_getstps(tree=/My Folder/My STPs, name=My STP)
 
+  <h4> Dependencies </h4>
+  @li mm_gettree.sas
+
   @param tree= the metadata folder location in which to search.  Leave blank
     for all folders.  Does not search subdirectories.
   @param name= Provide the name of an STP to search for just that one.  Can
@@ -32,8 +35,7 @@
    - usageversion (if requested)
 
   @version 9.2
-  @author Macro People Ltd
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+  @author Allan Bowe
 
 **/
 
@@ -54,13 +56,13 @@
 
 data &outds;
   length stpuri stpname usageversion treeuri stpdesc $256;
-  call missing (of _all);
+  call missing (of _all_);
 run;
 
 %if %length(&tree)>0 %then %do;
   /* get tree info */
-  %mm_getTree(tree=&tree,inds=&outds, outds=&outds, mDebug=&mDebug)
-  %if %mf_nobs(&outds)=0 %then %do;
+  %mm_gettree(tree=&tree,inds=&outds, outds=&outds, mDebug=&mDebug)
+    %if %mf_nobs(&outds)=0 %then %do;
     %put NOTE:  Tree &tree did not exist!!;
     %return;
   %end;
@@ -70,13 +72,17 @@ run;
 
 data &outds ;
   set &outds(rename=(treeuri=treeuri_compare));
-  length treeuri query $256;
+  length treeuri query stpuri $256;
   i+1;
 %if %length(&name)>0 %then %do;
   query="omsobj:ClassifierMap?@PublicType='StoredProcess' and @Name='&name'";
+  putlog query=;
 %end;
 %else %do;
   query="omsobj:ClassifierMap?@PublicType='StoredProcess'";
+%end;
+%if &mDebug=1 %then %do;
+  putlog 'start' (_all_)(=);
 %end;
   do while(0<metadata_getnobj(query,i,stpuri));
     i+1;
@@ -94,6 +100,7 @@ data &outds ;
     keep usageversion;
   %end;
     output;
+    &mD.put (_all_)(=);
     exitloop:
   end;
   keep stpuri stpname treeuri;

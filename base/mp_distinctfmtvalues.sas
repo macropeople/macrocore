@@ -14,8 +14,7 @@
   @param varlen length of variable to create (default 200)
 
   @version 9.2
-  @author Macro People Ltd
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+  @author Allan Bowe
 
 **/
 

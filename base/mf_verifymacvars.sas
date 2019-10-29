@@ -11,6 +11,9 @@
   Returns:
   > 1
 
+  <h4> Dependencies </h4>
+  @li mf_abort.sas
+
   @param verifyvars space separated list of macro variable names
   @param makeupcase= set to YES to convert all variable VALUES to
     uppercase.
@@ -27,7 +30,7 @@
 
   @version 9.2
   @author Allan Bowe
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+
 **/
 
 
@@ -56,7 +59,7 @@
   %goto exit_success;
   %exit_error:
     %if &mAbort=SOFT %then %put ERROR: &abortmsg;
-    %else %mf_abort(mac=mf_verifymacvars,type=&mfabort,msg=&abortmsg);
+    %else %mf_abort(mac=mf_verifymacvars,type=&mabort,msg=&abortmsg);
   %exit_success:
 
 %mend;

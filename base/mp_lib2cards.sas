@@ -8,6 +8,9 @@
     %mp_lib2cards(lib=sashelp
         , outloc= C:\temp )
 
+  <h4> Dependencies </h4>
+  @li mf_mkdir.sas
+  @li mp_ds2cards.sas
 
   @param lib= Library in which to convert all datasets
   @param outloc= Location in which to store output.  Defaults to WORK library.
@@ -16,8 +19,6 @@
 
   @version 9.2
   @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-  @copyright GNU GENERAL PUBLIC LICENSE v3
 **/
 
 %macro mp_lib2cards(lib=

@@ -21,8 +21,6 @@
 
   @version 9.2
   @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-  @copyright GNU GENERAL PUBLIC LICENSE v3
 **/
 
 %macro mf_getfilesize(fpath=,libds=0,format=NO

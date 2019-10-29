@@ -17,7 +17,6 @@
 
   @version 9.2
   @author Allan Bowe
-  @copyright GNU GENERAL PUBLIC LICENSE v3
 **/
 
 
@@ -38,6 +37,8 @@
 
     %let i = %eval(&i+1);
   %end;
+
+  %let buffer=%sysfunc(coalescec(%qtrim(&buffer),&QUOTE&QUOTE));
 
   &buffer
 

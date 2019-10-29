@@ -20,7 +20,7 @@ Usage:
 
   @version 9.2
   @author Allan Bowe
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+
 **/
 
 %macro mf_getvartype(libds /* two level name */
@@ -32,9 +32,8 @@ Usage:
   %if &dsid. > 0 %then %do;
     /* Get variable number */
     %let vnum = %sysfunc(varnum(&dsid, &var));
-    %if(&vnum. > 0) %then
-       /* Get variable type (C/N) */
-       %let vtype = %sysfunc(vartype(&dsid, &vnum.));
+    /* Get variable type (C/N) */
+    %if(&vnum. > 0) %then %let vtype = %sysfunc(vartype(&dsid, &vnum.));
     %else %do;
        %put NOTE: Variable &var does not exist in &libds;
        %let vtype = %str( );

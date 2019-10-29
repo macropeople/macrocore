@@ -12,8 +12,7 @@
 
   @version 9.2
   @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-  @copyright GNU GENERAL PUBLIC LICENSE v3
+
 **/
 
 %macro mp_resetoption(option /* the option to reset */
