@@ -1,7 +1,7 @@
 /**
   @file
   @brief Create a Web Ready Stored Process
-  @details This macro creates a Type 2 Stored Process with the Boemska h54s
+  @details This macro creates a Type 2 Stored Process with the macropeople h54s
     adapter (development / file upload version) included as pre-code.
 
     The adapter code is loaded direct from github, so internet access is a
@@ -11,7 +11,7 @@
     Usage:
 
       * compile macros ;
-      filename mc url "https://raw.githubusercontent.com/Boemska/macrocore/master/macrocore.sas";
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
       %inc mc;
 
       * parmcards lets us write to a text file from open code ;
@@ -49,7 +49,7 @@
   @param desc= Service description (optional)
   @param source= /the/full/path/name.ext of the sas program to load
   @param precode= /the/full/path/name.ext of any precode to insert.
-  @param adapter= omit this parameter to use the Boemska h54s adapter macros
+  @param adapter= omit this parameter to use the macropeople h54s adapter macros
     (assumes internet access) else provide the path to a local copy
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
@@ -90,7 +90,7 @@
 /* get adapter code */
 %if "&adapter"="h54s" %then %do;
   filename __adaptr url
-    "https://raw.githubusercontent.com/Boemska/h54s/development/sasautos/h54s.sas";
+    "https://raw.githubusercontent.com/macropeople/h54s/development/sasautos/h54s.sas";
 %end;
 %else %do;
   filename __adaptr "&adapter";

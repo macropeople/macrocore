@@ -29,7 +29,7 @@
       ,quote=no
 )/*/STORE SOURCE*/;
   /* declare local vars */
-  %local outvar dsid nvars x rc dlm q;
+  %local outvar dsid nvars x rc dlm q var;
 
   /* credit Rowland Hale  - byte34 is double quote, 39 is single quote */
   %if %upcase(&quote)=DOUBLE %then %let q=%qsysfunc(byte(34));
@@ -44,8 +44,14 @@
       /* add first dataset variable to global macro variable */
       %let outvar=&q.%sysfunc(varname(&dsid,1))&q.;
       /* add remaining variables with supplied delimeter */
-      %do x=2 %to &nvars;
-        %let outvar=&outvar.&dlm.&q.%sysfunc(varname(&dsid,&x))&q.;
+      %do x=1 %to &nvars;
+        %let var=&q.%sysfunc(varname(&dsid,&x))&q.;
+        %if &var=&q&q %then %do;
+          %put &sysmacroname: Empty column found in &libds!;
+          %let var=&q. &q.;
+        %end;
+        %if &x=1 %then %let outvar=&var;
+        %else %let outvar=&outvar.&dlm.&var.;
       %end;
     %end;
     %let rc=%sysfunc(close(&dsid));

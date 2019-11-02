@@ -4,7 +4,7 @@ Much quality.  Many standards.  The **Macro Core** library exists to save time
 and development effort!  Herein ye shall find a veritable host of production
 quality SAS macros.  These are a mix of tools, utilities, functions and code
 generators that are useful in the context of Application Development on the SAS
-platform.  [Contributions](https://github.com/Boemska/macrocore/blob/master/CONTRIBUTING.md)
+platform.  [Contributions](https://github.com/macropeople/macrocore/blob/master/CONTRIBUTING.md)
 are welcomed.
 
 # Components
@@ -40,7 +40,7 @@ The above can be done directly in your sas program, via an autoexec, or an initi
 Alternatively - for quick access - simply run the following!  This file contains all the macros.
 
 ```
-filename mc url "https://raw.githubusercontent.com/Boemska/macrocore/master/macrocore.sas";
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
 %inc mc;
 ```
 
@@ -77,7 +77,7 @@ The **Macro Core** documentation is created using [doxygen](http://www.stack.nl/
  - author.  Author name, contact details optional
  - copyright.  Must be GNU GENERAL PUBLIC LICENSE v3.
 
-All macros must be commented in the doxygen format, to enable the [online documentation](https://boemska.github.io/macrocore.github.io/).
+All macros must be commented in the doxygen format, to enable the [online documentation](https://macropeople.github.io/macrocore.github.io/).
 
 ## Coding Standards
 

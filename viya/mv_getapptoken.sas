@@ -13,7 +13,7 @@
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/Boemska/macrocore/master/macrocore.sas";
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
     %inc mc;
 
     %mv_getapptoken(client_id=client,client_secret=secret)
@@ -24,7 +24,7 @@
 
   @version VIYA V.03.04
   @author Allan Bowe
-  @source https://github.com/Boemska/macrocore
+  @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
   @li mf_abort.sas
