@@ -105,7 +105,7 @@
       if debug=131 then put "--h54s-data-end--";
     run;
     %let syscc=0;
-    %if %symexist('SYS_JES_JOB_URI') %then %do;
+    %if %symexist(SYS_JES_JOB_URI) %then %do;
       /* refer web service output to file service in one hit */
       filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
       %let rc=%sysfunc(fcopy(_web,_webout));
