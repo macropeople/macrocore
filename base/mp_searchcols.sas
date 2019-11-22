@@ -2,18 +2,19 @@
   @file mp_searchcols.sas
   @brief Searches all columns in a library
   @details
-  Scans an entire library and creates a dataset containing all the source tables
-    that contain one or more of a particular set of columns
+  Scans a set of libraries and creates a dataset containing all source tables
+    containing one or more of a particular set of columns
 
   Usage:
 
-      %mp_searchcols(lib=sashelp, cols=name sex age)
+      %mp_searchcols(libs=sashelp work, cols=name sex age)
 
+  @param libs=
   @version 9.2
   @author Allan Bowe
 **/
 
-%macro mp_searchcols(lib=sashelp
+%macro mp_searchcols(libs=sashelp
   ,cols=
   ,outds=mp_searchcols
 )/*/STORE SOURCE*/;
@@ -26,7 +27,15 @@ create table _data_ as
   select distinct upcase(libname) as libname
     , upcase(memname) as memname
     , upcase(name) as name
-  from dictionary.columns where upcase(libname)="%upcase(&lib)"
+  from dictionary.columns
+%if %sysevalf(%superq(libs)=,boolean)=0 %then %do;
+  where upcase(libname) in ("IMPOSSIBLE",
+  %local x;
+  %do x=1 %to %sysfunc(countw(&libs));
+   "%upcase(%scan(&libs,&x))"
+  %end;
+  )
+%end;
   order by 1,2,3;
 
 data &outds;
@@ -35,6 +44,10 @@ data &outds;
   cols=upcase(symget('cols'));
   colcount=countw(cols);
   by libname memname name;
+  if _n_=1 then do;
+    putlog "Searching libs: &libs";
+    putlog "Searching cols: " cols;
+  end;
   if first.memname then do;
     sumcols=0;
     retain matchcols;
