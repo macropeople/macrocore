@@ -4213,7 +4213,7 @@ run;
 
 data &outds;
   keep col:;
-  length assoc coluri colname coldesc $256;
+  length assoc uri coluri colname coldesc $256;
   call missing (of _all_);
   uri=symget('tableuri');
   n=1;
