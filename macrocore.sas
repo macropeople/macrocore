@@ -4570,10 +4570,18 @@ filename __outdoc clear;
   @brief Creates dataset with all groups or just those for a particular user
   @details Provide a metadata user to get groups for just that user, or leave
     blank to return all groups.
+  Usage:
+
+    - all groups
+    %mm_getGroups()
+
+    - all groups for a particular user
+    %mm_getgroups(user=&sysuserid)
 
   @param user= the metadata user to return groups for.  Leave blank for all
     groups.
   @param outds= the dataset to create that contains the list of groups
+  @param repo= the metadata repository that contains the user/group information
   @param mDebug= set to 1 to show debug messages in the log
 
   @returns outds  dataset containing all groups in a column named "metagroup"
@@ -4589,14 +4597,21 @@ filename __outdoc clear;
 %macro mm_getGroups(
      user=
     ,outds=work.mm_getGroups
+    ,repo=foundation
     ,mDebug=0
 )/*/STORE SOURCE*/;
 
-%local mD;
+%local mD oldrepo;
+%let oldrepo=%sysfunc(getoption(metarepository));
 %if &mDebug=1 %then %let mD=;
 %else %let mD=%str(*);
 %&mD.put Executing mm_getGroups.sas;
 %&mD.put _local_;
+
+/* on some sites, user / group info is in a different metadata repo to the default */
+%if &oldrepo ne &repo %then %do;
+  options metarepository=&repo;
+%end;
 
 %if %length(&user)=0 %then %do;
   data &outds (keep=groupuri groupname groupdesc);
@@ -4638,6 +4653,10 @@ filename __outdoc clear;
       grpassn=metadata_getnasn(uri,"IdentityGroups",a,groupuri);
     end;
   run;
+%end;
+
+%if &oldrepo ne &repo %then %do;
+  options metarepository=&oldrepo;
 %end;
 
 %mend;/**
@@ -5641,7 +5660,7 @@ run;
   %return;
 %end;
 
-filename &frefin temp lrecl=10000000;
+filename &frefin temp recfm=n;
 
 /* escape code so it can be stored as XML */
 /* input file may be over 32k wide, so deal with one char at a time */

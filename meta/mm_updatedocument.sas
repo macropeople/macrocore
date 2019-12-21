@@ -67,7 +67,7 @@ run;
   %return;
 %end;
 
-filename &frefin temp lrecl=10000000;
+filename &frefin temp recfm=n;
 
 /* escape code so it can be stored as XML */
 /* input file may be over 32k wide, so deal with one char at a time */
