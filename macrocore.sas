@@ -5690,7 +5690,7 @@ data _null_;
 run;
 
 
-filename &frefout temp;
+filename &frefout temp recfm=n;
 
 proc metadata in= &frefin
   %if &mdebug=1 %then out=&frefout verbose;
