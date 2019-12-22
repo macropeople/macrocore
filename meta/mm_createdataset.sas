@@ -1,5 +1,5 @@
 /**
-  @file
+  @file mm_createdataset.sas
   @brief Create a dataset from a metadata definition
   @details This macro was built to support viewing empty tables in
     https://datacontroller.io - a free evaluation copy is available by
