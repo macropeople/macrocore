@@ -2311,7 +2311,7 @@ data _null_;
   if isFolder then call execute('%mf_mkdir(&outdir/'!!memname!!')');
   else call execute('filename &fname2 zip &ziploc member='
     !!quote(trim(memname))!!';filename &fname3 "&outdir/'
-    !!trim(memname)!!'";data _null_; rc=fcopy("&fname2","&fname3");run;'
+    !!trim(memname)!!'" recfm=n;data _null_; rc=fcopy("&fname2","&fname3");run;'
     !!'filename &fname2 clear; filename &fname3 clear;');
 run;
 
