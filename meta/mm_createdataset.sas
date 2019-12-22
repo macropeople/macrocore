@@ -16,7 +16,7 @@
 
     or
 
-    %mm_createdataset(tableuri=metlib.some_dataset)
+    %mm_createdataset(tableuri=G5X8AFW1.BE00015Y)
 
   <h4> Dependencies </h4>
   @li mm_getlibs.sas
