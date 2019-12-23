@@ -66,12 +66,16 @@ data _null_;
   set &tempds3 end=last;
   if _n_=1 then call execute('data &outds;');
   length attrib $32767;
-  attrib='attrib '!!cats(colname)!!' length=';
-  if SAScolumntype='C' then attrib=cats(attrib,'$');
-  attrib=cats(attrib,SASColumnLength,'.')
-    !!' format='!!cats(sasformat)
-    !!' informat='!!cats(sasinformat)
-    !!' label='!!quote(cats(coldesc))!!';';
+
+  if SAScolumntype='C' then type='$';
+  attrib='attrib '!!cats(colname)!!' length='!!cats(type,SASColumnLength,'.');
+
+  if not missing(sasformat) then fmt=' format='!!cats(sasformat);
+  if not missing(sasinformat) then infmt=' informat='!!cats(sasinformat);
+  if not missing(coldesc) then desc=' label='!!quote(cats(coldesc));
+
+  attrib=trim(attrib)!!fmt!!infmt!!desc!!';';
+
   call execute(attrib);
   if last then call execute('call missing(of _all_);stop;run;');
 run;

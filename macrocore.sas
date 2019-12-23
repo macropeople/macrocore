@@ -3100,7 +3100,7 @@ run;
 
 
 %mend;/**
-  @file
+  @file mm_createdataset.sas
   @brief Create a dataset from a metadata definition
   @details This macro was built to support viewing empty tables in
     https://datacontroller.io - a free evaluation copy is available by
@@ -3117,7 +3117,7 @@ run;
 
     or
 
-    %mm_createdataset(tableuri=metlib.some_dataset)
+    %mm_createdataset(tableuri=G5X8AFW1.BE00015Y)
 
   <h4> Dependencies </h4>
   @li mm_getlibs.sas
@@ -3167,12 +3167,16 @@ data _null_;
   set &tempds3 end=last;
   if _n_=1 then call execute('data &outds;');
   length attrib $32767;
-  attrib='attrib '!!cats(colname)!!' length=';
-  if SAScolumntype='C' then attrib=cats(attrib,'$');
-  attrib=cats(attrib,SASColumnLength,'.')
-    !!' format='!!cats(sasformat)
-    !!' informat='!!cats(sasinformat)
-    !!' label='!!quote(cats(coldesc))!!';';
+
+  if SAScolumntype='C' then type='$';
+  attrib='attrib '!!cats(colname)!!' length='!!cats(type,SASColumnLength,'.');
+
+  if not missing(sasformat) then fmt=' format='!!cats(sasformat);
+  if not missing(sasinformat) then infmt=' informat='!!cats(sasinformat);
+  if not missing(coldesc) then desc=' label='!!quote(cats(coldesc));
+
+  attrib=trim(attrib)!!fmt!!infmt!!desc!!';';
+
   call execute(attrib);
   if last then call execute('call missing(of _all_);stop;run;');
 run;
