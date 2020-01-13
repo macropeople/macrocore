@@ -128,7 +128,9 @@
     %end;
     %else %do;
       data _null_;
-        rc=stpsrvset('program error', 0);
+        if symexist('sysprocessmode')
+         then if symget("sysprocessmode")="SAS Stored Process Server"
+          then rc=stpsrvset('program error', 0);
       run;
     %end;
     /**
