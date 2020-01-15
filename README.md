@@ -1,3 +1,11 @@
+# TLDR;
+```
+/* Download / compile all the macros in one go */
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+%inc mc;
+```
+Documentation:  https://macropeople.github.io/macrocore.github.io/files.html
+
 # Macro Core
 
 Much quality.  Many standards.  The **Macro Core** library exists to save time
