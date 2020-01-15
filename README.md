@@ -1,15 +1,13 @@
-# TLDR;
+# Macro Core
 
-Macro Core is an MIT-licenced library of SAS Macros used mainly for App Development (eg for https://datacontroller.io and other Web Apps on SAS).  You can download and compile them all in just two lines of SAS code:
-```
+Much quality.  Many standards.  The **Macro Core** library exists to save time and development effort!  Herein ye shall find a veritable host of MIT-licenced, production quality SAS macros.  These are a mix of tools, utilities, functions and code generators that are useful in the context of Application Development on the SAS platform (eg https://datacontroller.io).  [Contributions](https://github.com/macropeople/macrocore/blob/master/CONTRIBUTING.md) are welcomed.
+
+You can download and compile them all in just two lines of SAS code:
+```sas
 filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
 %inc mc;
 ```
 Documentation:  https://macropeople.github.io/macrocore.github.io/files.html
-
-# Macro Core
-
-Much quality.  Many standards.  The **Macro Core** library exists to save time and development effort!  Herein ye shall find a veritable host of production quality SAS macros.  These are a mix of tools, utilities, functions and code generators that are useful in the context of Application Development on the SAS platform.  [Contributions](https://github.com/macropeople/macrocore/blob/master/CONTRIBUTING.md) are welcomed.
 
 # Components
 
@@ -43,7 +41,7 @@ The above can be done directly in your sas program, via an autoexec, or an initi
 
 Alternatively - for quick access - simply run the following!  This file contains all the macros.
 
-```
+```sas
 filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
 %inc mc;
 ```
