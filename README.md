@@ -1,11 +1,13 @@
 # Macro Core
 
-Much quality.  Many standards.  The **Macro Core** library exists to save time
-and development effort!  Herein ye shall find a veritable host of production
-quality SAS macros.  These are a mix of tools, utilities, functions and code
-generators that are useful in the context of Application Development on the SAS
-platform.  [Contributions](https://github.com/macropeople/macrocore/blob/master/CONTRIBUTING.md)
-are welcomed.
+Much quality.  Many standards.  The **Macro Core** library exists to save time and development effort!  Herein ye shall find a veritable host of MIT-licenced, production quality SAS macros.  These are a mix of tools, utilities, functions and code generators that are useful in the context of Application Development on the SAS platform (eg https://datacontroller.io).  [Contributions](https://github.com/macropeople/macrocore/blob/master/CONTRIBUTING.md) are welcomed.
+
+You can download and compile them all in just two lines of SAS code:
+```sas
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+%inc mc;
+```
+Documentation:  https://macropeople.github.io/macrocore.github.io/files.html
 
 # Components
 
@@ -39,7 +41,7 @@ The above can be done directly in your sas program, via an autoexec, or an initi
 
 Alternatively - for quick access - simply run the following!  This file contains all the macros.
 
-```
+```sas
 filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
 %inc mc;
 ```
@@ -75,7 +77,6 @@ The **Macro Core** documentation is created using [doxygen](http://www.stack.nl/
  - return.  Explanation of what is returned by the macro.
  - version.  The EARLIEST SAS version in which this macro is known to work.
  - author.  Author name, contact details optional
- - copyright.  Must be GNU GENERAL PUBLIC LICENSE v3.
 
 All macros must be commented in the doxygen format, to enable the [online documentation](https://macropeople.github.io/macrocore.github.io/).
 
