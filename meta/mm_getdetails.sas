@@ -19,6 +19,7 @@
 data &outassocs;
   keep assoc assocuri name;
   length assoc assocuri name $256;
+  call missing(of _all_);
   rc1=1;n1=1;
   do while(rc1>0);
     /* Walk through all possible associations of this object. */
@@ -32,7 +33,6 @@ data &outassocs;
         output;
       end;
       call missing(name,assocuri);
-      put arc= rc2=;
       n2+1;
     end;
     n1+1;

@@ -1,37 +1,38 @@
 /**
-  @file mm_deletestp.sas
-  @brief Deletes a Stored Process using path as reference
-  @details Will only delete the metadata, not any physical files associated.
+  @file mm_deletedocument.sas
+  @brief Deletes a Document using path as reference
+  @details
 
   Usage:
 
-    %mm_deletestp(target=/some/meta/path/myStoredProcess)
+    %mm_createdocument(tree=/User Folders/&sysuserid,name=MyNote)
+    %mm_deletedocument(target=/User Folders/&sysuserid/MyNote)
 
   <h4> Dependencies </h4>
 
-  @param target= full path to the STP being deleted
+  @param target= full path to the document being deleted
 
   @version 9.4
   @author Allan Bowe
 
 **/
 
-%macro mm_deletestp(
+%macro mm_deletedocument(
      target=
 )/*/STORE SOURCE*/;
 
 /**
- * Check STP does exist
+ * Check document exist
  */
-%local cmtype;
+%local type;
 data _null_;
   length type uri $256;
-  rc=metadata_pathobj("","&target",'StoredProcess',type,uri);
-  call symputx('cmtype',type,'l');
+  rc=metadata_pathobj("","&target",'Note',type,uri);
+  call symputx('type',type,'l');
   call symputx('stpuri',uri,'l');
 run;
-%if &cmtype ne ClassifierMap %then %do;
-  %put WARNING: No Stored Process found at &target;
+%if &type ne Document %then %do;
+  %put WARNING: No Document found at &target;
   %return;
 %end;
 
@@ -39,7 +40,7 @@ filename __in temp lrecl=10000;
 filename __out temp lrecl=10000;
 data _null_ ;
    file __in ;
-   put "<DeleteMetadata><Metadata><ClassifierMap Id='&stpuri'/>";
+   put "<DeleteMetadata><Metadata><Document Id='&stpuri'/>";
    put "</Metadata><NS>SAS</NS><Flags>268436480</Flags><Options/>";
    put "</DeleteMetadata>";
 run ;
@@ -61,8 +62,8 @@ data _null_;
   rc=metadata_pathobj("","&target",'Note',type,uri);
   call symputx('isgone',type,'l');
 run;
-%if &isgone = ClassifierMap %then %do;
-  %put %str(ERR)OR: STP not deleted from &target;
+%if &isgone = Document %then %do;
+  %put %str(ERR)OR: Document not deleted from &target;
   %let syscc=4;
   %return;
 %end;
