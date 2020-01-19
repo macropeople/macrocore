@@ -2936,14 +2936,17 @@ run;
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
-  %mf_abort(iftrue= (&mf_abort=1)
-    ,mac=mm_assignlib.sas
-    ,msg=&msg
-  )
+  %if &mf_abort=1 %then %do;
+    %mf_abort(iftrue= (&mf_abort=1)
+      ,mac=mm_assignlib.sas
+      ,msg=&msg
+    )
+    %return;
+  %end;
   libname &libref meta library="&lib";
   %if %sysfunc(libref(&libref)) %then %do;
     %mf_abort(msg=mm_assignlib macro could not assign &libref
-      ,mac=mm_assignlib.sas);
+      ,mac=mm_assignlib.sas)
   %end;
 %end;
 %else %do;
@@ -4180,7 +4183,6 @@ run;
 
   @version 9.2
   @author Allan Bowe
-  @copyright GNU GENERAL PUBLIC LICENSE v3
 
 **/
 
@@ -4269,6 +4271,77 @@ run;
   ,stptype=2)
 
 %mend;/**
+  @file mm_deletedocument.sas
+  @brief Deletes a Document using path as reference
+  @details
+
+  Usage:
+
+    %mm_createdocument(tree=/User Folders/&sysuserid,name=MyNote)
+    %mm_deletedocument(target=/User Folders/&sysuserid/MyNote)
+
+  <h4> Dependencies </h4>
+
+  @param target= full path to the document being deleted
+
+  @version 9.4
+  @author Allan Bowe
+
+**/
+
+%macro mm_deletedocument(
+     target=
+)/*/STORE SOURCE*/;
+
+/**
+ * Check document exist
+ */
+%local type;
+data _null_;
+  length type uri $256;
+  rc=metadata_pathobj("","&target",'Note',type,uri);
+  call symputx('type',type,'l');
+  call symputx('stpuri',uri,'l');
+run;
+%if &type ne Document %then %do;
+  %put WARNING: No Document found at &target;
+  %return;
+%end;
+
+filename __in temp lrecl=10000;
+filename __out temp lrecl=10000;
+data _null_ ;
+   file __in ;
+   put "<DeleteMetadata><Metadata><Document Id='&stpuri'/>";
+   put "</Metadata><NS>SAS</NS><Flags>268436480</Flags><Options/>";
+   put "</DeleteMetadata>";
+run ;
+proc metadata in=__in out=__out verbose;run;
+
+/* list the result */
+data _null_;infile __out; input; list; run;
+
+filename __in clear;
+filename __out clear;
+
+/**
+ * Check deletion
+ */
+%local isgone;
+data _null_;
+  length type uri $256;
+  call missing (of _all_);
+  rc=metadata_pathobj("","&target",'Note',type,uri);
+  call symputx('isgone',type,'l');
+run;
+%if &isgone = Document %then %do;
+  %put %str(ERR)OR: Document not deleted from &target;
+  %let syscc=4;
+  %return;
+%end;
+
+%mend;
+/**
   @file mm_deletestp.sas
   @brief Deletes a Stored Process using path as reference
   @details Will only delete the metadata, not any physical files associated.
@@ -4321,8 +4394,139 @@ data _null_;infile __out; input; list; run;
 filename __in clear;
 filename __out clear;
 
+/**
+ * Check deletion
+ */
+%local isgone;
+data _null_;
+  length type uri $256;
+  call missing (of _all_);
+  rc=metadata_pathobj("","&target",'Note',type,uri);
+  call symputx('isgone',type,'l');
+run;
+%if &isgone = ClassifierMap %then %do;
+  %put %str(ERR)OR: STP not deleted from &target;
+  %let syscc=4;
+  %return;
+%end;
+
 %mend;
 /**
+  @file mm_getauthinfo.sas
+  @brief extracts authentication info
+  @details usage:
+
+    %mm_getauthinfo(outds=auths)
+
+  @param outds= the ONE LEVEL work dataset to create
+
+  <h4> Dependencies </h4>
+  @li mm_getobjects.sas
+  @li mf_getuniquefileref.sas
+  @li mm_getdetails.sas
+
+  @version 9.4
+  @author Allan Bowe
+
+**/
+
+%macro mm_getauthinfo(outds=mm_getauthinfo
+)/*/STORE SOURCE*/;
+
+%if %length(&outds)>30 %then %do;
+  %put %str(ERR)OR: Temp tables are created with the &outds prefix, which therefore
+  needs to be 30 characters or less;
+  %return;
+%end;
+%if %index(&outds,'.')>0 %then %do;
+  %put %str(ERR)OR: Table &outds should be ONE LEVEL (no library);
+  %return;
+%end;
+
+%mm_getobjects(type=Login,outds=&outds.0)
+
+%local fileref;
+%let fileref=%mf_getuniquefileref();
+
+data _null_;
+  file &fileref;
+  set &outds.0 end=last;
+  /* run macro */
+  str=cats('%mm_getdetails(uri=',id,",outattrs=&outds.d",_n_
+    ,",outassocs=&outds.a",_n_,")");
+  put str;
+  /* transpose attributes */
+  str=cats("proc transpose data=&outds.d",_n_,"(drop=type) out=&outds.da"
+    ,_n_,"(drop=_name_);var value;id name;run;");
+  put str;
+  /* add extra info to attributes */
+  str=cats("data &outds.da",_n_,";length login_id login_name $256; login_id="
+    ,quote(trim(id)),";set &outds.da",_n_
+    ,";login_name=trim(subpad(name,1,256));drop name;run;");
+  put str;
+  /* add extra info to associations */
+  str=cats("data &outds.a",_n_,";length login_id login_name $256; login_id="
+    ,quote(trim(id)),";login_name=",quote(trim(name))
+    ,";set &outds.a",_n_,";run;");
+  put str;
+  if last then do;
+    /* collate attributes */
+	  str=cats("data &outds._logat; set &outds.da1-&outds.da",_n_,";run;");
+	  put str;
+    /* collate associations */
+	  str=cats("data &outds._logas; set &outds.a1-&outds.a",_n_,";run;");
+	  put str;
+    /* tidy up */
+    str=cats("proc delete data=&outds.da1-&outds.da",_n_,";run;");
+    put str;
+    str=cats("proc delete data=&outds.d1-&outds.d",_n_,";run;");
+    put str;
+    str=cats("proc delete data=&outds.a1-&outds.a",_n_,";run;");
+    put str;
+  end;
+run;
+%inc &fileref;
+
+/* get libraries */
+proc sort data=&outds._logas(where=(assoc='Libraries')) out=&outds._temp;
+  by login_id;
+data &outds._temp;
+  set &outds._temp;
+  by login_id;
+  length library_list $32767;
+  retain library_list;
+  if first.login_id then library_list=name;
+  else library_list=catx(' !! ',library_list,name);
+proc sql;
+/* get auth domain */
+create table &outds._dom as
+  select login_id,name as domain
+  from &outds._logas
+  where assoc='Domain';
+create unique index login_id on &outds._dom(login_id);
+/* join it all together */
+create table &outds._logins as
+  select a.*
+    ,c.domain
+    ,b.library_list
+  from &outds._logat (drop=ishidden lockedby usageversion publictype) a
+  left join &outds._temp b
+  on a.login_id=b.login_id
+  left join &outds._dom c
+  on a.login_id=c.login_id;
+drop table &outds._temp;
+drop table &outds._logat;
+drop table &outds._logas;
+
+data _null_;
+  infile &fileref;
+  if _n_=1 then putlog // "Now executing the following code:" //;
+  input; putlog _infile_;
+run;
+
+filename &fileref clear;
+
+%mend;/**
   @file
   @brief Creates a dataset with all metadata columns for a particular table
   @details
@@ -4395,6 +4599,7 @@ run;
 data &outassocs;
   keep assoc assocuri name;
   length assoc assocuri name $256;
+  call missing(of _all_);
   rc1=1;n1=1;
   do while(rc1>0);
     /* Walk through all possible associations of this object. */
@@ -4408,7 +4613,6 @@ data &outassocs;
         output;
       end;
       call missing(name,assocuri);
-      put arc= rc2=;
       n2+1;
     end;
     n1+1;
