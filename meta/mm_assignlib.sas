@@ -57,14 +57,17 @@
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
-  %mf_abort(iftrue= (&mf_abort=1)
-    ,mac=mm_assignlib.sas
-    ,msg=&msg
-  )
+  %if &mf_abort=1 %then %do;
+    %mf_abort(iftrue= (&mf_abort=1)
+      ,mac=mm_assignlib.sas
+      ,msg=&msg
+    )
+    %return;
+  %end;
   libname &libref meta library="&lib";
   %if %sysfunc(libref(&libref)) %then %do;
     %mf_abort(msg=mm_assignlib macro could not assign &libref
-      ,mac=mm_assignlib.sas);
+      ,mac=mm_assignlib.sas)
   %end;
 %end;
 %else %do;
