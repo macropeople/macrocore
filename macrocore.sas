@@ -2925,7 +2925,8 @@ run;
     if nobj=1 then do;
        rc=metadata_getattr(lib_uri,"Name",LibName);
        put (_all_)(=);
-       call symputx('LIB',libname,'L');
+       call symputx('libname',libname,'L');
+       call symputx('liburi',liburi,'L');
     end;
     else if nobj>1 then do;
       call symputx('mf_abort',1);
@@ -2943,10 +2944,11 @@ run;
     )
     %return;
   %end;
-  libname &libref meta library="&lib";
+  libname &libref meta liburi="&liburi";
   %if %sysfunc(libref(&libref)) %then %do;
-    %mf_abort(msg=mm_assignlib macro could not assign &libref
+    %mf_abort(msg=mm_assignlib macro could not assign &libref (&libname)
       ,mac=mm_assignlib.sas)
+    %return;
   %end;
 %end;
 %else %do;
