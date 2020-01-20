@@ -5699,11 +5699,12 @@ run;
 %mend;/**
   @file
   @brief Creates a dataset with all metadata types
+  @details Usage:
+
+    %mm_gettypes(outds=types)
 
   @param outds the dataset to create that contains the list of types
-
   @returns outds  dataset containing all types
-
   @warning The following filenames are created and then de-assigned:
 
       filename sxlemap clear;
@@ -5749,9 +5750,9 @@ data _null_;
   file sxlemap;
   put '<SXLEMAP version="1.2" name="SASTypes"><TABLE name="SASTypes">';
   put '<TABLE-PATH syntax="XPath">//GetTypes/Types/Type</TABLE-PATH>';
-  put '<COLUMN name="ID">';
+  put '<COLUMN name="ID"><LENGTH>64</LENGTH>';
   put '<PATH syntax="XPath">//GetTypes/Types/Type/@Id</PATH></COLUMN>';
-  put '<COLUMN name="Desc">';
+  put '<COLUMN name="Desc"><LENGTH>256</LENGTH>';
   put '<PATH syntax="XPath">//GetTypes/Types/Type/@Desc</PATH></COLUMN>';
   put '<COLUMN name="HasSubtypes">';
   put '<PATH syntax="XPath">//GetTypes/Types/Type/@HasSubtypes</PATH></COLUMN>';
@@ -5759,7 +5760,7 @@ data _null_;
 run;
 libname _XML_ xml xmlfileref=response xmlmap=sxlemap;
 /* sort the response by library name */
-proc sort data=_XML_.sastypes out=sastypes;
+proc sort data=_XML_.sastypes out=&outds;
   by id;
 run;
 
