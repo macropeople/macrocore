@@ -74,7 +74,7 @@
     a=1;
     grpassn=metadata_getnasn(uri,"IdentityGroups",a,groupuri);
     if grpassn in (-3,-4) then do;
-      putlog "WARNING: No groups found for ";
+      putlog "WARNING: No metadata groups found for &user";
       output;
     end;
     else do while (grpassn > 0);
