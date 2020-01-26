@@ -43,22 +43,16 @@ header="""
   @author Allan Bowe
 **/
 """
-f = open('compileall.sas', "w")             # r / r+ / rb / rb+ / w / wb
+f = open('mc_all.sas', "w")             # r / r+ / rb / rb+ / w / wb
 f.write(header)
 folders=['base','meta','xcmd','viya','lua']
 for folder in folders:
     filenames = [fn for fn in Path('./' + folder).iterdir() if fn.match("*.sas")]
-    with open('compile' + folder + '.sas', 'w') as outfile:
+    filenames.sort()
+    with open('mc_' + folder + '.sas', 'w') as outfile:
         for fname in filenames:
             with open(fname) as infile:
                 outfile.write(infile.read())
-    with open('compile' + folder + '.sas','r') as c:
+    with open('mc_' + folder + '.sas','r') as c:
         f.write(c.read())
-filenames=os.listdir('./' + folder)
-with open('compile' + folder + '.sas', 'w') as outfile:
-    for fname in filenames:
-        with open('./' + folder + '/' + fname) as infile:
-            outfile.write(infile.read())
-with open('compile' + folder + '.sas','r') as c:
-    f.write(c.read())
 f.close()
