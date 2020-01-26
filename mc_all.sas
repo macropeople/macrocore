@@ -6540,7 +6540,7 @@ options noquotelenmax;
         select * from sashelp.class;
       %sasjs(myds)
       ;;;;
-    %mv_createwebservice(path=/Public/myapp, name=testJob, code=temp)
+    %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
 
   @param path= The full path where the service will be created
@@ -6722,14 +6722,20 @@ data _null_;
   file &setup;
   put '/* setup json */';
   put 'filename _web temp lrecl=65000;';
-  put 'data _null_;file _web;put "{data:{";run;'/;
+  put 'data _null_;file _web;put "{""data"":{";run;'/;
   put '/* output macro */';
+  put '%global sasjs_tabcnt;';
+  put '%let sasjs_tabcnt=0;';
   put '%macro sasjs(dsn);';
+  put '%let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);';
   put 'options validvarname=upcase;';
   put 'data _null_;file _web mod;';
+  put '  if &sasjs_tabcnt>1 then put ",";';
   put ' put ''"'' "&dsn" ''" : '';run;';
-  put 'proc json out=_web mod;export work.&dsn / nosastags;run;';
-  put 'data _null_;file _web mod;put ",";run;';
+  put 'filename _web2 temp;';
+  put 'proc json out=_web2;export work.&dsn / nosastags;run;';
+  put 'data _null_;file _web mod;infile _web2 ;input;';
+  put 'put _infile_;run;';
   put '%mend;' //;
 run;
 
@@ -6743,13 +6749,12 @@ data _null_;
   put "  SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));";
   put '  jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"''));';
   put "  _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));";
-  put '  put ''"sysuserid" : "'' "&sysuserid." ''",'';';
-  put '  put ''"sysjobid" : "'' "&sysjobid." ''",'';';
+  put '  put ''},"sysuserid" : "'' "&sysuserid." ''",'';';
   put '  put ''"sysjobid" : "'' "&sysjobid." ''",'';';
   put '  put ''"datetime" : "'' "%sysfunc(datetime(),datetime19.)" ''",'';';
   put '  put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '','';';
   put '  put ''"X-SAS-JOBEXEC-ID" : '' jobid '','';';
-  put '  put ''"_PROGRAM" : '' _PROGRAM '','';';
+  put '  put ''"_PROGRAM" : '' _PROGRAM ;';
   put '  put "}";';
   put 'run;';
   put ' ';
