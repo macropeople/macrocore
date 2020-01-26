@@ -1,8 +1,6 @@
-# Concatenate all macros into a single file
-
 import os
 
-OUTFILE='./macrocore.sas'
+# Concatenate all macros into a single file
 header="""
 /**
   @file
@@ -21,7 +19,7 @@ header="""
   @author Allan Bowe
 **/
 """
-f = open("test.txt", "w")             # r / r+ / rb / rb+ / w / wb
+f = open('compileall.sas', "w")             # r / r+ / rb / rb+ / w / wb
 f.write(header)
 folders=['base','meta','xcmd','viya']
 for folder in folders:
@@ -34,4 +32,5 @@ for folder in folders:
         f.write(c.read())
 f.close()
 
+# Prepare Lua Macros 
 
