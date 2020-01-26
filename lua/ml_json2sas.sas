@@ -1,18 +1,18 @@
 /**
-  @file ml_json.sas
-  @brief Creates the json.lua file
-  @details Writes json.lua to the work directory
+  @file ml_json2sas.sas
+  @brief Creates the json2sas.lua file
+  @details Writes json2sas.lua to the work directory
   Usage:
 
-      %ml_json()
+      %ml_json2sas()
 
 **/
 
-%macro ml_json();
+%macro ml_json2sas();
 data _null_;
-  file "%sysfunc(pathname(work))/json.lua";
+  file "%sysfunc(pathname(work))/json2sas.lua";
   put '-- ';
-  put '-- json.lua ';
+  put '-- json2sas.lua  (modified from json.lua) ';
   put '-- ';
   put '-- Copyright (c) 2019 rxi ';
   put '-- ';
@@ -35,7 +35,7 @@ data _null_;
   put '-- SOFTWARE. ';
   put '-- ';
   put ' ';
-  put 'local json = { _version = "0.1.2" } ';
+  put 'local json2sas = { _version = "0.1.2" } ';
   put ' ';
   put '------------------------------------------------------------------------------- ';
   put '-- Encode ';
@@ -135,7 +135,7 @@ data _null_;
   put '  error("unexpected type ''" .. t .. "''") ';
   put 'end ';
   put ' ';
-  put 'function json.encode(val) ';
+  put 'function json2sas.encode(val) ';
   put '  return ( encode(val) ) ';
   put 'end ';
   put ' ';
@@ -369,7 +369,7 @@ data _null_;
   put '  decode_error(str, idx, "unexpected character ''" .. chr .. "''") ';
   put 'end ';
   put ' ';
-  put 'function json.decode(str) ';
+  put 'function json2sas.decode(str) ';
   put '  if type(str) ~= "string" then ';
   put '    error("expected argument of type string, got " .. type(str)) ';
   put '  end ';
@@ -382,14 +382,26 @@ data _null_;
   put 'end ';
   put ' ';
   put '-- convert macro variable array into one variable and decode ';
-  put 'function decoder(str) ';
+  put 'function json2sas.go(macvar) ';
   put '  local x=1 ';
+  put '  local cnt=0 ';
+  put '  local mac=sas.symget(macvar..''0'') ';
   put '  local newstr='''' ';
-  put '  for x=1,sas.symget(str..''0''),1 do ';
-  put '    newstr=newstr..sas.symget(str..x) ';
+  put '  if mac and mac ~= '''' then ';
+  put '    cnt=mac ';
+  put '    for x=1,cnt,1 do ';
+  put '      mac=sas.symget(macvar..x) ';
+  put '      if mac and mac ~= '''' then ';
+  put '        newstr=newstr..mac ';
+  put '      else ';
+  put '        return print(macvar..x..'' NOT FOUND!!'') ';
+  put '      end ';
+  put '    end ';
+  put '  else ';
+  put '    return print(macvar..''0 NOT FOUND!!'') ';
   put '  end ';
-  put ' ';
-  put '  local oneVar=json.decode(newstr) ';
+  put '  -- print(''mac:''..mac..''cnt:''..cnt..''newstr''..newstr) ';
+  put '  local oneVar=json2sas.decode(newstr) ';
   put '  local jsdata=oneVar["data"] ';
   put '  local meta={} ';
   put '  local attrs={} ';
@@ -421,7 +433,7 @@ data _null_;
   put '        end ';
   put '  	  end ';
   put '  	end ';
-  put '    print(json.encode(attrs[tablename])) -- show results ';
+  put '    print(json2sas.encode(attrs[tablename])) -- show results ';
   put ' ';
   put '    -- Now create the SAS table ';
   put '    sas.new_table("work."..tablename,attrs[tablename]) ';
@@ -437,7 +449,7 @@ data _null_;
   put '    end ';
   put '    sas.close(dsid) ';
   put '  end ';
-  put '  return json.decode(newstr) ';
+  put '  return json2sas.decode(newstr) ';
   put 'end ';
   put ' ';
   put ' ';
@@ -453,6 +465,6 @@ data _null_;
   put '  return '''' ';
   put 'end ';
   put ' ';
-  put 'return json ';
+  put 'return json2sas ';
 run;
 %mend;

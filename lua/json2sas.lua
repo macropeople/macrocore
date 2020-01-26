@@ -1,5 +1,5 @@
 --
--- json.lua
+-- json2sas.lua  (modified from json.lua)
 --
 -- Copyright (c) 2019 rxi
 --
@@ -22,7 +22,7 @@
 -- SOFTWARE.
 --
 
-local json = { _version = "0.1.2" }
+local json2sas = { _version = "0.1.2" }
 
 -------------------------------------------------------------------------------
 -- Encode
@@ -122,7 +122,7 @@ encode = function(val, stack)
   error("unexpected type '" .. t .. "'")
 end
 
-function json.encode(val)
+function json2sas.encode(val)
   return ( encode(val) )
 end
 
@@ -356,7 +356,7 @@ parse = function(str, idx)
   decode_error(str, idx, "unexpected character '" .. chr .. "'")
 end
 
-function json.decode(str)
+function json2sas.decode(str)
   if type(str) ~= "string" then
     error("expected argument of type string, got " .. type(str))
   end
@@ -369,14 +369,26 @@ function json.decode(str)
 end
 
 -- convert macro variable array into one variable and decode
-function decoder(str)
+function json2sas.go(macvar)
   local x=1
+  local cnt=0
+  local mac=sas.symget(macvar..'0')
   local newstr=''
-  for x=1,sas.symget(str..'0'),1 do
-    newstr=newstr..sas.symget(str..x)
+  if mac and mac ~= '' then
+    cnt=mac
+    for x=1,cnt,1 do
+      mac=sas.symget(macvar..x)
+      if mac and mac ~= '' then
+        newstr=newstr..mac
+      else
+        return print(macvar..x..' NOT FOUND!!')
+      end
+    end
+  else
+    return print(macvar..'0 NOT FOUND!!')
   end
-
-  local oneVar=json.decode(newstr)
+  -- print('mac:'..mac..'cnt:'..cnt..'newstr'..newstr)
+  local oneVar=json2sas.decode(newstr)
   local jsdata=oneVar["data"]
   local meta={}
   local attrs={}
@@ -408,7 +420,7 @@ function decoder(str)
         end
   	  end
   	end
-    print(json.encode(attrs[tablename])) -- show results
+    print(json2sas.encode(attrs[tablename])) -- show results
 
     -- Now create the SAS table
     sas.new_table("work."..tablename,attrs[tablename])
@@ -424,7 +436,7 @@ function decoder(str)
     end
     sas.close(dsid)
   end
-  return json.decode(newstr)
+  return json2sas.decode(newstr)
 end
 
 
@@ -440,4 +452,4 @@ function sasvar(str)
   return ''
 end
 
-return json
+return json2sas
