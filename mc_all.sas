@@ -6807,13 +6807,9 @@ run;
   run;
 %end;
 
-/* finish off the body */
+/* finish off the body of the code file loaded to JES */
 data _null_;
   file &fname3 mod TERMSTR=' ';
-  /*
-  put '\rfilename _web filesrvc parenturi=\"&SYS_JES_JOB_URI\" name=\"_webout.json\";' @@;
-  put '\r%let rc=%sysfunc(fcopy(_webout,_web));' @@;
-  */
   put '"}';
 run;
 
@@ -6843,7 +6839,25 @@ filename &teardown clear;
 libname &libref1 clear;
 libname &libref2 clear;
 
+/* get the url so we can give a helpful log message */
+%local url;
+data _null_;
+  if symexist('_baseurl') then do;
+    url=symget('_baseurl');
+    if subpad(url,length(url)-9,9)='SASStudio'
+      then url=substr(url,1,length(url)-11);
+    else url="&systcpiphostname";
+  end;
+  else url="&systcpiphostname";
+  call symputx('url',url);
+run;
+
 %put &sysmacroname: Job &name successfully created in &path;
+%put ;
+%put Check it out here:;
+%put ;
+%put &url/SASJobExecution?_PROGRAM=&path;
+%put ;
 
 %mend;/**
   @file mv_deleteviyafolder.sas
