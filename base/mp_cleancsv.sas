@@ -36,7 +36,7 @@
         put '0A'x;
         input inchar $char1.;
         if inchar ne '0A'x then do;
-          put +-1 inchar $char1.;
+          put inchar $char1.;
           if inchar=qchar then isq = mod(isq+1,2);
         end;
       end;
@@ -48,7 +48,7 @@
         put '0D0A'x;
         input inchar $char1.;
         if inchar ne '0A'x then do;
-          put +-1 inchar $char1.;
+          put inchar $char1.;
           if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
         end;
       end;
