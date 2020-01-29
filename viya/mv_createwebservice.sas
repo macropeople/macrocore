@@ -347,7 +347,7 @@ run;
 %put ;
 %put Check it out here:;
 %put ;
-%put &url/SASJobExecution?_PROGRAM=&path;
+%put &url/SASJobExecution?_PROGRAM=&path/&name;
 %put ;
 
 %mend;
