@@ -1288,7 +1288,7 @@ Usage:
     saved by excel).  When the termstr is ALSO lf or crlf that can be tricky
     to process using SAS defaults.
     This macro converts any csv to follow the convention of a windows excel file,
-    applying CRLF line endings and converting embedded cr, lf and crlf to lf.
+    applying CRLF line endings and converting embedded cr and crlf to lf.
 
   usage:
 
@@ -1312,7 +1312,7 @@ Usage:
     file "&outloc" recfm=n;
     retain isq iscrlf 0 qchar &qchar;
     input inchar $char1. ;
-    if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+    if inchar=qchar then isq = mod(isq+1,2);
     if isq then do;
       /* inside a quote change cr and crlf to lf */
       if inchar='0D'x then do;
@@ -1320,7 +1320,7 @@ Usage:
         input inchar $char1.;
         if inchar ne '0A'x then do;
           put +-1 inchar $char1.;
-          if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+          if inchar=qchar then isq = mod(isq+1,2);
         end;
       end;
       else put inchar $char1.;
