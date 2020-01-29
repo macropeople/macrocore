@@ -8,25 +8,34 @@
     applying CRLF line endings and converting embedded cr and crlf to lf.
 
   usage:
+      fileref mycsv "/path/your/csv";
+      mp_cleancsv(in=mycsv,out=/path/new.csv)
 
-      mp_cleancsv(inloc=/path/your.csv,outloc=/path/new.csv)
-
-  @param inloc= input csv
-  @param outloc= output csv
+  @param in= provide path or fileref to input csv
+  @param out= output path or fileref to output csv
   @param qchar= quote char - hex code 22 is the double quote.
 
   @version 9.2
   @author Allan Bowe
 **/
 
-%macro mp_cleancsv(inloc=,outloc=,qchar='22'x);
+%macro mp_cleancsv(in=NOTPROVIDED,out=NOTPROVIDED,qchar='22'x);
+%if "&in"="NOTPROVIDED" or "&out"="NOTPROVIDED" %then %do;
+  %put %str(ERR)OR: Please provide valid input (&in) and output (&out) locations;
+  %return;
+%end;
+
+/* presence of a period(.) indicates a physical location */
+%if %index(&in,.) %then %let in="&in";
+%if %index(&out,.) %then %let out="&out";
+
 /**
  * convert all cr and crlf within quotes to lf
  * convert all other cr or lf to crlf
  */
   data _null_;
-    infile "&inloc" recfm=n ;
-    file "&outloc" recfm=n;
+    infile &in recfm=n ;
+    file &out recfm=n;
     retain isq iscrlf 0 qchar &qchar;
     input inchar $char1. ;
     if inchar=qchar then isq = mod(isq+1,2);
