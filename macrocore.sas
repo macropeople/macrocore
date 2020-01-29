@@ -1282,6 +1282,64 @@ Usage:
     filename &outref clear;
   %end;
 %mend;/**
+  @file mp_cleancsv.sas
+  @brief Fixes embedded cr / lf / crlf in CSV
+  @details CSVs will sometimes contain lf or crlf within quotes (eg when
+    saved by excel).  When the termstr is ALSO lf or crlf that can be tricky
+    to process using SAS defaults.
+    This macro converts any csv to follow the convention of a windows excel file,
+    applying CRLF line endings and converting embedded cr, lf and crlf to lf.
+
+  usage:
+
+      mp_cleancsv(inloc=/path/your.csv,outloc=/path/new.csv)
+
+  @param inloc= input csv
+  @param outloc= output csv
+  @param qchar= quote char - hex code 22 is the double quote.
+
+  @version 9.2
+  @author Allan Bowe
+**/
+
+%macro mp_cleancsv(inloc=,outloc=,qchar='22'x);
+/**
+ * convert all cr and crlf within quotes to lf
+ * convert all other cr or lf to crlf
+ */
+  data _null_;
+    infile "&inloc" recfm=n ;
+    file "&outloc" recfm=n;
+    retain isq iscrlf 0 qchar &qchar;
+    input inchar $char1. ;
+    if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+    if isq then do;
+      /* inside a quote change cr and crlf to lf */
+      if inchar='0D'x then do;
+        put '0A'x;
+        input inchar $char1.;
+        if inchar ne '0A'x then do;
+          put +-1 inchar $char1.;
+          if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+        end;
+      end;
+      else put inchar $char1.;
+    end;
+    else do;
+      /* outside a quote, change cr and lf to crlf */
+      if inchar='0D'x then do;
+        put '0D0A'x;
+        input inchar $char1.;
+        if inchar ne '0A'x then do;
+          put +-1 inchar $char1.;
+          if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+        end;
+      end;
+      else if inchar='0A'x then put '0D0A'x;
+      else put inchar $char1.;
+    end;
+  run;
+%mend;/**
   @file
   @brief Returns all files and subdirectories within a specified parent
   @details Not OS specific (uses dopen / dread).  It does not appear to be
@@ -6513,26 +6571,33 @@ options noquotelenmax;
     is stored in a database before being sent to the browser, so it's better to
     write it elsewhere and then send it all in one go.
 
-  To use this macro, a refresh token is needed.  See:
+  Step 0 - load macros if not already loaded
+
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+  Step 1 - obtain refresh token:
 
     %let client=someclient;
     %let secret=MySecret;
     %mv_getapptoken(client_id=&client,client_secret=&secret)
 
-  Navigate to the url and paste the access code below
+  Step 2 - navigate to the url in the log and paste the access code below
 
     %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
     %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
-  Now we can create some code and add it to a web service
+  Step 3 - Now we can create some code and add it to a web service
 
-    options mprint;
-    filename mycode temp;
-    data _null_;
-      file mycode;
-      put "data;file _webout MOD; put 'Hello, wurrld';run;";
-    run;
-    %mv_createwebservice(path=/Public, name=testJob, code=mycode)
+      filename ft15f001 temp;
+      parmcards4;
+      * enter sas backend code below ;
+      proc sql;
+      create table myds as
+        select * from sashelp.class;
+      %sasjs(myds)
+      ;;;;
+    %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
 
   @param path= The full path where the service will be created
@@ -6659,10 +6724,108 @@ data _null_;
   put string;
 run;
 
+/**
+ * Create setup code
+ * This uses LUA to process JSON received as a series of macro variables
+ */
+%local setup;
+%let setup=%mf_getuniquefileref();
+data _null_;
+  file &setup;
+  put '%global sasjs0 sasjs1;';
+  put '/*' / ' example json:';
+  put '%let sasjs0=1;';
+  put '%let sasjs1={"data": {"SOMETABLE": [
+			["COL1", "COL2", "COL3"],
+			[1, 2, "3/**/"],
+			[2, 3, "4"]
+		],
+		"ANOTHERTABLE": [
+			["COL4", "COL5", "COL6"],
+			[1, 2, "3"],
+			[2, 3, "4"]
+		]
+	},"url":"somelocal.url/for/info"};';
+  put '*/';
+  put '%let work=%sysfunc(pathname(work));';
+  put '/* create lua file for reading JSON */';
+  put 'filename ft15f001 "&work/json2sas.lua";';
+  put 'parmcards4;';
+run;
+
+/* get lua file and write it to the stp under the parmcards statement */
+%ml_json2sas()
+data _null_;
+  file &setup;
+  infile "%sysfunc(pathname(work))/json2sas.lua" end=last;
+  input;
+  put _infile_;
+  if last then do;
+    put ';;;;';
+    put 'filename luapath "&work"; ';
+    put "proc lua infile='json2sas';";
+    put '  submit;';
+    put '  local json2sas=require("json2sas")';
+    put '  rc=json2sas.go("sasjs")';
+    put 'endsubmit;';
+    put 'run;';
+  end;
+run;
+
+/**
+ * Create output macro
+ */
+data _null_;
+  file &setup;
+  put '/* setup json */';
+  put 'filename _web temp lrecl=65000;';
+  put 'data _null_;file _web;put "{""data"":{";run;'/;
+  put '/* output macro */';
+  put '%global sasjs_tabcnt;';
+  put '%let sasjs_tabcnt=0;';
+  put '%macro sasjs(dsn);';
+  put '%let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);';
+  put 'options validvarname=upcase;';
+  put 'data _null_;file _web mod;';
+  put '  if &sasjs_tabcnt>1 then put ",";';
+  put ' put ''"'' "&dsn" ''" : '';run;';
+  put 'filename _web2 temp;';
+  put 'proc json out=_web2;export work.&dsn / nosastags;run;';
+  put 'data _null_;file _web mod;infile _web2 ;input;';
+  put 'put _infile_;run;';
+  put '%mend;' //;
+run;
+
+/* now insert the teardown / wrapup code */
+%local teardown;
+%let teardown=%mf_getuniquefileref();
+data _null_;
+  file &teardown;
+  put '/* close off json */';
+  put 'data _null_;file _web mod;';
+  put "  SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));";
+  put '  jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"''));';
+  put "  _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));";
+  put '  put ''},"sysuserid" : "'' "&sysuserid." ''",'';';
+  put '  put ''"sysjobid" : "'' "&sysjobid." ''",'';';
+  put '  put ''"datetime" : "'' "%sysfunc(datetime(),datetime19.)" ''",'';';
+  put '  put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '','';';
+  put '  put ''"X-SAS-JOBEXEC-ID" : '' jobid '','';';
+  put '  put ''"_PROGRAM" : '' _PROGRAM ;';
+  put '  put "}";';
+  put 'run;';
+  put ' ';
+  put '/* send to _webout */';
+  put 'filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";';
+  put "data _null_;rc=fcopy('_web','_webout');run;";
+run;
+
+
 /* insert the code, escaping double quotes and carriage returns */
-%local x fref;
-%do x=1 %to %sysfunc(countw(&precode &code));
-  %let fref=%scan(&precode &code,&x);
+%local x fref freflist;
+%let freflist= &setup &precode &code &teardown;
+%do x=1 %to %sysfunc(countw(&freflist));
+  %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
   data _null_;
     length filein 8 fileid 8;
@@ -6701,13 +6864,9 @@ run;
   run;
 %end;
 
-/* finish off the body */
+/* finish off the body of the code file loaded to JES */
 data _null_;
   file &fname3 mod TERMSTR=' ';
-  /*
-  put '\rfilename _web filesrvc parenturi=\"&SYS_JES_JOB_URI\" name=\"_webout.json\";' @@;
-  put '\r%let rc=%sysfunc(fcopy(_webout,_web));' @@;
-  */
   put '"}';
 run;
 
@@ -6732,10 +6891,30 @@ filename &fname1 clear;
 filename &fname2 clear;
 filename &fname3 clear;
 filename &fname4 clear;
+filename &setup clear;
+filename &teardown clear;
 libname &libref1 clear;
 libname &libref2 clear;
 
+/* get the url so we can give a helpful log message */
+%local url;
+data _null_;
+  if symexist('_baseurl') then do;
+    url=symget('_baseurl');
+    if subpad(url,length(url)-9,9)='SASStudio'
+      then url=substr(url,1,length(url)-11);
+    else url="&systcpiphostname";
+  end;
+  else url="&systcpiphostname";
+  call symputx('url',url);
+run;
+
 %put &sysmacroname: Job &name successfully created in &path;
+%put ;
+%put Check it out here:;
+%put ;
+%put &url/SASJobExecution?_PROGRAM=&path/&name;
+%put ;
 
 %mend;/**
   @file mv_deleteviyafolder.sas
