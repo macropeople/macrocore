@@ -1292,7 +1292,7 @@ Usage:
 
   usage:
       fileref mycsv "/path/your/csv";
-      mp_cleancsv(in=mycsv,out=/path/new.csv)
+      %mp_cleancsv(in=mycsv,out=/path/new.csv)
 
   @param in= provide path or fileref to input csv
   @param out= output path or fileref to output csv
@@ -1341,7 +1341,7 @@ Usage:
         input inchar $char1.;
         if inchar ne '0A'x then do;
           put inchar $char1.;
-          if inchar=qchar then isq = mod(isq+(inchar=qchar),2);
+          if inchar=qchar then isq = mod(isq+1,2);
         end;
       end;
       else if inchar='0A'x then put '0D0A'x;
