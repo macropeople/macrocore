@@ -45,9 +45,11 @@ for file in files:
                 outfile.write('/* WEBOUT END */\n')
         elif delrow==0:
             outfile.write(line.rstrip() + "\n")
-webout.close()
-outfile.close()
-infile.close()
+    webout.close()
+    outfile.close()
+    infile.close()
+    os.delete(file)
+    os.rename(file + 'TEMP',file)
 
 
 # Concatenate all macros into a single file

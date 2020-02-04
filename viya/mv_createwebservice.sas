@@ -36,6 +36,11 @@ parmcards4;
 ;;;;
     %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
+  <h4> Dependencies </h4>
+  @li mf_abort.sas
+  @li mv_createfolder.sas
+  @li mf_getuniquelibref.sas
+  @li mf_getuniquefileref.sas
 
   @param path= The full path where the service will be created
   @param name= The name of the service
@@ -170,6 +175,7 @@ run;
 %let setup=%mf_getuniquefileref();
 data _null_;
   file &setup;
+  put "/* Created on %sysfunc(today(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
 
 
