@@ -12,7 +12,7 @@
 
   Step 1 - obtain refresh token:
 
-    %let client=someclient;
+    %let client=new%sysfunc(ranuni(0));
     %let secret=MySecret;
     %mv_getapptoken(client_id=&client,client_secret=&secret)
 
@@ -22,20 +22,22 @@
     %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
   Step 3 - Now we can create some code and add it to a web service
+<code>
 
 filename ft15f001 temp;
 parmcards4;
-      * enter sas backend code below ;
-      data example1 example2;
-        set sashelp.class;
-      run;
+    * enter sas backend code below ;
+    data example1 example2;
+      set sashelp.class;
+    run;
 
-      %webout(ARR,example1) * Array format, fast, suitable for large tables ;
-      %webout(OBJ,example2) * Object format, easier to work with ;
-      %webout(CLOSE)
+    %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+    %webout(OBJ,example2) * Object format, easier to work with ;
+    %webout(CLOSE)
 ;;;;
-    %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
+%mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
+</code>
   <h4> Dependencies </h4>
   @li mf_abort.sas
   @li mv_createfolder.sas
@@ -374,7 +376,6 @@ filename &fname2 clear;
 filename &fname3 clear;
 filename &fname4 clear;
 filename &setup clear;
-filename &teardown clear;
 libname &libref1 clear;
 libname &libref2 clear;
 
