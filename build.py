@@ -48,7 +48,7 @@ for file in files:
     webout.close()
     outfile.close()
     infile.close()
-    os.delete(file)
+    os.remove(file)
     os.rename(file + 'TEMP',file)
 
 

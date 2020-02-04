@@ -1283,6 +1283,73 @@ Usage:
     filename &outref clear;
   %end;
 %mend;/**
+  @file mp_cleancsv.sas
+  @brief Fixes embedded cr / lf / crlf in CSV
+  @details CSVs will sometimes contain lf or crlf within quotes (eg when
+    saved by excel).  When the termstr is ALSO lf or crlf that can be tricky
+    to process using SAS defaults.
+    This macro converts any csv to follow the convention of a windows excel file,
+    applying CRLF line endings and converting embedded cr and crlf to lf.
+
+  usage:
+      fileref mycsv "/path/your/csv";
+      %mp_cleancsv(in=mycsv,out=/path/new.csv)
+
+  @param in= provide path or fileref to input csv
+  @param out= output path or fileref to output csv
+  @param qchar= quote char - hex code 22 is the double quote.
+
+  @version 9.2
+  @author Allan Bowe
+**/
+
+%macro mp_cleancsv(in=NOTPROVIDED,out=NOTPROVIDED,qchar='22'x);
+%if "&in"="NOTPROVIDED" or "&out"="NOTPROVIDED" %then %do;
+  %put %str(ERR)OR: Please provide valid input (&in) and output (&out) locations;
+  %return;
+%end;
+
+/* presence of a period(.) indicates a physical location */
+%if %index(&in,.) %then %let in="&in";
+%if %index(&out,.) %then %let out="&out";
+
+/**
+ * convert all cr and crlf within quotes to lf
+ * convert all other cr or lf to crlf
+ */
+  data _null_;
+    infile &in recfm=n ;
+    file &out recfm=n;
+    retain isq iscrlf 0 qchar &qchar;
+    input inchar $char1. ;
+    if inchar=qchar then isq = mod(isq+1,2);
+    if isq then do;
+      /* inside a quote change cr and crlf to lf */
+      if inchar='0D'x then do;
+        put '0A'x;
+        input inchar $char1.;
+        if inchar ne '0A'x then do;
+          put inchar $char1.;
+          if inchar=qchar then isq = mod(isq+1,2);
+        end;
+      end;
+      else put inchar $char1.;
+    end;
+    else do;
+      /* outside a quote, change cr and lf to crlf */
+      if inchar='0D'x then do;
+        put '0D0A'x;
+        input inchar $char1.;
+        if inchar ne '0A'x then do;
+          put inchar $char1.;
+          if inchar=qchar then isq = mod(isq+1,2);
+        end;
+      end;
+      else if inchar='0A'x then put '0D0A'x;
+      else put inchar $char1.;
+    end;
+  run;
+%mend;/**
   @file
   @brief Returns all files and subdirectories within a specified parent
   @details Not OS specific (uses dopen / dread).  It does not appear to be
@@ -4146,7 +4213,7 @@ run;
 
       * parmcards lets us write to a text file from open code ;
       filename ft15f001 "%sysfunc(pathname(work))/somefile.sas";
-      parmcards4;
+parmcards4;
       * enter stored process code below ;
       proc sql;
       create table outdataset as
@@ -4156,7 +4223,7 @@ run;
       %bafheader()
       %bafoutdataset(forJS,work,outdataset)
       %baffooter()
-      ;;;;
+;;;;
 
       * create the stored process ;
       %mm_createwebservice(service=MyNewSTP
@@ -4179,8 +4246,6 @@ run;
   @param desc= Service description (optional)
   @param source= /the/full/path/name.ext of the sas program to load
   @param precode= /the/full/path/name.ext of any precode to insert.
-  @param adapter= omit this parameter to use the macropeople h54s adapter macros
-    (assumes internet access) else provide the path to a local copy
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
 
@@ -4196,9 +4261,9 @@ run;
     ,desc=This stp was created automatically by the mm_createwebservice macro
     ,source=
     ,precode=
-    ,adapter=h54s
     ,mDebug=0
     ,server=SASApp
+    ,adapter=deprecated
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
@@ -4216,26 +4281,139 @@ run;
 %let work=%sysfunc(pathname(work));
 %let tmpfile=__mm_createwebservice.temp;
 
-/* get adapter code */
-%if "&adapter"="h54s" %then %do;
-  filename __adaptr url
-    "https://raw.githubusercontent.com/macropeople/h54s/development/sasautos/h54s.sas";
-%end;
-%else %do;
-  filename __adaptr "&adapter";
-%end;
-
+/**
+ * Add webout macro
+ * These put statements are auto generated - to change the macro, change the
+ * source (mm_webout) and run `build.py`
+ */
 data _null_;
-  if _n_=1 then do;
-    put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
-  end;
-  file "&work/&tmpfile" lrecl=3000;
-  infile __adaptr end=last;
-  input;
-  put _infile_;
-  if last then put '%bafGetDatasets()';
+  file "&work/&tmpfile" lrecl=3000 mod;
+  put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
+/* WEBOUT BEGIN */
+  put '/** ';
+  put '  @file mv_webout.sas ';
+  put '  @brief Send data to/from SAS Stored Processes ';
+  put '  @details This macro should be added to the start of each Stored Process, ';
+  put '  **immediately** followed by a call to: ';
+  put ' ';
+  put '      %webout(OPEN) ';
+  put ' ';
+  put '    This will read all the input data and create same-named SAS datasets in the ';
+  put '    WORK library.  You can then insert your code, and send data back using the ';
+  put '    following syntax: ';
+  put ' ';
+  put '      data some datasets; * make some data ; ';
+  put '      retain some columns; ';
+  put '      run; ';
+  put ' ';
+  put '      %webout(ARR,some)  * Array format, fast, suitable for large tables ; ';
+  put '      %webout(OBJ,datasets) * Object format, easier to work with ; ';
+  put ' ';
+  put '     Finally, wrap everything up send some helpful system variables too ';
+  put ' ';
+  put '       %webout(CLOSE) ';
+  put ' ';
+  put ' ';
+  put '  Notes: ';
+  put ' ';
+  put '  * The `webout()` macro is a simple wrapper for `mm_webout` to enable cross ';
+  put '    platform compatibility.  It may be removed if your use case does not involve ';
+  put '    SAS Viya. ';
+  put ' ';
+  put '  @param in= provide path or fileref to input csv ';
+  put '  @param out= output path or fileref to output csv ';
+  put '  @param qchar= quote char - hex code 22 is the double quote. ';
+  put ' ';
+  put '  @version 9.3 ';
+  put '  @author Allan Bowe ';
+  put ' ';
+  put '**/ ';
+  put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put ' ';
+  put '%if &action=OPEN %then %do; ';
+  put '  %global _WEBIN_FILE_COUNT; ';
+  put '  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0); ';
+  put ' ';
+  put '  /* setup temp ref */ ';
+  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
+  put '    filename &fref temp lrecl=999999; ';
+  put '  %end; ';
+  put '  /* now read in the data */ ';
+  put '  %local i; ';
+  put '  %do i=1 %to &_webin_file_count; ';
+  put '    filename indata filesrvc "&&_WEBIN_FILEURI&i"; ';
+  put '    data _null_; ';
+  put '      infile indata; ';
+  put '      input; ';
+  put '      call symputx(''input_statement'',_infile_); ';
+  put '      putlog "&&_webin_name&i input statement: "  _infile_; ';
+  put '      stop; ';
+  put '    run; ';
+  put '    data &&_webin_name&i; ';
+  put '      infile indata firstobs=2 dsd termstr=crlf ; ';
+  put '      input &input_statement; ';
+  put '    run; ';
+  put '  %end; ';
+  put '  /* setup json */ ';
+  put '  data _null_;file &fref; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''", "data":{''; ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=ARR or &action=OBJ %then %do; ';
+  put '  options validvarname=upcase; ';
+  put ' ';
+  put '  %global sasjs_tabcnt; ';
+  put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
+  put ' ';
+  put '  data _null_;file &fref mod; ';
+  put '    if &sasjs_tabcnt=1 then put ''"'' "&ds" ''" :''; ';
+  put '    else put '', "'' "&ds" ''" :''; ';
+  put '  run; ';
+  put ' ';
+  put '  filename _web2 temp; ';
+  put '  proc json out=_web2;export &ds / nosastags;run; ';
+  put '  data _null_; ';
+  put '    file &fref mod; ';
+  put '    infile _web2 ; ';
+  put '    input; ';
+  put '    put _infile_; ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=CLOSE %then %do; ';
+  put ' ';
+  put '  /* close off json */ ';
+  put '  data _null_;file &fref mod; ';
+  put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
+  put '    put ''},"SYSUSERID" : "'' "&sysuserid." ''",''; ';
+  put '    _METAUSER=quote(trim(symget(''_METAUSER''))); ';
+  put '    put ''"_METAUSER": '' _METAUSER '',''; ';
+  put '    _METAPERSON=quote(trim(symget(''_METAPERSON''))); ';
+  put '    put ''"_METAPERSON": '' _METAPERSON '',''; ';
+  put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
+  put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''" ''; ';
+  put '    put "}"; ';
+  put '  run; ';
+  put ' ';
+  put '  data _null_; ';
+  put '    rc=fcopy("&fref","&_webout"); ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%mend; ';
+  put ' ';
+  put '%macro webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put ' ';
+  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
+  put ' ';
+  put '%mend; ';
+/* WEBOUT END */
+  put '%webout(OPEN)';
 run;
-filename __adaptr clear;
 
 /* add precode if provided */
 %if %length(&precode)>0 %then %do;
@@ -4273,7 +4451,8 @@ run;
   ,server=&server
   ,stptype=2)
 
-%mend;/**
+%mend;
+/**
   @file mm_deletedocument.sas
   @brief Deletes a Document using path as reference
   @details
@@ -6337,6 +6516,126 @@ run;
 %end;
 
 %mend;/**
+  @file mv_webout.sas
+  @brief Send data to/from SAS Stored Processes
+  @details This macro should be added to the start of each Stored Process,
+  **immediately** followed by a call to:
+
+      %webout(OPEN)
+
+    This will read all the input data and create same-named SAS datasets in the
+    WORK library.  You can then insert your code, and send data back using the
+    following syntax:
+
+      data some datasets; * make some data ;
+      retain some columns;
+      run;
+
+      %webout(ARR,some)  * Array format, fast, suitable for large tables ;
+      %webout(OBJ,datasets) * Object format, easier to work with ;
+
+     Finally, wrap everything up send some helpful system variables too
+
+       %webout(CLOSE)
+
+
+  Notes:
+
+  * The `webout()` macro is a simple wrapper for `mm_webout` to enable cross
+    platform compatibility.  It may be removed if your use case does not involve
+    SAS Viya.
+
+  @param in= provide path or fileref to input csv
+  @param out= output path or fileref to output csv
+  @param qchar= quote char - hex code 22 is the double quote.
+
+  @version 9.3
+  @author Allan Bowe
+
+**/
+%macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
+
+%if &action=OPEN %then %do;
+  %global _WEBIN_FILE_COUNT;
+  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+
+  /* setup temp ref */
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    filename &fref temp lrecl=999999;
+  %end;
+  /* now read in the data */
+  %local i;
+  %do i=1 %to &_webin_file_count;
+    filename indata filesrvc "&&_WEBIN_FILEURI&i";
+    data _null_;
+      infile indata;
+      input;
+      call symputx('input_statement',_infile_);
+      putlog "&&_webin_name&i input statement: "  _infile_;
+      stop;
+    run;
+    data &&_webin_name&i;
+      infile indata firstobs=2 dsd termstr=crlf ;
+      input &input_statement;
+    run;
+  %end;
+  /* setup json */
+  data _null_;file &fref;
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
+  run;
+
+%end;
+
+%else %if &action=ARR or &action=OBJ %then %do;
+  options validvarname=upcase;
+
+  %global sasjs_tabcnt;
+  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
+
+  data _null_;file &fref mod;
+    if &sasjs_tabcnt=1 then put '"' "&ds" '" :';
+    else put ', "' "&ds" '" :';
+  run;
+
+  filename _web2 temp;
+  proc json out=_web2;export &ds / nosastags;run;
+  data _null_;
+    file &fref mod;
+    infile _web2 ;
+    input;
+    put _infile_;
+  run;
+
+%end;
+
+%else %if &action=CLOSE %then %do;
+
+  /* close off json */
+  data _null_;file &fref mod;
+    _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
+    put '},"SYSUSERID" : "' "&sysuserid." '",';
+    _METAUSER=quote(trim(symget('_METAUSER')));
+    put '"_METAUSER": ' _METAUSER ',';
+    _METAPERSON=quote(trim(symget('_METAPERSON')));
+    put '"_METAPERSON": ' _METAPERSON ',';
+    put '"_PROGRAM" : ' _PROGRAM ',';
+    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
+    put "}";
+  run;
+
+  data _null_;
+    rc=fcopy("&fref","&_webout");
+  run;
+
+%end;
+
+%mend;
+
+%macro webout(action,ds=,_webout=_webout,fref=_temp);
+
+  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
+
+%mend;/**
   @file
   @brief Deletes a metadata folder
   @details Deletes a metadata folder (and contents) using the batch tools, as
@@ -6509,7 +6808,7 @@ options noquotelenmax;
 %end;
 %mend;/**
   @file mv_createwebservice.sas
-  @brief Creates a JobExecution object if it doesn't already exist
+  @brief Creates a JobExecution web service if it doesn't already exist
   @details For efficiency, minimise the number of calls to _webout.  In Viya this
     is stored in a database before being sent to the browser, so it's better to
     write it elsewhere and then send it all in one go.
@@ -6532,16 +6831,24 @@ options noquotelenmax;
 
   Step 3 - Now we can create some code and add it to a web service
 
-      filename ft15f001 temp;
-      parmcards4;
+filename ft15f001 temp;
+parmcards4;
       * enter sas backend code below ;
-      proc sql;
-      create table myds as
-        select * from sashelp.class;
-      %sasjs(myds)
-      ;;;;
+      data example1 example2;
+        set sashelp.class;
+      run;
+
+      %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+      %webout(OBJ,example2) * Object format, easier to work with ;
+      %webout(CLOSE)
+;;;;
     %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
+  <h4> Dependencies </h4>
+  @li mf_abort.sas
+  @li mv_createfolder.sas
+  @li mf_getuniquelibref.sas
+  @li mf_getuniquefileref.sas
 
   @param path= The full path where the service will be created
   @param name= The name of the service
@@ -6668,105 +6975,145 @@ data _null_;
 run;
 
 /**
- * Create setup code
- * This uses LUA to process JSON received as a series of macro variables
+ * Add webout macro
+ * These put statements are auto generated - to change the macro, change the
+ * source (mv_webout) and run `build.py`
  */
 %local setup;
 %let setup=%mf_getuniquefileref();
 data _null_;
   file &setup;
-  put '%global sasjs0 sasjs1;';
-  put '/*' / ' example json:';
-  put '%let sasjs0=1;';
-  put '%let sasjs1={"data": {"SOMETABLE": [
-			["COL1", "COL2", "COL3"],
-			[1, 2, "3/**/"],
-			[2, 3, "4"]
-		],
-		"ANOTHERTABLE": [
-			["COL4", "COL5", "COL6"],
-			[1, 2, "3"],
-			[2, 3, "4"]
-		]
-	},"url":"somelocal.url/for/info"};';
-  put '*/';
-  put '%let work=%sysfunc(pathname(work));';
-  put '/* create lua file for reading JSON */';
-  put 'filename ft15f001 "&work/json2sas.lua";';
-  put 'parmcards4;';
-run;
-
-/* get lua file and write it to the stp under the parmcards statement */
-%ml_json2sas()
-data _null_;
-  file &setup;
-  infile "%sysfunc(pathname(work))/json2sas.lua" end=last;
-  input;
-  put _infile_;
-  if last then do;
-    put ';;;;';
-    put 'filename luapath "&work"; ';
-    put "proc lua infile='json2sas';";
-    put '  submit;';
-    put '  local json2sas=require("json2sas")';
-    put '  rc=json2sas.go("sasjs")';
-    put 'endsubmit;';
-    put 'run;';
-  end;
-run;
-
-/**
- * Create output macro
- */
-data _null_;
-  file &setup;
-  put '/* setup json */';
-  put 'filename _web temp lrecl=65000;';
-  put 'data _null_;file _web;put "{""data"":{";run;'/;
-  put '/* output macro */';
-  put '%global sasjs_tabcnt;';
-  put '%let sasjs_tabcnt=0;';
-  put '%macro sasjs(dsn);';
-  put '%let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);';
-  put 'options validvarname=upcase;';
-  put 'data _null_;file _web mod;';
-  put '  if &sasjs_tabcnt>1 then put ",";';
-  put ' put ''"'' "&dsn" ''" : '';run;';
-  put 'filename _web2 temp;';
-  put 'proc json out=_web2;export work.&dsn / nosastags;run;';
-  put 'data _null_;file _web mod;infile _web2 ;input;';
-  put 'put _infile_;run;';
-  put '%mend;' //;
-run;
-
-/* now insert the teardown / wrapup code */
-%local teardown;
-%let teardown=%mf_getuniquefileref();
-data _null_;
-  file &teardown;
-  put '/* close off json */';
-  put 'data _null_;file _web mod;';
-  put "  SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));";
-  put '  jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"''));';
-  put "  _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));";
-  put '  put ''},"sysuserid" : "'' "&sysuserid." ''",'';';
-  put '  put ''"sysjobid" : "'' "&sysjobid." ''",'';';
-  put '  put ''"datetime" : "'' "%sysfunc(datetime(),datetime19.)" ''",'';';
-  put '  put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '','';';
-  put '  put ''"X-SAS-JOBEXEC-ID" : '' jobid '','';';
-  put '  put ''"_PROGRAM" : '' _PROGRAM ;';
-  put '  put "}";';
-  put 'run;';
+  put "/* Created on %sysfunc(today(),datetime19.) by &sysuserid */";
+/* WEBOUT BEGIN */
+  put '/** ';
+  put '  @file mv_webout.sas ';
+  put '  @brief Send data to/from the SAS Viya Job Execution Service ';
+  put '  @details This macro should be added to the start of each Job Execution ';
+  put '  Service, **immediately** followed by a call to: ';
   put ' ';
-  put '/* send to _webout */';
-  put 'filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";';
-  put "data _null_;rc=fcopy('_web','_webout');run;";
+  put '      %webout(OPEN) ';
+  put ' ';
+  put '    This will read all the input data and create same-named SAS datasets in the ';
+  put '    WORK library.  You can then insert your code, and send data back using the ';
+  put '    following syntax: ';
+  put ' ';
+  put '      data some datasets; * make some data ; ';
+  put '      retain some columns; ';
+  put '      run; ';
+  put ' ';
+  put '      %webout(ARR,some)  * Array format, fast, suitable for large tables ; ';
+  put '      %webout(OBJ,datasets) * Object format, easier to work with ; ';
+  put '      %webout(CLOSE) ';
+  put ' ';
+  put '  Notes: ';
+  put ' ';
+  put '  * The `webout()` macro is a simple wrapper for `mv_webout` to enable cross ';
+  put '    platform compatibility.  It may be removed if your use case does not involve ';
+  put '    SAS 9. ';
+  put ' ';
+  put '  @param in= provide path or fileref to input csv ';
+  put '  @param out= output path or fileref to output csv ';
+  put '  @param qchar= quote char - hex code 22 is the double quote. ';
+  put ' ';
+  put '  @version Viya 3.3 ';
+  put '  @author Allan Bowe ';
+  put ' ';
+  put '**/ ';
+  put '%macro mv_webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put ' ';
+  put '%if &action=OPEN %then %do; ';
+  put '  %global _WEBIN_FILE_COUNT; ';
+  put '  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0); ';
+  put ' ';
+  put '  /* setup webout */ ';
+  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json"; ';
+  put ' ';
+  put '  /* setup temp ref */ ';
+  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
+  put '    filename &fref temp lrecl=999999; ';
+  put '  %end; ';
+  put ' ';
+  put '  /* now read in the data */ ';
+  put '  %local i; ';
+  put '  %do i=1 %to &_webin_file_count; ';
+  put '    filename indata filesrvc "&&_WEBIN_FILEURI&i"; ';
+  put '    data _null_; ';
+  put '      infile indata; ';
+  put '      input; ';
+  put '      call symputx(''input_statement'',_infile_); ';
+  put '      putlog "&&_webin_name&i input statement: "  _infile_; ';
+  put '      stop; ';
+  put '    run; ';
+  put '    data &&_webin_name&i; ';
+  put '      infile indata firstobs=2 dsd termstr=crlf ; ';
+  put '      input &input_statement; ';
+  put '    run; ';
+  put '  %end; ';
+  put '  /* setup json */ ';
+  put '  data _null_;file &fref; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''", "data":{''; ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=ARR or &action=OBJ %then %do; ';
+  put '  options validvarname=upcase; ';
+  put ' ';
+  put '  %global sasjs_tabcnt; ';
+  put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
+  put ' ';
+  put '  data _null_;file &fref mod; ';
+  put '    if &sasjs_tabcnt=1 then put ''"'' "&ds" ''" :''; ';
+  put '    else put '', "'' "&ds" ''" :''; ';
+  put '  run; ';
+  put ' ';
+  put '  filename _web2 temp; ';
+  put '  proc json out=_web2;export &ds / nosastags;run; ';
+  put '  data _null_; ';
+  put '    file &fref mod; ';
+  put '    infile _web2 ; ';
+  put '    input; ';
+  put '    put _infile_; ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=CLOSE %then %do; ';
+  put ' ';
+  put '  /* close off json */ ';
+  put '  data _null_;file &fref mod; ';
+  put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
+  put '    put ''},"SYSUSERID" : "'' "&sysuserid." ''",''; ';
+  put '    SYS_JES_JOB_URI=quote(trim(resolve(symget(''SYS_JES_JOB_URI'')))); ';
+  put '    jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"'')); ';
+  put '    put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '',''; ';
+  put '    put ''"X-SAS-JOBEXEC-ID" : '' jobid '',''; ';
+  put '    put ''"SYSJOBID" : "'' "&sysjobid." ''",''; ';
+  put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
+  put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''" ''; ';
+  put '    put "}"; ';
+  put '  run; ';
+  put ' ';
+  put '  data _null_; ';
+  put '    rc=fcopy("&fref","&_webout"); ';
+  put '  run; ';
+  put ' ';
+  put '%end; ';
+  put ' ';
+  put '%mend; ';
+  put ' ';
+  put '%macro webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put ' ';
+  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
+  put ' ';
+  put '%mend; ';
+/* WEBOUT END */
+  put '%webout(OPEN)';
 run;
-
 
 /* insert the code, escaping double quotes and carriage returns */
 %local x fref freflist;
-%let freflist= &setup &precode &code &teardown;
+%let freflist= &setup &precode &code ;
 %do x=1 %to %sysfunc(countw(&freflist));
   %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
@@ -6856,10 +7203,11 @@ run;
 %put ;
 %put Check it out here:;
 %put ;
-%put &url/SASJobExecution?_PROGRAM=&path;
+%put &url/SASJobExecution?_PROGRAM=&path/&name;
 %put ;
 
-%mend;/**
+%mend;
+/**
   @file mv_deleteviyafolder.sas
   @brief Creates a viya folder if that foloder does not already exist
   @details Expects oauth token in a global macro variable (default
@@ -7549,6 +7897,127 @@ run;
 libname &libref clear;
 filename &fref1 clear;
 filename &fref2 clear;
+
+%mend;/**
+  @file mv_webout.sas
+  @brief Send data to/from the SAS Viya Job Execution Service
+  @details This macro should be added to the start of each Job Execution
+  Service, **immediately** followed by a call to:
+
+      %webout(OPEN)
+
+    This will read all the input data and create same-named SAS datasets in the
+    WORK library.  You can then insert your code, and send data back using the
+    following syntax:
+
+      data some datasets; * make some data ;
+      retain some columns;
+      run;
+
+      %webout(ARR,some)  * Array format, fast, suitable for large tables ;
+      %webout(OBJ,datasets) * Object format, easier to work with ;
+      %webout(CLOSE)
+
+  Notes:
+
+  * The `webout()` macro is a simple wrapper for `mv_webout` to enable cross
+    platform compatibility.  It may be removed if your use case does not involve
+    SAS 9.
+
+  @param in= provide path or fileref to input csv
+  @param out= output path or fileref to output csv
+  @param qchar= quote char - hex code 22 is the double quote.
+
+  @version Viya 3.3
+  @author Allan Bowe
+
+**/
+%macro mv_webout(action,ds=,_webout=_webout,fref=_temp);
+
+%if &action=OPEN %then %do;
+  %global _WEBIN_FILE_COUNT;
+  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+
+  /* setup webout */
+  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
+
+  /* setup temp ref */
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    filename &fref temp lrecl=999999;
+  %end;
+
+  /* now read in the data */
+  %local i;
+  %do i=1 %to &_webin_file_count;
+    filename indata filesrvc "&&_WEBIN_FILEURI&i";
+    data _null_;
+      infile indata;
+      input;
+      call symputx('input_statement',_infile_);
+      putlog "&&_webin_name&i input statement: "  _infile_;
+      stop;
+    run;
+    data &&_webin_name&i;
+      infile indata firstobs=2 dsd termstr=crlf ;
+      input &input_statement;
+    run;
+  %end;
+  /* setup json */
+  data _null_;file &fref;
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
+  run;
+
+%end;
+
+%else %if &action=ARR or &action=OBJ %then %do;
+  options validvarname=upcase;
+
+  %global sasjs_tabcnt;
+  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
+
+  data _null_;file &fref mod;
+    if &sasjs_tabcnt=1 then put '"' "&ds" '" :';
+    else put ', "' "&ds" '" :';
+  run;
+
+  filename _web2 temp;
+  proc json out=_web2;export &ds / nosastags;run;
+  data _null_;
+    file &fref mod;
+    infile _web2 ;
+    input;
+    put _infile_;
+  run;
+
+%end;
+
+%else %if &action=CLOSE %then %do;
+
+  /* close off json */
+  data _null_;file &fref mod;
+    _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
+    put '},"SYSUSERID" : "' "&sysuserid." '",';
+    SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
+    jobid=quote(scan(SYS_JES_JOB_URI,-2,'/"'));
+    put '"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ',';
+    put '"X-SAS-JOBEXEC-ID" : ' jobid ',';
+    put '"SYSJOBID" : "' "&sysjobid." '",';
+    put '"_PROGRAM" : ' _PROGRAM ',';
+    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
+    put "}";
+  run;
+
+  data _null_;
+    rc=fcopy("&fref","&_webout");
+  run;
+
+%end;
+
+%mend;
+
+%macro webout(action,ds=,_webout=_webout,fref=_temp);
+
+  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
 
 %mend;/**
   @file ml_json2sas.sas
