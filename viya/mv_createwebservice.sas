@@ -5,12 +5,10 @@
     is stored in a database before being sent to the browser, so it's better to
     write it elsewhere and then send it all in one go.
 
-  Step 0 - load macros if not already loaded
+  Step 1 - load macros and obtain refresh token
 
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-
-  Step 1 - obtain refresh token:
 
     %let client=new%sysfunc(ranuni(0));
     %let secret=MySecret;
