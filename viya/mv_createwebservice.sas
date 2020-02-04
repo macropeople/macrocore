@@ -1,6 +1,6 @@
 /**
   @file mv_createwebservice.sas
-  @brief Creates a JobExecution object if it doesn't already exist
+  @brief Creates a JobExecution web service if it doesn't already exist
   @details For efficiency, minimise the number of calls to _webout.  In Viya this
     is stored in a database before being sent to the browser, so it's better to
     write it elsewhere and then send it all in one go.
@@ -23,14 +23,14 @@
 
   Step 3 - Now we can create some code and add it to a web service
 
-      filename ft15f001 temp;
-      parmcards4;
+filename ft15f001 temp;
+parmcards4;
       * enter sas backend code below ;
       proc sql;
       create table myds as
         select * from sashelp.class;
-      %sasjs(myds)
-      ;;;;
+      %webout(myds)
+;;;;
     %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
 
@@ -159,105 +159,23 @@ data _null_;
 run;
 
 /**
- * Create setup code
- * This uses LUA to process JSON received as a series of macro variables
+ * Add webout macro
+ * These put statements are auto generated - to change the macro, change the
+ * source (mv_webout) and run `build.py`
  */
 %local setup;
 %let setup=%mf_getuniquefileref();
 data _null_;
   file &setup;
-  put '%global sasjs0 sasjs1;';
-  put '/*' / ' example json:';
-  put '%let sasjs0=1;';
-  put '%let sasjs1={"data": {"SOMETABLE": [
-			["COL1", "COL2", "COL3"],
-			[1, 2, "3/**/"],
-			[2, 3, "4"]
-		],
-		"ANOTHERTABLE": [
-			["COL4", "COL5", "COL6"],
-			[1, 2, "3"],
-			[2, 3, "4"]
-		]
-	},"url":"somelocal.url/for/info"};';
-  put '*/';
-  put '%let work=%sysfunc(pathname(work));';
-  put '/* create lua file for reading JSON */';
-  put 'filename ft15f001 "&work/json2sas.lua";';
-  put 'parmcards4;';
-run;
+/* WEBOUT BEGIN */
 
-/* get lua file and write it to the stp under the parmcards statement */
-%ml_json2sas()
-data _null_;
-  file &setup;
-  infile "%sysfunc(pathname(work))/json2sas.lua" end=last;
-  input;
-  put _infile_;
-  if last then do;
-    put ';;;;';
-    put 'filename luapath "&work"; ';
-    put "proc lua infile='json2sas';";
-    put '  submit;';
-    put '  local json2sas=require("json2sas")';
-    put '  rc=json2sas.go("sasjs")';
-    put 'endsubmit;';
-    put 'run;';
-  end;
-run;
 
-/**
- * Create output macro
- */
-data _null_;
-  file &setup;
-  put '/* setup json */';
-  put 'filename _web temp lrecl=65000;';
-  put 'data _null_;file _web;put "{""data"":{";run;'/;
-  put '/* output macro */';
-  put '%global sasjs_tabcnt;';
-  put '%let sasjs_tabcnt=0;';
-  put '%macro sasjs(dsn);';
-  put '%let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);';
-  put 'options validvarname=upcase;';
-  put 'data _null_;file _web mod;';
-  put '  if &sasjs_tabcnt>1 then put ",";';
-  put ' put ''"'' "&dsn" ''" : '';run;';
-  put 'filename _web2 temp;';
-  put 'proc json out=_web2;export work.&dsn / nosastags;run;';
-  put 'data _null_;file _web mod;infile _web2 ;input;';
-  put 'put _infile_;run;';
-  put '%mend;' //;
+/* WEBOUT END */
 run;
-
-/* now insert the teardown / wrapup code */
-%local teardown;
-%let teardown=%mf_getuniquefileref();
-data _null_;
-  file &teardown;
-  put '/* close off json */';
-  put 'data _null_;file _web mod;';
-  put "  SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));";
-  put '  jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"''));';
-  put "  _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));";
-  put '  put ''},"sysuserid" : "'' "&sysuserid." ''",'';';
-  put '  put ''"sysjobid" : "'' "&sysjobid." ''",'';';
-  put '  put ''"datetime" : "'' "%sysfunc(datetime(),datetime19.)" ''",'';';
-  put '  put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '','';';
-  put '  put ''"X-SAS-JOBEXEC-ID" : '' jobid '','';';
-  put '  put ''"_PROGRAM" : '' _PROGRAM ;';
-  put '  put "}";';
-  put 'run;';
-  put ' ';
-  put '/* send to _webout */';
-  put 'filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";';
-  put "data _null_;rc=fcopy('_web','_webout');run;";
-run;
-
 
 /* insert the code, escaping double quotes and carriage returns */
 %local x fref freflist;
-%let freflist= &setup &precode &code &teardown;
+%let freflist= &setup &precode &code ;
 %do x=1 %to %sysfunc(countw(&freflist));
   %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
