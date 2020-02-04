@@ -81,7 +81,11 @@
   run;
 
   filename _web2 temp;
-  proc json out=_web2;export &ds / nosastags;run;
+  %local nokeys;
+  %if &action=ARR %then %let nokeys=nokeys;
+  proc json out=_web2;
+    export &ds / nosastags &nokeys;
+  run;
   data _null_;
     file &fref mod;
     infile _web2 ;
