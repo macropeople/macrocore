@@ -26,10 +26,13 @@
 filename ft15f001 temp;
 parmcards4;
       * enter sas backend code below ;
-      proc sql;
-      create table myds as
-        select * from sashelp.class;
-      %webout(myds)
+      data example1 example2;
+        set sashelp.class;
+      run;
+
+      %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+      %webout(OBJ,example2) * Object format, easier to work with ;
+      %webout(CLOSE)
 ;;;;
     %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
@@ -171,6 +174,7 @@ data _null_;
 
 
 /* WEBOUT END */
+  put '%webout(OPEN)';
 run;
 
 /* insert the code, escaping double quotes and carriage returns */

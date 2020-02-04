@@ -24,6 +24,32 @@ for file in files:
     ml.write("%mend;\n")
 ml.close()
 
+# prepare web files
+files=['viya/mv_createwebservice.sas','meta/mm_createwebservice.sas']
+for file in files:
+    if file=='viya/mv_createwebservice.sas':
+        webout=open('viya/mv_webout.sas',"r")
+    else:
+        webout=open('meta/mm_webout.sas','r')
+    outfile=open(file + 'TEMP','w')
+    infile=open(file,'r')
+    delrow=0
+    for line in infile:
+        if line=='/* WEBOUT BEGIN */\n':
+            delrow=1
+            outfile.write('/* WEBOUT BEGIN */\n')
+            for w in webout:
+                outfile.write("  put '" + w.rstrip().replace("'","''") + " ';\n")
+        elif delrow==1 and line=='/* WEBOUT END */\n':
+                delrow=0
+                outfile.write('/* WEBOUT END */\n')
+        elif delrow==0:
+            outfile.write(line.rstrip() + "\n")
+webout.close()
+outfile.close()
+infile.close()
+
+
 # Concatenate all macros into a single file
 header="""
 /**
