@@ -1,9 +1,7 @@
 /**
   @file mv_createwebservice.sas
   @brief Creates a JobExecution web service if it doesn't already exist
-  @details For efficiency, minimise the number of calls to _webout.  In Viya this
-    is stored in a database before being sent to the browser, so it's better to
-    write it elsewhere and then send it all in one go.
+  @details
 
   Step 1 - load macros and obtain refresh token
 
@@ -22,6 +20,7 @@
   Step 3 - Now we can create some code and add it to a web service
 <code>
 
+
 filename ft15f001 temp;
 parmcards4;
     * enter sas backend code below ;
@@ -35,7 +34,13 @@ parmcards4;
 ;;;;
 %mv_createwebservice(path=/Public/myapp, name=testJob, code=ft15f001)
 
+
 </code>
+
+  Notes:
+    To minimise postrgres requests, output json is stored in a temporary file
+    and then sent to _webout in one go at the end.
+
   <h4> Dependencies </h4>
   @li mf_abort.sas
   @li mv_createfolder.sas
@@ -211,7 +216,7 @@ data _null_;
   put '  @author Allan Bowe ';
   put ' ';
   put '**/ ';
-  put '%macro mv_webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
   put ' ';
   put '%if &action=OPEN %then %do; ';
   put '  %global _WEBIN_FILE_COUNT; ';
@@ -294,7 +299,7 @@ data _null_;
   put ' ';
   put '%mend; ';
   put ' ';
-  put '%macro webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
   put ' ';
   put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
   put ' ';
@@ -393,8 +398,8 @@ run;
 %put &sysmacroname: Job &name successfully created in &path;
 %put ;
 %put Check it out here:;
-%put ;
+%put ; %put ;
 %put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put ;
+%put ; %put ;
 
 %mend;

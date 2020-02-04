@@ -32,7 +32,7 @@
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds=,_webout=_webout,fref=_temp);
+%macro mv_webout(action,ds,_webout=_webout,fref=_temp);
 
 %if &action=OPEN %then %do;
   %global _WEBIN_FILE_COUNT;
@@ -115,7 +115,7 @@
 
 %mend;
 
-%macro webout(action,ds=,_webout=_webout,fref=_temp);
+%macro webout(action,ds,_webout=_webout,fref=_temp);
 
   %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
 

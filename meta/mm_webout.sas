@@ -114,7 +114,7 @@
 
 %mend;
 
-%macro webout(action,ds=,_webout=_webout,fref=_temp);
+%macro webout(action,ds,_webout=_webout,fref=_temp);
 
   %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
 

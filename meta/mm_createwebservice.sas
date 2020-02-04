@@ -209,7 +209,7 @@ data _null_;
   put ' ';
   put '%mend; ';
   put ' ';
-  put '%macro webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
   put ' ';
   put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
   put ' ';
