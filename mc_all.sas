@@ -3382,7 +3382,7 @@ run;
 
 %mend;/**
   @file
-  @brief Create a metadata folder
+  @brief Recursively create a metadata folder
   @details This macro was inspired by Paul Homes who wrote an early
     version (mkdirmd.sas) in 2010. The original is described here:
     https://platformadmin.com/blogs/paul/2010/07/mkdirmd/
@@ -3396,7 +3396,7 @@ run;
 
   usage:
 
-    %mm_createfolder(path=/Tests/some folder)
+    %mm_createfolder(path=/some/meta/folder)
 
   @param path= Name of the folder to create.
   @param mdebug= set DBG to 1 to disable DEBUG messages
@@ -3407,15 +3407,24 @@ run;
 **/
 
 %macro mm_createfolder(path=,mDebug=0);
+%put &sysmacroname: execution started for &path;
 %local dbg errorcheck;
 %if &mDebug=0 %then %let dbg=*;
+
+%local parentFolderObjId child errorcheck paths;
+%let paths=0;
 %let errorcheck=1;
 
+%if &syscc ge 4 %then %do;
+  %put SYSCC=&syscc - this macro requires a clean session;
+  %return;
+%end;
+
 data _null_;
-  length objId parentFolderObjId objType parent child $200
+  length objId parentId objType parent child $200
     folderPath $1000;
   call missing (of _all_);
-  folderPath = cats(symget('path'));
+  folderPath = "%trim(&path)";
 
   * remove any trailing slash ;
   if ( substr(folderPath,length(folderPath),1) = '/' ) then
@@ -3445,51 +3454,90 @@ data _null_;
     stop;
   end;
 
+  * check that root folder exists ;
+  root=cats('/',scan(folderpath,1,'/'),"(Folder)");
+  if metadata_pathobj('',root,"",objType,parentId)<1 then do;
+     put "%str(ERR)OR: " root " does not exist!";
+     stop;
+  end;
+
   * check that parent folder exists ;
   child=scan(folderPath,-1,'/');
   parent=substr(folderpath,1,length(folderpath)-length(child)-1);
-  put parent=;
-  rc=metadata_pathobj('',cats(parent,"(Folder)"),"",objType,parentFolderObjId);
+  rc=metadata_pathobj('',cats(parent,"(Folder)"),"",objType,parentId);
   if rc<1 then do;
-    put "%str(ERR)OR: &sysmacroname: parent folder does not exist! " parent;
-    put (_all_)(=);
-    stop;
+    putlog 'The following folders will be created:';
+    /* folder does not exist - so start from top and work down */
+     length newpath $1000;
+     paths=0;
+     do x=2 to countw(folderpath,'/');
+       newpath='';
+       do i=1 to x;
+         newpath=cats(newpath,'/',scan(folderpath,i,'/'));
+       end;
+       rc=metadata_pathobj('',cats(newpath,"(Folder)"),"",objType,parentId);
+       if rc<1 then do;
+         paths+1;
+         call symputx(cats('path',paths),newpath);
+         putlog newpath;
+       end;
+       call symputx('paths',paths);
+     end;
   end;
+  else putlog "parent " parent " exists";
 
-  call symputx('parentFolderObjId',parentFolderObjId,'l');
+  call symputx('parentFolderObjId',parentId,'l');
   call symputx('child',child,'l');
   call symputx('errorcheck',0,'l');
 
   &dbg put (_all_)(=);
 run;
 
-%if &errorcheck=1 %then %return;
+%if &errorcheck=1 or &syscc ge 4 %then %return;
 
-/* now create the folder */
+%if &paths>0 %then %do x=1 %to &paths;
+  %put executing recursive call for &&path&x;
+   %mm_createfolder(path=&&path&x)
+%end;
+%else %do;
+  filename __newdir temp;
+  options noquotelenmax;
+  %local inmeta;
+  %put creating: &path;
+  %let inmeta=<AddMetadata><Reposid>$METAREPOSITORY</Reposid><Metadata>
+    <Tree Name='&child' PublicType='Folder' TreeType='BIP Folder' UsageVersion='1000000'>
+    <ParentTree><Tree ObjRef='&parentFolderObjId'/></ParentTree></Tree></Metadata>
+    <NS>SAS</NS><Flags>268435456</Flags></AddMetadata>;
 
-filename __newdir temp;
-options noquotelenmax;
-%local inmeta;
-%let inmeta=<AddMetadata><Reposid>$METAREPOSITORY</Reposid><Metadata>
-  <Tree Name='&child' PublicType='Folder' TreeType='BIP Folder' UsageVersion='1000000'>
-  <ParentTree><Tree ObjRef='&parentFolderObjId'/></ParentTree></Tree></Metadata>
-  <NS>SAS</NS><Flags>268435456</Flags></AddMetadata>;
+  proc metadata in="&inmeta" out=__newdir verbose;
+  run ;
 
-proc metadata in="&inmeta"
-  out=__newdir verbose;
-run;
-
-%if &mDebug ne 0 %then %do;
-  /* write the response to the log for debugging */
+  /* check it was successful */
   data _null_;
-    infile __newdir lrecl=32767;
-    input;
-    put _infile_;
+    length objId parentId objType parent child $200 ;
+    call missing (of _all_);
+    rc=metadata_pathobj('',cats("&path","(Folder)"),"",objType,objId);
+    if rc ge 1 then do;
+      putlog "SUCCCESS!  &path created.";
+    end;
+    else do;
+      putlog "%str(ERR)OR: unsuccessful attempt to create &path";
+      call symputx('syscc',8);
+    end;
   run;
+
+  /* write the response to the log for debugging */
+  %if &mDebug ne 0 %then %do;
+    data _null_;
+      infile __newdir lrecl=32767;
+      input;
+      put _infile_;
+    run;
+  %end;
+  filename __newdir clear;
 %end;
 
-filename __newdir clear;
-
+%put &sysmacroname: execution finished for &path;
 %mend;/**
   @file
   @brief Create a SAS Library
@@ -4198,39 +4246,31 @@ run;
 %mend;/**
   @file
   @brief Create a Web Ready Stored Process
-  @details This macro creates a Type 2 Stored Process with the macropeople h54s
-    adapter (development / file upload version) included as pre-code.
-
-    The adapter code is loaded direct from github, so internet access is a
-    currently a dependency (feel free to submit a PR to provide a fileref
-    based approach).
+  @details This macro creates a Type 2 Stored Process with the macropeople
+    mm_webout macro included as pre-code.
 
     Usage:
+<code>
 
-      * compile macros ;
-      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
-      %inc mc;
+* compile macros ;
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+%inc mc;
 
-      * parmcards lets us write to a text file from open code ;
-      filename ft15f001 "%sysfunc(pathname(work))/somefile.sas";
+* parmcards lets us write to a text file from open code ;
+filename ft15f001 temp;
 parmcards4;
-      * enter stored process code below ;
-      proc sql;
-      create table outdataset as
-        select * from sashelp.class;
-
-      * output macros for every dataset to send back ;
-      %bafheader()
-      %bafoutdataset(forJS,work,outdataset)
-      %baffooter()
+    * do some sas, any inputs are now already WORK tables;
+    data example1 example2;
+      set sashelp.class;
+    run;
+    * send data back;
+    %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+    %webout(OBJ,example2) * Object format, easier to work with ;
+    %webout(CLOSE)
 ;;;;
+%mm_createwebservice(path=/meta/app/subfolder, name=testJob, code=ft15f001)
 
-      * create the stored process ;
-      %mm_createwebservice(service=MyNewSTP
-        ,role=common
-        ,project=/User Folders/&sysuserid/My Folder/myProj
-        ,source=%sysfunc(pathname(work))/somefile.sas
-      )
+</code>
 
 
   <h4> Dependencies </h4>
@@ -4238,36 +4278,34 @@ parmcards4;
   @li mf_getuser.sas
 
 
-  @param project= The metadata project directory root
-  @param role= The name of the role (subfolder) within the project
-  @param service= Stored Process name.  Avoid spaces - testing has shown that
+  @param path= The full path (in SAS Metadata) where the service will be created
+  @param name= Stored Process name.  Avoid spaces - testing has shown that
     the check to avoid creating multiple STPs in the same folder with the same
     name does not work when the name contains spaces.
-  @param desc= Service description (optional)
-  @param source= /the/full/path/name.ext of the sas program to load
-  @param precode= /the/full/path/name.ext of any precode to insert.
+  @param desc= The description of the service (optional)
+  @param precode= Space separated list of filerefs, pointing to the code that
+    needs to be attached to the beginning of the service (optional)
+  @param code= Space seperated fileref(s) of the actual code to be added
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
+
 
   @version 9.2
   @author Allan Bowe
 
 **/
 
-%macro mm_createwebservice(
-     project=/User Folders/sasdemo
-    ,role=common
-    ,service=myFirstWebService
-    ,desc=This stp was created automatically by the mm_createwebservice macro
-    ,source=
+%macro mm_createwebservice(path=
+    ,name=initService
     ,precode=
+    ,code=
+    ,desc=This stp was created automagically by the mm_createwebservice macro
     ,mDebug=0
     ,server=SASApp
-    ,adapter=deprecated
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
-  %put &=syscc;
+  %put &=syscc - &sysmacroname will not execute in this state;
   %return;
 %end;
 
@@ -4287,7 +4325,7 @@ parmcards4;
  * source (mm_webout) and run `build.py`
  */
 data _null_;
-  file "&work/&tmpfile" lrecl=3000 mod;
+  file "&work/&tmpfile" lrecl=3000 ;
   put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '/** ';
@@ -4415,37 +4453,30 @@ data _null_;
   put '%webout(OPEN)';
 run;
 
-/* add precode if provided */
-%if %length(&precode)>0 %then %do;
+/* add precode and code */
+%local x fref freflist;
+%let freflist= &precode &code ;
+%do x=1 %to %sysfunc(countw(&freflist));
+
+  %let fref=%scan(&freflist,&x);
+  %put &sysmacroname: adding &fref;
   data _null_;
     file "&work/&tmpfile" lrecl=3000 mod;
-    infile "&precode";
+    infile &fref;
     input;
     put _infile_;
   run;
 %end;
 
-/* add the SAS program */
-data _null_;
-  file "&work/&tmpfile" lrecl=3000 mod;
-  infile "&source";
-  input;
-  put _infile_;
-run;
-
-/* create the project folder if not already there */
-%mm_createfolder(path=&project)
-%if &syscc ge 4 %then %return;
-
-/* create the role folder if not already there */
-%mm_createfolder(path=&project/&role)
+/* create the metadata folder if not already there */
+%mm_createfolder(path=&path)
 %if &syscc ge 4 %then %return;
 
 /* create the web service */
-%mm_createstp(stpname=&service
+%mm_createstp(stpname=&name
   ,filename=&tmpfile
   ,directory=&work
-  ,tree=&project/&role
+  ,tree=&path
   ,stpdesc=&desc
   ,mDebug=&mdebug
   ,server=&server
@@ -6831,11 +6862,11 @@ options noquotelenmax;
 
 filename ft15f001 temp;
 parmcards4;
-    * enter sas backend code below ;
+    * do some sas, any inputs are now already WORK tables;
     data example1 example2;
       set sashelp.class;
     run;
-
+    * send data back;
     %webout(ARR,example1) * Array format, fast, suitable for large tables ;
     %webout(OBJ,example2) * Object format, easier to work with ;
     %webout(CLOSE)
@@ -6846,7 +6877,7 @@ parmcards4;
 </code>
 
   Notes:
-    To minimise postrgres requests, output json is stored in a temporary file
+    To minimise postgres requests, output json is stored in a temporary file
     and then sent to _webout in one go at the end.
 
   <h4> Dependencies </h4>
@@ -6855,7 +6886,7 @@ parmcards4;
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
 
-  @param path= The full path where the service will be created
+  @param path= The full path (on SAS Drive) where the service will be created
   @param name= The name of the service
   @param desc= The description of the service
   @param precode= Space separated list of filerefs, pointing to the code that
