@@ -1,39 +1,31 @@
 /**
   @file
   @brief Create a Web Ready Stored Process
-  @details This macro creates a Type 2 Stored Process with the macropeople h54s
-    adapter (development / file upload version) included as pre-code.
-
-    The adapter code is loaded direct from github, so internet access is a
-    currently a dependency (feel free to submit a PR to provide a fileref
-    based approach).
+  @details This macro creates a Type 2 Stored Process with the macropeople
+    mm_webout macro included as pre-code.
 
     Usage:
+<code>
 
-      * compile macros ;
-      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
-      %inc mc;
+* compile macros ;
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+%inc mc;
 
-      * parmcards lets us write to a text file from open code ;
-      filename ft15f001 "%sysfunc(pathname(work))/somefile.sas";
+* parmcards lets us write to a text file from open code ;
+filename ft15f001 temp;
 parmcards4;
-      * enter stored process code below ;
-      proc sql;
-      create table outdataset as
-        select * from sashelp.class;
-
-      * output macros for every dataset to send back ;
-      %bafheader()
-      %bafoutdataset(forJS,work,outdataset)
-      %baffooter()
+    * do some sas, any inputs are now already WORK tables;
+    data example1 example2;
+      set sashelp.class;
+    run;
+    * send data back;
+    %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+    %webout(OBJ,example2) * Object format, easier to work with ;
+    %webout(CLOSE)
 ;;;;
+%mm_createwebservice(path=/meta/app/subfolder, name=testJob, code=ft15f001)
 
-      * create the stored process ;
-      %mm_createwebservice(service=MyNewSTP
-        ,role=common
-        ,project=/User Folders/&sysuserid/My Folder/myProj
-        ,source=%sysfunc(pathname(work))/somefile.sas
-      )
+</code>
 
 
   <h4> Dependencies </h4>
@@ -41,36 +33,34 @@ parmcards4;
   @li mf_getuser.sas
 
 
-  @param project= The metadata project directory root
-  @param role= The name of the role (subfolder) within the project
-  @param service= Stored Process name.  Avoid spaces - testing has shown that
+  @param path= The full path (in SAS Metadata) where the service will be created
+  @param name= Stored Process name.  Avoid spaces - testing has shown that
     the check to avoid creating multiple STPs in the same folder with the same
     name does not work when the name contains spaces.
-  @param desc= Service description (optional)
-  @param source= /the/full/path/name.ext of the sas program to load
-  @param precode= /the/full/path/name.ext of any precode to insert.
+  @param desc= The description of the service (optional)
+  @param precode= Space separated list of filerefs, pointing to the code that
+    needs to be attached to the beginning of the service (optional)
+  @param code= Space seperated fileref(s) of the actual code to be added
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
+
 
   @version 9.2
   @author Allan Bowe
 
 **/
 
-%macro mm_createwebservice(
-     project=/User Folders/sasdemo
-    ,role=common
-    ,service=myFirstWebService
-    ,desc=This stp was created automatically by the mm_createwebservice macro
-    ,source=
+%macro mm_createwebservice(path=
+    ,name=initService
     ,precode=
+    ,code=
+    ,desc=This stp was created automagically by the mm_createwebservice macro
     ,mDebug=0
     ,server=SASApp
-    ,adapter=deprecated
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
-  %put &=syscc;
+  %put &=syscc - &sysmacroname will not execute in this state;
   %return;
 %end;
 
@@ -90,7 +80,7 @@ parmcards4;
  * source (mm_webout) and run `build.py`
  */
 data _null_;
-  file "&work/&tmpfile" lrecl=3000 mod;
+  file "&work/&tmpfile" lrecl=3000 ;
   put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '/** ';
@@ -218,37 +208,30 @@ data _null_;
   put '%webout(OPEN)';
 run;
 
-/* add precode if provided */
-%if %length(&precode)>0 %then %do;
+/* add precode and code */
+%local x fref freflist;
+%let freflist= &precode &code ;
+%do x=1 %to %sysfunc(countw(&freflist));
+
+  %let fref=%scan(&freflist,&x);
+  %put &sysmacroname: adding &fref;
   data _null_;
     file "&work/&tmpfile" lrecl=3000 mod;
-    infile "&precode";
+    infile &fref;
     input;
     put _infile_;
   run;
 %end;
 
-/* add the SAS program */
-data _null_;
-  file "&work/&tmpfile" lrecl=3000 mod;
-  infile "&source";
-  input;
-  put _infile_;
-run;
-
-/* create the project folder if not already there */
-%mm_createfolder(path=&project)
-%if &syscc ge 4 %then %return;
-
-/* create the role folder if not already there */
-%mm_createfolder(path=&project/&role)
+/* create the metadata folder if not already there */
+%mm_createfolder(path=&path)
 %if &syscc ge 4 %then %return;
 
 /* create the web service */
-%mm_createstp(stpname=&service
+%mm_createstp(stpname=&name
   ,filename=&tmpfile
   ,directory=&work
-  ,tree=&project/&role
+  ,tree=&path
   ,stpdesc=&desc
   ,mDebug=&mdebug
   ,server=&server

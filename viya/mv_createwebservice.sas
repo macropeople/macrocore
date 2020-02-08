@@ -23,11 +23,11 @@
 
 filename ft15f001 temp;
 parmcards4;
-    * enter sas backend code below ;
+    * do some sas, any inputs are now already WORK tables;
     data example1 example2;
       set sashelp.class;
     run;
-
+    * send data back;
     %webout(ARR,example1) * Array format, fast, suitable for large tables ;
     %webout(OBJ,example2) * Object format, easier to work with ;
     %webout(CLOSE)
@@ -38,7 +38,7 @@ parmcards4;
 </code>
 
   Notes:
-    To minimise postrgres requests, output json is stored in a temporary file
+    To minimise postgres requests, output json is stored in a temporary file
     and then sent to _webout in one go at the end.
 
   <h4> Dependencies </h4>
@@ -47,7 +47,7 @@ parmcards4;
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
 
-  @param path= The full path where the service will be created
+  @param path= The full path (on SAS Drive) where the service will be created
   @param name= The name of the service
   @param desc= The description of the service
   @param precode= Space separated list of filerefs, pointing to the code that
