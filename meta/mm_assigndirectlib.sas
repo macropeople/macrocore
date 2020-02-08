@@ -373,7 +373,7 @@ run;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
   %&mAbort.mf_abort(
-    msg=ERROR: Libref &libref is not registered in metadata
+    msg=%str(ERR)OR: Libref &libref is not registered in metadata
     ,mac=mm_assigndirectlib.sas);
   %return;
 %end;

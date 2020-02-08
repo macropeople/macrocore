@@ -415,7 +415,7 @@
 %else %if &type=C %then %do;
   &valc
 %end;
-%else %put ERROR: Unable to find key &key in ds &libds;
+%else %put %str(ERR)OR: Unable to find key &key in ds &libds;
 %mend;/**
   @file
   @brief Adds custom quotes / delimiters to a space delimited string
@@ -1025,7 +1025,7 @@ Usage:
 
     %let dname = %sysfunc(dcreate(&child, &parent));
     %if (%bquote(&dname) eq ) %then %do;
-       %put ERROR: could not create &parent + &child;
+       %put %str(ERR)OR: could not create &parent + &child;
        %abort cancel;
     %end;
     %else %do;
@@ -1126,11 +1126,11 @@ Usage:
     %let verifyVar=%qscan(&verifyVars,&verifyIterator,%str( ));
     %if not %symexist(&verifyvar) %then %do;
       %let abortmsg= Variable &verifyVar is MISSING;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if %length(%trim(&&&verifyVar))=0 %then %do;
       %let abortmsg= Variable &verifyVar is EMPTY;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if &makeupcase=YES %then %do;
       %let &verifyVar=%upcase(&&&verifyvar);
@@ -1138,8 +1138,8 @@ Usage:
   %end;
 
   %goto exit_success;
-  %exit_error:
-    %if &mAbort=SOFT %then %put ERROR: &abortmsg;
+  %exit_err:
+    %if &mAbort=SOFT %then %put %str(ERR)OR: &abortmsg;
     %else %mf_abort(mac=mf_verifymacvars,type=&mabort,msg=&abortmsg);
   %exit_success:
 
@@ -2088,7 +2088,7 @@ proc sort; by descending sumcols memname libname; run;
   @brief Searches all data in a library
   @details
   Scans an entire library and creates a copy of any table
-    containing a specific string or numeric value.  Only 
+    containing a specific string or numeric value.  Only
     matching records are written out.
     If both a string and numval are provided, the string
     will take precedence.
@@ -2933,7 +2933,7 @@ run;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
   %&mAbort.mf_abort(
-    msg=ERROR: Libref &libref is not registered in metadata
+    msg=%str(ERR)OR: Libref &libref is not registered in metadata
     ,mac=mm_assigndirectlib.sas);
   %return;
 %end;
@@ -4998,11 +4998,11 @@ run;
   @file
   @brief Creates dataset with all members of a metadata group
   @details
-  
+
   usage:
-  
+
     %mm_getgroupmembers(someGroupName
-      ,outds=work.mm_getgroupmembers 
+      ,outds=work.mm_getgroupmembers
       ,emails=YES)
 
   @param group metadata group for which to bring back members
@@ -5841,7 +5841,7 @@ libname _XML_ clear;
   @file
   @brief Retrieves properties of the SAS web app server
   @description usage:
-  
+
     %mm_getwebappsrvprops(outds= some_ds)
     data _null_;
       set some_ds(where=(name='webappsrv.server.url'));
@@ -5876,11 +5876,11 @@ data _null_ ;
    put '<Reposid>$METAREPOSITORY</Reposid>' ;
    put '<Type>TextStore</Type>' ;
    put '<NS>SAS</NS>' ;
-    put '<Flags>388</Flags>' ; 
+    put '<Flags>388</Flags>' ;
    put '<Options>' ;
     put '<XMLSelect search="TextStore[@Name='@@;
     put "'Public Configuration Properties']" @@;
-     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ; 
+     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ;
    put '"/>';
    put '<Templates>' ;
    put '<TextStore StoredText="">' ;

@@ -45,11 +45,11 @@
     %let verifyVar=%qscan(&verifyVars,&verifyIterator,%str( ));
     %if not %symexist(&verifyvar) %then %do;
       %let abortmsg= Variable &verifyVar is MISSING;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if %length(%trim(&&&verifyVar))=0 %then %do;
       %let abortmsg= Variable &verifyVar is EMPTY;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if &makeupcase=YES %then %do;
       %let &verifyVar=%upcase(&&&verifyvar);
@@ -57,8 +57,8 @@
   %end;
 
   %goto exit_success;
-  %exit_error:
-    %if &mAbort=SOFT %then %put ERROR: &abortmsg;
+  %exit_err:
+    %if &mAbort=SOFT %then %put %str(ERR)OR: &abortmsg;
     %else %mf_abort(mac=mf_verifymacvars,type=&mabort,msg=&abortmsg);
   %exit_success:
 

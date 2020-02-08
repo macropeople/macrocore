@@ -56,7 +56,7 @@ Usage:
 
     %let dname = %sysfunc(dcreate(&child, &parent));
     %if (%bquote(&dname) eq ) %then %do;
-       %put ERROR: could not create &parent + &child;
+       %put %str(ERR)OR: could not create &parent + &child;
        %abort cancel;
     %end;
     %else %do;

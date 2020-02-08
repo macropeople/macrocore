@@ -416,7 +416,7 @@
 %else %if &type=C %then %do;
   &valc
 %end;
-%else %put ERROR: Unable to find key &key in ds &libds;
+%else %put %str(ERR)OR: Unable to find key &key in ds &libds;
 %mend;/**
   @file
   @brief Adds custom quotes / delimiters to a space delimited string
@@ -1026,7 +1026,7 @@ Usage:
 
     %let dname = %sysfunc(dcreate(&child, &parent));
     %if (%bquote(&dname) eq ) %then %do;
-       %put ERROR: could not create &parent + &child;
+       %put %str(ERR)OR: could not create &parent + &child;
        %abort cancel;
     %end;
     %else %do;
@@ -1127,11 +1127,11 @@ Usage:
     %let verifyVar=%qscan(&verifyVars,&verifyIterator,%str( ));
     %if not %symexist(&verifyvar) %then %do;
       %let abortmsg= Variable &verifyVar is MISSING;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if %length(%trim(&&&verifyVar))=0 %then %do;
       %let abortmsg= Variable &verifyVar is EMPTY;
-      %goto exit_error;
+      %goto exit_err;
     %end;
     %if &makeupcase=YES %then %do;
       %let &verifyVar=%upcase(&&&verifyvar);
@@ -1139,8 +1139,8 @@ Usage:
   %end;
 
   %goto exit_success;
-  %exit_error:
-    %if &mAbort=SOFT %then %put ERROR: &abortmsg;
+  %exit_err:
+    %if &mAbort=SOFT %then %put %str(ERR)OR: &abortmsg;
     %else %mf_abort(mac=mf_verifymacvars,type=&mabort,msg=&abortmsg);
   %exit_success:
 
@@ -2934,7 +2934,7 @@ run;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
   %&mAbort.mf_abort(
-    msg=ERROR: Libref &libref is not registered in metadata
+    msg=%str(ERR)OR: Libref &libref is not registered in metadata
     ,mac=mm_assigndirectlib.sas);
   %return;
 %end;

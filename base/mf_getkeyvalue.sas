@@ -28,5 +28,5 @@
 %else %if &type=C %then %do;
   &valc
 %end;
-%else %put ERROR: Unable to find key &key in ds &libds;
+%else %put %str(ERR)OR: Unable to find key &key in ds &libds;
 %mend;
