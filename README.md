@@ -68,7 +68,7 @@ filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/
  - no trailing empty lines
 
 ## Header Properties
-The **Macro Core** documentation is created using [doxygen](http://www.stack.nl/~dimitri/doxygen/).  A full list of attributes can be found [here](http://www.stack.nl/~dimitri/doxygen/manual/commands.html) but the following are most relevant:
+The **Macro Core** documentation is created using [doxygen](http://www.doxygen.nl).  A full list of attributes can be found [here](http://www.doxygen.nl/manual/commands.html) but the following are most relevant:
 
  - file.  This needs to be present in order to be recognised by doxygen.
  - brief. This is a short (one sentence) description of the macro.
