@@ -209,6 +209,13 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
+/* GETSTPCODE BEGIN */
+
+/* GETSTPCODE END */
+  put '%macro weboutpgm();';
+  put '%if %symexist(_debug) %then %if &_debug ge 131 %then %do;';
+  put '  %mm_getstpcode(tree=&_PROGRAM)';
+  put '%end;%mend; %weboutpgm()';
   put '%webout(OPEN)';
 run;
 

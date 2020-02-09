@@ -10,8 +10,8 @@
         ,outloc=/some/unquoted/filename.ext
       )
 
-  @param tree= The metadata path of the Stored Process
-  @param name= Stored Process name.
+  @param tree= The metadata path of the Stored Process (can also contain name)
+  @param name= Stored Process name.  Leave blank if included above.
   @param outloc= full and unquoted path to the desired text file.  This will be
     overwritten if it already exists.  If not provided, the code will be written
     to the log.
@@ -21,8 +21,8 @@
 **/
 
 %macro mm_getstpcode(
-    tree=/User Folders/sasdemo
-    ,name=myNote
+    tree=/User Folders/sasdemo/somestp
+    ,name=
     ,outloc=
     ,mDebug=1
     );
@@ -33,6 +33,8 @@
 %&mD.put Executing &sysmacroname..sas;
 %&mD.put _local_;
 
+%if %length(&name)>0 %then %let name=/&name;
+
 /* first, check if STP exists */
 %local tsuri;
 %let tsuri=stopifempty ;
@@ -40,7 +42,7 @@
 data _null_;
   format type uri tsuri value $200.;
   call missing (of _all_);
-  path="&tree/&name(StoredProcess)";
+  path="&tree&name(StoredProcess)";
   /* first, find the STP ID */
   if metadata_pathobj("",path,"StoredProcess",type,uri)>0 then do;
     /* get sourcecode */
@@ -61,7 +63,7 @@ data _null_;
 run;
 
 %if &tsuri=stopifempty %then %do;
-  %put WARNING:  &tree/&name.(StoredProcess) not found!;
+  %put WARNING:  &tree&name.(StoredProcess) not found!;
   %return;
 %end;
 
@@ -138,9 +140,13 @@ run;
 
 %if &outeng=TEMP %then %do;
   data _null_;
+    putlog '>>stpcodeBEGIN<<';
+  data _null_;
     infile __outdoc lrecl=32767;
     input;
     putlog _infile_;
+  data _null_;
+    putlog '>>stpcodeEND<<';
   run;
 %end;
 

@@ -28,6 +28,9 @@
     platform compatibility.  It may be removed if your use case does not involve
     SAS Viya.
 
+  <h4> Dependencies </h4>
+  @li mm_getstpcode.sas
+
   @param in= provide path or fileref to input csv
   @param out= output path or fileref to output csv
   @param qchar= quote char - hex code 22 is the double quote.
@@ -37,11 +40,10 @@
 
 **/
 %macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
-
+%global _WEBIN_FILE_COUNT _WEBOUT _PROGRAM;
 %if &action=OPEN %then %do;
-  %global _WEBIN_FILE_COUNT;
-  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
 
+  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
     filename &fref temp lrecl=999999;
@@ -64,6 +66,7 @@
   %end;
   /* setup json */
   data _null_;file &fref;
+    if symget('_debug') ge 131 then put '>>weboutBEGIN<<';
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
   run;
 
@@ -108,7 +111,14 @@
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
     put "}";
+    if symget('_debug') ge 131 then put '>>weboutEND<<';
   run;
+
+  %if &_debug ge 131 %then %do;
+    data _null_;
+      put '>>weboutEND<<';
+    run;
+  %end;
 
   data _null_;
     rc=fcopy("&fref","&_webout");
