@@ -70,7 +70,7 @@
   /* setup json */
   data _null_;file &fref;
     if symget('_debug') ge 131 then put '>>weboutBEGIN<<';
-    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
   run;
 
 %end;
@@ -112,7 +112,7 @@
     _METAPERSON=quote(trim(symget('_METAPERSON')));
     put '"_METAPERSON": ' _METAPERSON ',';
     put '"_PROGRAM" : ' _PROGRAM ',';
-    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
+    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
     if symget('_debug') ge 131 then put '>>weboutEND<<';
   run;

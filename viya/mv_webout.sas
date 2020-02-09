@@ -64,7 +64,7 @@
   %end;
   /* setup json */
   data _null_;file &fref;
-    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
   run;
 
 %end;
@@ -107,7 +107,7 @@
     put '"X-SAS-JOBEXEC-ID" : ' jobid ',';
     put '"SYSJOBID" : "' "&sysjobid." '",';
     put '"_PROGRAM" : ' _PROGRAM ',';
-    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
+    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
   run;
 
