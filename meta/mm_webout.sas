@@ -86,7 +86,7 @@
     else put ', "' "&ds" '" :';
   run;
 
-  filename _web2 temp;
+  filename _web2 temp lrecl=999999;
   %local nokeys;
   %if &action=ARR %then %let nokeys=nokeys;
   proc json out=_web2;

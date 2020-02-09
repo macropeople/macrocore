@@ -171,7 +171,7 @@ data _null_;
   put '    else put '', "'' "&ds" ''" :''; ';
   put '  run; ';
   put ' ';
-  put '  filename _web2 temp; ';
+  put '  filename _web2 temp lrecl=999999; ';
   put '  %local nokeys; ';
   put '  %if &action=ARR %then %let nokeys=nokeys; ';
   put '  proc json out=_web2; ';
