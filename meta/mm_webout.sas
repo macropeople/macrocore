@@ -1,5 +1,5 @@
 /**
-  @file mv_webout.sas
+  @file mm_webout.sas
   @brief Send data to/from SAS Stored Processes
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
@@ -40,10 +40,13 @@
 
 **/
 %macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
-%global _WEBIN_FILE_COUNT _WEBOUT _PROGRAM;
+%global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
+  %if &_debug ge 131 %then %do;
+    options mprint notes;
+  %end;
 
-  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+  %let _webin_file_count=%eval(&_webin_file_count+0);
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
     filename &fref temp lrecl=999999;

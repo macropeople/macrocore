@@ -4329,7 +4329,7 @@ data _null_;
   put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '/** ';
-  put '  @file mv_webout.sas ';
+  put '  @file mm_webout.sas ';
   put '  @brief Send data to/from SAS Stored Processes ';
   put '  @details This macro should be added to the start of each Stored Process, ';
   put '  **immediately** followed by a call to: ';
@@ -4358,6 +4358,9 @@ data _null_;
   put '    platform compatibility.  It may be removed if your use case does not involve ';
   put '    SAS Viya. ';
   put ' ';
+  put '  <h4> Dependencies </h4> ';
+  put '  @li mm_getstpcode.sas ';
+  put ' ';
   put '  @param in= provide path or fileref to input csv ';
   put '  @param out= output path or fileref to output csv ';
   put '  @param qchar= quote char - hex code 22 is the double quote. ';
@@ -4367,11 +4370,13 @@ data _null_;
   put ' ';
   put '**/ ';
   put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
-  put ' ';
+  put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %global _WEBIN_FILE_COUNT; ';
-  put '  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0); ';
+  put '  %if &_debug ge 131 %then %do; ';
+  put '    options mprint notes; ';
+  put '  %end; ';
   put ' ';
+  put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
   put '  /* setup temp ref */ ';
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
   put '    filename &fref temp lrecl=999999; ';
@@ -4394,6 +4399,7 @@ data _null_;
   put '  %end; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
+  put '    if symget(''_debug'') ge 131 then put ''>>weboutBEGIN<<''; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''", "data":{''; ';
   put '  run; ';
   put ' ';
@@ -4438,7 +4444,14 @@ data _null_;
   put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
   put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime19.)" ''" ''; ';
   put '    put "}"; ';
+  put '    if symget(''_debug'') ge 131 then put ''>>weboutEND<<''; ';
   put '  run; ';
+  put ' ';
+  put '  %if &_debug ge 131 %then %do; ';
+  put '    data _null_; ';
+  put '      put ''>>weboutEND<<''; ';
+  put '    run; ';
+  put '  %end; ';
   put ' ';
   put '  data _null_; ';
   put '    rc=fcopy("&fref","&_webout"); ';
@@ -4454,6 +4467,167 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
+/* GETSTPCODE BEGIN */
+  put '/** ';
+  put '  @file ';
+  put '  @brief Writes the code of an to an external file, or the log if none provided ';
+  put '  @details Get the ';
+  put ' ';
+  put '  usage: ';
+  put ' ';
+  put '      %mm_getstpcode(tree=/some/meta/path ';
+  put '        ,name=someSTP ';
+  put '        ,outloc=/some/unquoted/filename.ext ';
+  put '      ) ';
+  put ' ';
+  put '  @param tree= The metadata path of the Stored Process (can also contain name) ';
+  put '  @param name= Stored Process name.  Leave blank if included above. ';
+  put '  @param outloc= full and unquoted path to the desired text file.  This will be ';
+  put '    overwritten if it already exists.  If not provided, the code will be written ';
+  put '    to the log. ';
+  put ' ';
+  put '  @author Allan Bowe ';
+  put ' ';
+  put '**/ ';
+  put ' ';
+  put '%macro mm_getstpcode( ';
+  put '    tree=/User Folders/sasdemo/somestp ';
+  put '    ,name= ';
+  put '    ,outloc= ';
+  put '    ,mDebug=1 ';
+  put '    ); ';
+  put ' ';
+  put '%local mD; ';
+  put '%if &mDebug=1 %then %let mD=; ';
+  put '%else %let mD=%str(*); ';
+  put '%&mD.put Executing &sysmacroname..sas; ';
+  put '%&mD.put _local_; ';
+  put ' ';
+  put '%if %length(&name)>0 %then %let name=/&name; ';
+  put ' ';
+  put '/* first, check if STP exists */ ';
+  put '%local tsuri; ';
+  put '%let tsuri=stopifempty ; ';
+  put ' ';
+  put 'data _null_; ';
+  put '  format type uri tsuri value $200.; ';
+  put '  call missing (of _all_); ';
+  put '  path="&tree&name(StoredProcess)"; ';
+  put '  /* first, find the STP ID */ ';
+  put '  if metadata_pathobj("",path,"StoredProcess",type,uri)>0 then do; ';
+  put '    /* get sourcecode */ ';
+  put '    cnt=1; ';
+  put '    do while (metadata_getnasn(uri,"Notes",cnt,tsuri)>0); ';
+  put '      rc=metadata_getattr(tsuri,"Name",value); ';
+  put '      put tsuri= value=; ';
+  put '      if value="SourceCode" then do; ';
+  put '        /* found it! */ ';
+  put '        rc=metadata_getattr(tsuri,"Id",value); ';
+  put '        call symputx(''tsuri'',value,''l''); ';
+  put '        stop; ';
+  put '      end; ';
+  put '      cnt+1; ';
+  put '    end; ';
+  put '  end; ';
+  put '  else put (_all_)(=); ';
+  put 'run; ';
+  put ' ';
+  put '%if &tsuri=stopifempty %then %do; ';
+  put '  %put WARNING:  &tree&name.(StoredProcess) not found!; ';
+  put '  %return; ';
+  put '%end; ';
+  put ' ';
+  put ' ';
+  put '/** ';
+  put ' * Now we can extract the textstore ';
+  put ' */ ';
+  put 'filename __getdoc temp lrecl=10000000; ';
+  put 'proc metadata ';
+  put ' in="<GetMetadata><Reposid>$METAREPOSITORY</Reposid> ';
+  put '    <Metadata><TextStore Id=''&tsuri''/></Metadata> ';
+  put '    <Ns>SAS</Ns><Flags>1</Flags><Options/></GetMetadata>" ';
+  put ' out=__getdoc ; ';
+  put 'run; ';
+  put ' ';
+  put '/* find the beginning of the text */ ';
+  put '%local start; ';
+  put 'data _null_; ';
+  put '  infile __getdoc lrecl=10000; ';
+  put '  input; ';
+  put '  start=index(_infile_,''StoredText="''); ';
+  put '  if start then do; ';
+  put '    call symputx("start",start+11); ';
+  put '    *putlog ''"'' _infile_ ''"''; ';
+  put '  end; ';
+  put '  stop; ';
+  put ' ';
+  put '%local outeng; ';
+  put '%if %length(&outloc)=0 %then %let outeng=TEMP; ';
+  put '%else %let outeng="&outloc"; ';
+  put '/* read the content, byte by byte, resolving escaped chars */ ';
+  put 'filename __outdoc &outeng lrecl=100000; ';
+  put 'data _null_; ';
+  put ' length filein 8 fileid 8; ';
+  put ' filein = fopen("__getdoc","I",1,"B"); ';
+  put ' fileid = fopen("__outdoc","O",1,"B"); ';
+  put ' rec = "20"x; ';
+  put ' length entity $6; ';
+  put ' do while(fread(filein)=0); ';
+  put '   x+1; ';
+  put '   if x>&start then do; ';
+  put '    rc = fget(filein,rec,1); ';
+  put '    if rec=''"'' then leave; ';
+  put '    else if rec="&" then do; ';
+  put '      entity=rec; ';
+  put '      do until (rec=";"); ';
+  put '        if fread(filein) ne 0 then goto getout; ';
+  put '        rc = fget(filein,rec,1); ';
+  put '        entity=cats(entity,rec); ';
+  put '      end; ';
+  put '      select (entity); ';
+  put '        when (''&amp;'' ) rec=''&''  ; ';
+  put '        when (''&lt;''  ) rec=''<''  ; ';
+  put '        when (''&gt;''  ) rec=''>''  ; ';
+  put '        when (''&apos;'') rec="''"  ; ';
+  put '        when (''&quot;'') rec=''"''  ; ';
+  put '        when (''&#x0a;'') rec=''0A''x; ';
+  put '        when (''&#x0d;'') rec=''0D''x; ';
+  put '        when (''&#36;'' ) rec=''$''  ; ';
+  put '        otherwise putlog "WARNING: missing value for " entity=; ';
+  put '      end; ';
+  put '      rc =fput(fileid, substr(rec,1,1)); ';
+  put '      rc =fwrite(fileid); ';
+  put '    end; ';
+  put '    else do; ';
+  put '      rc =fput(fileid,rec); ';
+  put '      rc =fwrite(fileid); ';
+  put '    end; ';
+  put '   end; ';
+  put ' end; ';
+  put ' getout: ';
+  put ' rc=fclose(filein); ';
+  put ' rc=fclose(fileid); ';
+  put 'run; ';
+  put ' ';
+  put '%if &outeng=TEMP %then %do; ';
+  put '  data _null_; ';
+  put '    infile __outdoc lrecl=32767 end=last; ';
+  put '    input; ';
+  put '    if _n_=1 then putlog ''>>stpcodeBEGIN<<''; ';
+  put '    putlog _infile_; ';
+  put '    if last then putlog ''>>stpcodeEND<<''; ';
+  put '  run; ';
+  put '%end; ';
+  put ' ';
+  put 'filename __getdoc clear; ';
+  put 'filename __outdoc clear; ';
+  put ' ';
+  put '%mend; ';
+/* GETSTPCODE END */
+  put '%macro weboutpgm();';
+  put '%if %symexist(_debug) %then %if &_debug ge 131 %then %do;';
+  put '  %mm_getstpcode(tree=&_PROGRAM)';
+  put '%end;%mend; %weboutpgm()';
   put '%webout(OPEN)';
 run;
 
@@ -5484,8 +5658,8 @@ libname _XML_ clear;
         ,outloc=/some/unquoted/filename.ext
       )
 
-  @param tree= The metadata path of the Stored Process
-  @param name= Stored Process name.
+  @param tree= The metadata path of the Stored Process (can also contain name)
+  @param name= Stored Process name.  Leave blank if included above.
   @param outloc= full and unquoted path to the desired text file.  This will be
     overwritten if it already exists.  If not provided, the code will be written
     to the log.
@@ -5495,8 +5669,8 @@ libname _XML_ clear;
 **/
 
 %macro mm_getstpcode(
-    tree=/User Folders/sasdemo
-    ,name=myNote
+    tree=/User Folders/sasdemo/somestp
+    ,name=
     ,outloc=
     ,mDebug=1
     );
@@ -5507,6 +5681,8 @@ libname _XML_ clear;
 %&mD.put Executing &sysmacroname..sas;
 %&mD.put _local_;
 
+%if %length(&name)>0 %then %let name=/&name;
+
 /* first, check if STP exists */
 %local tsuri;
 %let tsuri=stopifempty ;
@@ -5514,7 +5690,7 @@ libname _XML_ clear;
 data _null_;
   format type uri tsuri value $200.;
   call missing (of _all_);
-  path="&tree/&name(StoredProcess)";
+  path="&tree&name(StoredProcess)";
   /* first, find the STP ID */
   if metadata_pathobj("",path,"StoredProcess",type,uri)>0 then do;
     /* get sourcecode */
@@ -5535,7 +5711,7 @@ data _null_;
 run;
 
 %if &tsuri=stopifempty %then %do;
-  %put WARNING:  &tree/&name.(StoredProcess) not found!;
+  %put WARNING:  &tree&name.(StoredProcess) not found!;
   %return;
 %end;
 
@@ -5552,13 +5728,14 @@ proc metadata
 run;
 
 /* find the beginning of the text */
+%local start;
 data _null_;
   infile __getdoc lrecl=10000;
   input;
   start=index(_infile_,'StoredText="');
   if start then do;
     call symputx("start",start+11);
-    putlog '"' _infile_ '"';
+    *putlog '"' _infile_ '"';
   end;
   stop;
 
@@ -5612,9 +5789,11 @@ run;
 
 %if &outeng=TEMP %then %do;
   data _null_;
-    infile __outdoc lrecl=32767;
+    infile __outdoc lrecl=32767 end=last;
     input;
+    if _n_=1 then putlog '>>stpcodeBEGIN<<';
     putlog _infile_;
+    if last then putlog '>>stpcodeEND<<';
   run;
 %end;
 
@@ -6551,7 +6730,7 @@ run;
 %end;
 
 %mend;/**
-  @file mv_webout.sas
+  @file mm_webout.sas
   @brief Send data to/from SAS Stored Processes
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
@@ -6580,6 +6759,9 @@ run;
     platform compatibility.  It may be removed if your use case does not involve
     SAS Viya.
 
+  <h4> Dependencies </h4>
+  @li mm_getstpcode.sas
+
   @param in= provide path or fileref to input csv
   @param out= output path or fileref to output csv
   @param qchar= quote char - hex code 22 is the double quote.
@@ -6589,11 +6771,13 @@ run;
 
 **/
 %macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
-
+%global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
-  %global _WEBIN_FILE_COUNT;
-  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+  %if &_debug ge 131 %then %do;
+    options mprint notes;
+  %end;
 
+  %let _webin_file_count=%eval(&_webin_file_count+0);
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
     filename &fref temp lrecl=999999;
@@ -6616,6 +6800,7 @@ run;
   %end;
   /* setup json */
   data _null_;file &fref;
+    if symget('_debug') ge 131 then put '>>weboutBEGIN<<';
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '", "data":{';
   run;
 
@@ -6660,7 +6845,14 @@ run;
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime19.)" '" ';
     put "}";
+    if symget('_debug') ge 131 then put '>>weboutEND<<';
   run;
+
+  %if &_debug ge 131 %then %do;
+    data _null_;
+      put '>>weboutEND<<';
+    run;
+  %end;
 
   data _null_;
     rc=fcopy("&fref","&_webout");

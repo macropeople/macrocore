@@ -80,13 +80,14 @@ proc metadata
 run;
 
 /* find the beginning of the text */
+%local start;
 data _null_;
   infile __getdoc lrecl=10000;
   input;
   start=index(_infile_,'StoredText="');
   if start then do;
     call symputx("start",start+11);
-    putlog '"' _infile_ '"';
+    *putlog '"' _infile_ '"';
   end;
   stop;
 
@@ -140,13 +141,11 @@ run;
 
 %if &outeng=TEMP %then %do;
   data _null_;
-    putlog '>>stpcodeBEGIN<<';
-  data _null_;
-    infile __outdoc lrecl=32767;
+    infile __outdoc lrecl=32767 end=last;
     input;
+    if _n_=1 then putlog '>>stpcodeBEGIN<<';
     putlog _infile_;
-  data _null_;
-    putlog '>>stpcodeEND<<';
+    if last then putlog '>>stpcodeEND<<';
   run;
 %end;
 
