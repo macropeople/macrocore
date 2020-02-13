@@ -4594,7 +4594,7 @@ data _null_;
   put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
   put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
-  put '    if symget(''_debug'') ge 131 then put ''>>weboutEND<<''; ';
+  put '    if upcase(symget(''_debug''))=''LOG'' then put ''>>weboutEND<<''; ';
   put '  run; ';
   put ' ';
   put '  data _null_; ';
@@ -6822,7 +6822,7 @@ run;
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
-    if symget('_debug') ge 131 then put '>>weboutEND<<';
+    if upcase(symget('_debug'))='LOG' then put '>>weboutEND<<';
   run;
 
   data _null_;
