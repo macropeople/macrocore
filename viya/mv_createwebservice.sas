@@ -244,6 +244,8 @@ data _null_;
   put '    data &&_webin_name&i; ';
   put '      infile indata firstobs=2 dsd termstr=crlf ; ';
   put '      input &input_statement; ';
+  put '      if _n_=1 then putlog "&input_statement"; ';
+  put '      putlog _infile_; ';
   put '    run; ';
   put '  %end; ';
   put '  /* setup json */ ';
@@ -302,13 +304,10 @@ data _null_;
   put '%end; ';
   put ' ';
   put '%mend; ';
-  put ' ';
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
-  put ' ';
-  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
-  put ' ';
-  put '%mend; ';
 /* WEBOUT END */
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
+  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%mend;';
   put '%webout(OPEN)';
 run;
 

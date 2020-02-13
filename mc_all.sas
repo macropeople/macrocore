@@ -1739,6 +1739,137 @@ quit;
 %put NOTE- %sysfunc(dequote(&cards_file.));
 %put NOTE-;%put NOTE-;
 %mend;/**
+  @file mp_getddl.sas
+  @brief Extract DDL in various formats, by table or library
+  @details Data Definition Language relates to a set of SQL instructions used
+    to create tables in SAS or a database.  The macro can be used at table or
+    library level.  The default behaviour is to create DDL in SAS format.
+
+  Usage:
+
+    %mp_getddl(SOMELIB)  * execute all libs ;
+
+
+  @param lib libref of the library to create DDL for.  Should be assigned.
+  @param ds dataset to create ddl for
+  @param fref= the fileref to which to write the DDL.  If not preassigned, will
+    be assigned to TEMP.
+  @param flavour= The type of DDL to create (default=SAS)
+
+  Testing:
+
+    data test(index=(pk=(x y)/unique /nomiss));
+      x=1;
+      y='blah';
+    run;
+    proc sql; describe table &syslast;
+
+    %mp_getddl()
+
+data _null_;
+  infile getddl;
+  input; list;run;
+
+  @version 9.3
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+**/
+
+%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS
+)/*/STORE SOURCE*/;
+
+/* check fileref is assigned */
+%if %sysfunc(fileref(&fref)) > 0 %then %do;
+  filename &fref temp;
+%end;
+%if %length(&libref)=0 %then %let libref=WORK;
+
+proc sql noprint;
+create table _data_ as
+  select * from dictionary.tables
+  where upcase(libname)="%upcase(&libref)"
+  %if %length(&ds)>0 %then %do;
+    and upcase(memname)="%upcase(&ds)"
+  %end;
+  ;
+%local tabinfo; %let tabinfo=&syslast;
+
+create table _data_ as
+  select * from dictionary.indexes
+  where upcase(libname)="%upcase(&libref)"
+  %if %length(&ds)>0 %then %do;
+    and upcase(memname)="%upcase(&ds)"
+  %end;
+  order by idxusage, indxname, indxpos
+  ;
+%local idxinfo; %let idxinfo=&syslast;
+
+create table _data_ as
+  select * from dictionary.columns
+  where upcase(libname)="%upcase(&libref)"
+  %if %length(&ds)>0 %then %do;
+    and upcase(memname)="%upcase(&ds)"
+  %end;
+  ;
+%local colinfo; %let colinfo=&syslast;
+%local dsnlist;
+select distinct memname into: dsnlist
+  separated by ' '
+  from &syslast;
+
+%local x curds; %do x=1 %to %sysfunc(countw(&dsnlist));
+  %let curds=%scan(&dsnlist,&x);
+  data _null_;
+    file &fref mod;
+    set &colinfo (where=(memname="&curds")) end=last;
+
+    if _n_=1 then do;
+      if memtype='DATA' then do;
+        put "create table &libref..&curds(";
+      end;
+      else do;
+        put "create view &libref..&curds(";
+      end;
+      put "    "@@;
+    end;
+    else put "   ,"@@;
+    if length(format)>1 then fmt=" format="!!cats(format);
+    len=" length="!!cats(length);
+    lab=" label="!!quote(trim(label));
+    if notnull='yes' then notnul=' not null';
+    put name type len fmt notnul lab;
+    if last then put ');';
+  run;
+
+  data _null_;
+    set &idxinfo (where=(memname="&curds")) end=last;
+    file &fref mod;
+    by idxusage indxname;
+    if unique='yes' then uniq=' unique';
+    ds=cats(libname,'.',memname);
+    if first.indxname then do;
+      put 'create ' uniq ' index ' indxname;
+      put '  on ' ds '(' name @@;
+    end;
+    else put ',' name @@;
+    if last.indxname then put ');';
+  run;
+  ods output IntegrityConstraints=ic;
+proc contents data=testali out2=info;
+run;
+
+%end;
+
+options ps=max;
+data _null_;
+  infile &fref;
+  input;
+  putlog _infile_;
+run;
+
+%mend;
+/**
   @file
   @brief Scans a dataset to find the max length of the variable values
   @details
@@ -2012,6 +2143,54 @@ data _null_;
     call execute(code );
   end;
 run;
+
+%mend;/**
+  @file mp_runddl.sas
+  @brief An opinionated way to execute DDL files in SAS.
+  @details When delivering projects there should be seperation between the DDL
+    used to generate the tables and the sample data used to populate them.
+
+  This macro expects certain folder structure - eg:
+
+    rootlib
+    |-- LIBREF1
+    |  |__ mytable.ddl
+    |  |__ someothertable.ddl
+    |-- LIBREF2
+    |  |__ table1.ddl
+    |  |__ table2.ddl
+    |-- LIBREF3
+       |__ table3.ddl
+       |__ table4.ddl
+
+  Only files with the .ddl suffix are executed.  The parent folder name is used
+  as the libref.
+  Files should NOT contain the `proc sql` statement - this is to prevent
+  statements being executed if there is an error condition.
+
+  Usage:
+
+    %mp_runddl(/some/rootlib)  * execute all libs ;
+
+    %mp_runddl(/some/rootlib, inc=LIBREF1 LIBREF2) * include only these libs;
+
+    %mp_runddl(/some/rootlib, exc=LIBREF3) * same as above ;
+
+
+  @param path location of the DDL folder structure
+  @param inc= list of librefs to include
+  @param exc= list of librefs to exclude (takes precedence over inc=)
+
+  @version 9.3
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+**/
+
+%macro mp_runddl(path, inc=, exc=
+)/*/STORE SOURCE*/;
+
+
 
 %mend;/**
   @file mp_searchcols.sas
@@ -2294,32 +2473,6 @@ proc sql;
   proc append base=&libds data=&syslast nowarn;run;
 
   options &etls_syntaxcheck;
-%mend;/**
-  @file
-  @brief Configures a non STP session like an STP session
-  @details When running a web enabled STP in batch mode, there are a few things
-    that need to be configured to avoid errors - such as setting up the _webout
-    fileref, or providing dummy h54s macros.
-
-  @version 9.2
-  @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-
-**/
-
-%macro mp_stpsetup(
-)/*/STORE SOURCE*/;
-
-%if &sysprocessmode ne SAS Stored Process Server %then %do;
-  filename _webout cache; /* cache mode enables pdf etc output */
-
-  /* h54s macros need to have global scope */
-  data _null_;
-    call execute('%macro hfsheader();%mend;%macro hfsfooter();%mend;');
-    call execute('%macro hfsOutDataset(one,two,three);%mend;');
-    call execute('%macro hfsGetDataset(one,two);%mend;');
-  run;
-%end;
 %mend;/**
   @file mp_unzip.sas
   @brief Unzips a zip file
@@ -4244,7 +4397,7 @@ run;
   %put WARNING:  STPTYPE=*&stptype* not recognised!;
 %end;
 %mend;/**
-  @file
+  @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
   @details This macro creates a Type 2 Stored Process with the macropeople
     mm_webout macro included as pre-code.
@@ -4358,9 +4511,6 @@ data _null_;
   put '    platform compatibility.  It may be removed if your use case does not involve ';
   put '    SAS Viya. ';
   put ' ';
-  put '  <h4> Dependencies </h4> ';
-  put '  @li mm_getstpcode.sas ';
-  put ' ';
   put '  @param in= provide path or fileref to input csv ';
   put '  @param out= output path or fileref to output csv ';
   put '  @param qchar= quote char - hex code 22 is the double quote. ';
@@ -4372,7 +4522,7 @@ data _null_;
   put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
   put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %upcase(&_debug)=LOG %then %do; ';
   put '    options mprint notes; ';
   put '  %end; ';
   put ' ';
@@ -4399,7 +4549,7 @@ data _null_;
   put '  %end; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
-  put '    if symget(''_debug'') ge 131 then put ''>>weboutBEGIN<<''; ';
+  put '    if upcase(symget(''_debug''))=''LOG'' then put ''>>weboutBEGIN<<''; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''", "data":{''; ';
   put '  run; ';
   put ' ';
@@ -4447,12 +4597,6 @@ data _null_;
   put '    if symget(''_debug'') ge 131 then put ''>>weboutEND<<''; ';
   put '  run; ';
   put ' ';
-  put '  %if &_debug ge 131 %then %do; ';
-  put '    data _null_; ';
-  put '      put ''>>weboutEND<<''; ';
-  put '    run; ';
-  put '  %end; ';
-  put ' ';
   put '  data _null_; ';
   put '    rc=fcopy("&fref","&_webout"); ';
   put '  run; ';
@@ -4460,13 +4604,10 @@ data _null_;
   put '%end; ';
   put ' ';
   put '%mend; ';
-  put ' ';
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
-  put ' ';
-  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
-  put ' ';
-  put '%mend; ';
 /* WEBOUT END */
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
+  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%mend;';
   put '%webout(OPEN)';
 run;
 
@@ -6598,9 +6739,6 @@ run;
     platform compatibility.  It may be removed if your use case does not involve
     SAS Viya.
 
-  <h4> Dependencies </h4>
-  @li mm_getstpcode.sas
-
   @param in= provide path or fileref to input csv
   @param out= output path or fileref to output csv
   @param qchar= quote char - hex code 22 is the double quote.
@@ -6612,7 +6750,7 @@ run;
 %macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
 %global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
-  %if &_debug ge 131 %then %do;
+  %if %upcase(&_debug)=LOG %then %do;
     options mprint notes;
   %end;
 
@@ -6639,7 +6777,7 @@ run;
   %end;
   /* setup json */
   data _null_;file &fref;
-    if symget('_debug') ge 131 then put '>>weboutBEGIN<<';
+    if upcase(symget('_debug'))='LOG' then put '>>weboutBEGIN<<';
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
   run;
 
@@ -6687,23 +6825,11 @@ run;
     if symget('_debug') ge 131 then put '>>weboutEND<<';
   run;
 
-  %if &_debug ge 131 %then %do;
-    data _null_;
-      put '>>weboutEND<<';
-    run;
-  %end;
-
   data _null_;
     rc=fcopy("&fref","&_webout");
   run;
 
 %end;
-
-%mend;
-
-%macro webout(action,ds,_webout=_webout,fref=_temp);
-
-  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
 
 %mend;/**
   @file
@@ -7122,6 +7248,8 @@ data _null_;
   put '    data &&_webin_name&i; ';
   put '      infile indata firstobs=2 dsd termstr=crlf ; ';
   put '      input &input_statement; ';
+  put '      if _n_=1 then putlog "&input_statement"; ';
+  put '      putlog _infile_; ';
   put '    run; ';
   put '  %end; ';
   put '  /* setup json */ ';
@@ -7180,13 +7308,10 @@ data _null_;
   put '%end; ';
   put ' ';
   put '%mend; ';
-  put ' ';
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
-  put ' ';
-  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
-  put ' ';
-  put '%mend; ';
 /* WEBOUT END */
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
+  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%mend;';
   put '%webout(OPEN)';
 run;
 
@@ -8038,6 +8163,8 @@ filename &fref2 clear;
     data &&_webin_name&i;
       infile indata firstobs=2 dsd termstr=crlf ;
       input &input_statement;
+      if _n_=1 then putlog "&input_statement";
+      putlog _infile_;
     run;
   %end;
   /* setup json */
@@ -8096,12 +8223,7 @@ filename &fref2 clear;
 %end;
 
 %mend;
-
-%macro webout(action,ds,_webout=_webout,fref=_temp);
-
-  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
-
-%mend;/**
+/**
   @file ml_json2sas.sas
   @brief Creates the json2sas.lua file
   @details Writes json2sas.lua to the work directory

@@ -1,5 +1,5 @@
 /**
-  @file
+  @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
   @details This macro creates a Type 2 Stored Process with the macropeople
     mm_webout macro included as pre-code.
@@ -113,9 +113,6 @@ data _null_;
   put '    platform compatibility.  It may be removed if your use case does not involve ';
   put '    SAS Viya. ';
   put ' ';
-  put '  <h4> Dependencies </h4> ';
-  put '  @li mm_getstpcode.sas ';
-  put ' ';
   put '  @param in= provide path or fileref to input csv ';
   put '  @param out= output path or fileref to output csv ';
   put '  @param qchar= quote char - hex code 22 is the double quote. ';
@@ -127,7 +124,7 @@ data _null_;
   put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
   put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %upcase(&_debug)=LOG %then %do; ';
   put '    options mprint notes; ';
   put '  %end; ';
   put ' ';
@@ -154,7 +151,7 @@ data _null_;
   put '  %end; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
-  put '    if symget(''_debug'') ge 131 then put ''>>weboutBEGIN<<''; ';
+  put '    if upcase(symget(''_debug''))=''LOG'' then put ''>>weboutBEGIN<<''; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''", "data":{''; ';
   put '  run; ';
   put ' ';
@@ -202,12 +199,6 @@ data _null_;
   put '    if symget(''_debug'') ge 131 then put ''>>weboutEND<<''; ';
   put '  run; ';
   put ' ';
-  put '  %if &_debug ge 131 %then %do; ';
-  put '    data _null_; ';
-  put '      put ''>>weboutEND<<''; ';
-  put '    run; ';
-  put '  %end; ';
-  put ' ';
   put '  data _null_; ';
   put '    rc=fcopy("&fref","&_webout"); ';
   put '  run; ';
@@ -215,13 +206,10 @@ data _null_;
   put '%end; ';
   put ' ';
   put '%mend; ';
-  put ' ';
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp); ';
-  put ' ';
-  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref) ';
-  put ' ';
-  put '%mend; ';
 /* WEBOUT END */
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
+  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%mend;';
   put '%webout(OPEN)';
 run;
 

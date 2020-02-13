@@ -60,6 +60,8 @@
     data &&_webin_name&i;
       infile indata firstobs=2 dsd termstr=crlf ;
       input &input_statement;
+      if _n_=1 then putlog "&input_statement";
+      putlog _infile_;
     run;
   %end;
   /* setup json */
@@ -116,11 +118,5 @@
   run;
 
 %end;
-
-%mend;
-
-%macro webout(action,ds,_webout=_webout,fref=_temp);
-
-  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)
 
 %mend;
