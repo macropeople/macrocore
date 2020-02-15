@@ -2,31 +2,26 @@
   @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
   @details This macro creates a Type 2 Stored Process with the macropeople
-    mm_webout macro included as pre-code.
+mm_webout macro included as pre-code.
+Usage:
 
-    Usage:
-<code>
+    %* compile macros ;
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
 
-* compile macros ;
-filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-%inc mc;
-
-* parmcards lets us write to a text file from open code ;
-filename ft15f001 temp;
-parmcards4;
-    * do some sas, any inputs are now already WORK tables;
-    data example1 example2;
-      set sashelp.class;
-    run;
-    * send data back;
-    %webout(ARR,example1) * Array format, fast, suitable for large tables ;
-    %webout(OBJ,example2) * Object format, easier to work with ;
-    %webout(CLOSE)
-;;;;
-%mm_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
-
-</code>
-
+    %* parmcards lets us write to a text file from open code ;
+    filename ft15f001 temp;
+    parmcards4;
+        %* do some sas, any inputs are now already WORK tables;
+        data example1 example2;
+          set sashelp.class;
+        run;
+        %* send data back;
+        %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+        %webout(OBJ,example2) * Object format, easier to work with ;
+        %webout(CLOSE)
+    ;;;;
+    %mm_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas

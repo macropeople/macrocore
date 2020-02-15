@@ -1,40 +1,37 @@
 /**
   @file mv_createwebservice.sas
   @brief Creates a JobExecution web service if it doesn't already exist
-  @details
+  @details  There are a number of steps involved in building a web service on
+viya:
 
-<code>
-* Step 1 - load macros and obtain refresh token ;
+    %* Step 1 - load macros and obtain refresh token (must be ADMIN);
 
-  filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-  %inc mc;
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+    %let client=new%sysfunc(ranuni(0));
+    %let secret=MySecret;
+    %mv_getapptoken(client_id=&client,client_secret=&secret)
 
-  %let client=new%sysfunc(ranuni(0));
-  %let secret=MySecret;
-  %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %* Step 2 - navigate to the url in the log and paste the access code below;
 
-* Step 2 - navigate to the url in the log and paste the access code below;
+    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
+    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
-  %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-  %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %* Step 3 - Now we can create some code and add it to a web service;
 
-* Step 3 - Now we can create some code and add it to a web service;
+    filename ft15f001 temp;
+    parmcards4;
+        %* do some sas, any inputs are now already WORK tables;
+        data example1 example2;
+          set sashelp.class;
+        run;
+        %* send data back;
+        %webout(ARR,example1) * Array format, fast, suitable for large tables ;
+        %webout(OBJ,example2) * Object format, easier to work with ;
+        %webout(CLOSE)
+    ;;;;
+    %mv_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
 
-filename ft15f001 temp;
-parmcards4;
-    * do some sas, any inputs are now already WORK tables;
-    data example1 example2;
-      set sashelp.class;
-    run;
-    * send data back;
-    %webout(ARR,example1) * Array format, fast, suitable for large tables ;
-    %webout(OBJ,example2) * Object format, easier to work with ;
-    %webout(CLOSE)
-;;;;
-%mv_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
-
-
-</code>
 
   Notes:
     To minimise postgres requests, output json is stored in a temporary file
@@ -401,11 +398,11 @@ data _null_;
   call symputx('url',url);
 run;
 
-%put &sysmacroname: Job &name successfully created in &path;
-%put ;
-%put Check it out here:;
-%put ; %put ;
-%put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put ; %put ;
+%put NOTE: &sysmacroname: Job &name successfully created in &path;
+%put NOTE-;
+%put NOTE- Check it out here:;
+%put NOTE-; %put NOTE-;
+%put NOTE- &url/SASJobExecution?_PROGRAM=&path/&name;
+%put NOTE-; %put NOTE-;
 
 %mend;

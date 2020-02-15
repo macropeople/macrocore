@@ -25,3 +25,24 @@
         * Prefixes: _mm_
 
  */
+
+/*! \dir metax
+ *  \brief Metadata Aware Macros with X commmand
+ *  \details These macros have the following attributes:
+
+        * OS independent
+        * Metadata aware
+        * X command
+        * Prefixes: _mmx_, _mmw_, _mmu_
+
+ */
+
+/*! \dir viya
+ *  \brief Viya macros
+ *  \details These macros have the following attributes:
+
+        * OS independent
+        * No X command
+        * Prefixes: _mv_
+
+ */
