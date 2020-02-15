@@ -66,7 +66,9 @@
   %end;
   /* setup json */
   data _null_;file &fref;
-    if upcase(symget('_debug'))='LOG' then put '>>weboutBEGIN<<';
+  %if %upcase(&_debug)=LOG %then %do;
+    put '>>weboutBEGIN<<';
+  %end;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
   run;
 
@@ -111,7 +113,9 @@
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
-    if upcase(symget('_debug'))='LOG' then put '>>weboutEND<<';
+  %if %upcase(&_debug)=LOG %then %do;
+    put '>>weboutEND<<';
+  %end;
   run;
 
   data _null_;
