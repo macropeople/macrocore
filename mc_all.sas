@@ -7725,11 +7725,11 @@ data _null_;
   call symputx("&refresh_token_var",refresh_token);
 run;
 
-%put ;
-%put &access_token_var=&&&access_token_var;
-%put ;
-%put &refresh_token_var=&&&refresh_token_var;
-%put ;
+%put NOTE:;
+%put NOTE- &access_token_var=&&&access_token_var;
+%put NOTE- ;
+%put NOTE- &refresh_token_var=&&&refresh_token_var;
+%put NOTE- ;
 /*
 libname &libref clear;
 filename &fref1 clear;
@@ -7860,10 +7860,10 @@ run;
 %put GRANT_TYPE=&grant_type;
 %put;
 %if &grant_type=authorization_code %then %do;
-  %put The developer must also register below and select 'openid' to get the grant code:;
-  %put ;
-  %put &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
-  %put; %put;
+  %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
+  %put NOTE- ;
+  %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
+  %put NOTE- ; %put NOTE- ;
 %end;
 
 /* clear refs */
@@ -8172,11 +8172,11 @@ data _null_;
   call symputx("&refresh_token_var",refresh_token);
 run;
 
-%put ;
-%put &access_token_var=&&&access_token_var;
-%put ;
-%put &refresh_token_var=&&&refresh_token_var;
-%put ;
+%put NOTE:;
+%put NOTE- &access_token_var=&&&access_token_var;
+%put NOTE- ;
+%put NOTE- &refresh_token_var=&&&refresh_token_var;
+%put NOTE- ;
 
 libname &libref clear;
 filename &fref1 clear;

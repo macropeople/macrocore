@@ -123,10 +123,10 @@ run;
 %put GRANT_TYPE=&grant_type;
 %put;
 %if &grant_type=authorization_code %then %do;
-  %put The developer must also register below and select 'openid' to get the grant code:;
-  %put ;
-  %put &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
-  %put; %put;
+  %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
+  %put NOTE- ;
+  %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
+  %put NOTE- ; %put NOTE- ;
 %end;
 
 /* clear refs */
