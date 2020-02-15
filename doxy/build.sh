@@ -15,7 +15,7 @@ mkdir $BUILD_FOLDER
 # copy relevant files
 cp -r base $BUILD_FOLDER
 cp -r meta $BUILD_FOLDER
-cp -r xcmd $BUILD_FOLDER
+cp -r metax $BUILD_FOLDER
 cp -r viya $BUILD_FOLDER
 cp -r doxy $BUILD_FOLDER
 cp main.dox $BUILD_FOLDER

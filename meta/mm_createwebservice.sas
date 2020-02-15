@@ -23,7 +23,7 @@ parmcards4;
     %webout(OBJ,example2) * Object format, easier to work with ;
     %webout(CLOSE)
 ;;;;
-%mm_createwebservice(path=/meta/app/subfolder, name=testJob, code=ft15f001)
+%mm_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
 
 </code>
 
@@ -258,7 +258,7 @@ run;
 %put NOTE-;
 %put NOTE- Check it out here:;
 %put NOTE-; %put NOTE-;
-%put NOTE- &url/SASStoredProcess?_PROGRAM=&path/&name;
+%put NOTE- &url.SASStoredProcess?_PROGRAM=&path/&name;
 %put NOTE-; %put NOTE-;
 
 %mend;
