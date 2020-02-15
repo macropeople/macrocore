@@ -7,7 +7,7 @@
 
   Usage:
 
-    %mx_deletemetafolder(loc=/some/meta/folder,user=sasdemo,pass=mars345)
+    %mmx_deletemetafolder(loc=/some/meta/folder,user=sasdemo,pass=mars345)
 
   <h4> Dependencies </h4>
   @li mf_loc.sas
@@ -21,7 +21,7 @@
 
 **/
 
-%macro mx_deletemetafolder(loc=,user=,pass=);
+%macro mmx_deletemetafolder(loc=,user=,pass=);
 
 %local host port path connx_string;
 %let host=%sysfunc(getoption(metaserver));

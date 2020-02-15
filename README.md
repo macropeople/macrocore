@@ -11,23 +11,28 @@ Documentation:  https://macropeople.github.io/macrocore.github.io/files.html
 
 # Components
 
-**Base** library
+**base** library (SAS9/Viya)
  * OS independent
  * Not metadata aware
  * No X command
  * Prefixes:  _mf_, _mp_
 
-**Meta** library
+**meta** library (SAS9 only)
  * OS independent
  * Metadata aware
  * No X command
  * Prefixes: _mm_
 
-**xcmd** library:
+**viya** library (Viya only)
+ * OS independent
+ * No X command
+ * Prefixes: _mv_
+
+**metax** library (SAS9 only)
  * OS specific
  * Metadata aware
  * X command enabled
- * Prefixes: _mw_,_mu_,_mx_
+ * Prefixes: _mmw_,_mmu_,_mmx_
 
 # Installation
 First, download the repo to a location your SAS system can access. Then update your sasautos path to include the components you wish to have available,eg:
