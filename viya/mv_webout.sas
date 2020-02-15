@@ -55,7 +55,7 @@
   %do i=1 %to &_webin_file_count;
     filename indata filesrvc "&&_WEBIN_FILEURI&i";
     data _null_;
-      infile indata;
+      infile indata termstr=crlf ;
       input;
       if _n_=1 then call symputx('input_statement',_infile_);
       list;

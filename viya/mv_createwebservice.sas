@@ -235,7 +235,7 @@ data _null_;
   put '  %do i=1 %to &_webin_file_count; ';
   put '    filename indata filesrvc "&&_WEBIN_FILEURI&i"; ';
   put '    data _null_; ';
-  put '      infile indata; ';
+  put '      infile indata termstr=crlf ; ';
   put '      input; ';
   put '      if _n_=1 then call symputx(''input_statement'',_infile_); ';
   put '      list; ';
