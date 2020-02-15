@@ -35,10 +35,10 @@
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
 %global _WEBIN_FILE_COUNT _debug _omittextlog;
 %if &action=OPEN %then %do;
-
+  %put &=_omittextlog;
   %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
 
-  %if %upcase(&_omittextlog)=false %then %do;
+  %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
   %end;
 
@@ -57,17 +57,15 @@
     data _null_;
       infile indata;
       input;
-      call symputx('input_statement',_infile_);
-      putlog "&&_webin_name&i input statement: "  _infile_;
-      stop;
+      if _n_=1 then call symputx('input_statement',_infile_);
+      list;
     run;
     data &&_webin_name&i;
       infile indata firstobs=2 dsd termstr=crlf ;
       input &input_statement;
-      if _n_=1 then putlog "&input_statement";
-      putlog _infile_;
     run;
   %end;
+
   /* setup json */
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
