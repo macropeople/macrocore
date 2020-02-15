@@ -1,0 +1,16 @@
+{
+  "name": "macrocore",
+  "version": null,
+  "description": "SAS Macro Library for Application Development",
+  "keywords": [
+    "sas"
+  ],
+  "author": "Allan Bowe <support@macropeople.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/macropeople/macrocore"
+  },
+  "dependencies": {
+    "standard-version": "^7.1.0"
+  }
+}
