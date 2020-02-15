@@ -40,7 +40,7 @@
 %global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
   %if %upcase(&_debug)=LOG %then %do;
-    options mprint notes;
+    options mprint notes mprintnest;
   %end;
 
   %let _webin_file_count=%eval(&_webin_file_count+0);

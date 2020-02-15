@@ -33,10 +33,14 @@
 
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
-
+%global _WEBIN_FILE_COUNT _debug _omittextlog;
 %if &action=OPEN %then %do;
-  %global _WEBIN_FILE_COUNT;
+
   %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+
+  %if %upcase(&_omittextlog)=false %then %do;
+    options mprint notes mprintnest;
+  %end;
 
   /* setup webout */
   filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";

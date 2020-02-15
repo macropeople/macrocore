@@ -4490,6 +4490,7 @@ parmcards4;
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas
+  @li mm_getwebappsrvprops.sas
   @li mf_getuser.sas
 
 
@@ -4585,7 +4586,7 @@ data _null_;
   put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
   put '  %if %upcase(&_debug)=LOG %then %do; ';
-  put '    options mprint notes; ';
+  put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
   put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
@@ -4705,6 +4706,20 @@ run;
   ,mDebug=&mdebug
   ,server=&server
   ,stptype=2)
+
+/* find the web app url */
+%mm_getwebappsrvprops(outds= props)
+data _null_;
+  set props(where=(name='webappsrv.server.url'));
+  call symputx('url',value);
+run;
+
+%put NOTE: &sysmacroname: STP &name successfully created in &path;
+%put NOTE-;
+%put NOTE- Check it out here:;
+%put NOTE-; %put NOTE-;
+%put NOTE- &url/SASStoredProcess?_PROGRAM=&path/&name;
+%put NOTE-; %put NOTE-;
 
 %mend;
 /**
@@ -6214,7 +6229,7 @@ libname _XML_ clear;
   @file
   @brief Retrieves properties of the SAS web app server
   @description usage:
-  
+
     %mm_getwebappsrvprops(outds= some_ds)
     data _null_;
       set some_ds(where=(name='webappsrv.server.url'));
@@ -6233,6 +6248,7 @@ libname _XML_ clear;
 
   @version 9.4
   @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
 
 **/
 
@@ -6249,11 +6265,11 @@ data _null_ ;
    put '<Reposid>$METAREPOSITORY</Reposid>' ;
    put '<Type>TextStore</Type>' ;
    put '<NS>SAS</NS>' ;
-    put '<Flags>388</Flags>' ; 
+    put '<Flags>388</Flags>' ;
    put '<Options>' ;
     put '<XMLSelect search="TextStore[@Name='@@;
     put "'Public Configuration Properties']" @@;
-     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ; 
+     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ;
    put '"/>';
    put '<Templates>' ;
    put '<TextStore StoredText="">' ;
@@ -6817,7 +6833,7 @@ run;
 %global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
   %if %upcase(&_debug)=LOG %then %do;
-    options mprint notes;
+    options mprint notes mprintnest;
   %end;
 
   %let _webin_file_count=%eval(&_webin_file_count+0);
@@ -7291,10 +7307,14 @@ data _null_;
   put ' ';
   put '**/ ';
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
-  put ' ';
+  put '%global _WEBIN_FILE_COUNT _debug _omittextlog; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %global _WEBIN_FILE_COUNT; ';
+  put ' ';
   put '  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0); ';
+  put ' ';
+  put '  %if %upcase(&_omittextlog)=false %then %do; ';
+  put '    options mprint notes mprintnest; ';
+  put '  %end; ';
   put ' ';
   put '  /* setup webout */ ';
   put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json"; ';
@@ -8206,10 +8226,14 @@ filename &fref2 clear;
 
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
-
+%global _WEBIN_FILE_COUNT _debug _omittextlog;
 %if &action=OPEN %then %do;
-  %global _WEBIN_FILE_COUNT;
+
   %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+
+  %if %upcase(&_omittextlog)=false %then %do;
+    options mprint notes mprintnest;
+  %end;
 
   /* setup webout */
   filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";

@@ -2,7 +2,7 @@
   @file
   @brief Retrieves properties of the SAS web app server
   @description usage:
-  
+
     %mm_getwebappsrvprops(outds= some_ds)
     data _null_;
       set some_ds(where=(name='webappsrv.server.url'));
@@ -21,6 +21,7 @@
 
   @version 9.4
   @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
 
 **/
 
@@ -37,11 +38,11 @@ data _null_ ;
    put '<Reposid>$METAREPOSITORY</Reposid>' ;
    put '<Type>TextStore</Type>' ;
    put '<NS>SAS</NS>' ;
-    put '<Flags>388</Flags>' ; 
+    put '<Flags>388</Flags>' ;
    put '<Options>' ;
     put '<XMLSelect search="TextStore[@Name='@@;
     put "'Public Configuration Properties']" @@;
-     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ; 
+     put '[Objects/SoftwareComponent[@ClassIdentifier=''webappsrv'']]' ;
    put '"/>';
    put '<Templates>' ;
    put '<TextStore StoredText="">' ;

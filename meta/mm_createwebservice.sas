@@ -30,6 +30,7 @@ parmcards4;
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas
+  @li mm_getwebappsrvprops.sas
   @li mf_getuser.sas
 
 
@@ -125,7 +126,7 @@ data _null_;
   put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
   put '  %if %upcase(&_debug)=LOG %then %do; ';
-  put '    options mprint notes; ';
+  put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
   put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
@@ -245,5 +246,19 @@ run;
   ,mDebug=&mdebug
   ,server=&server
   ,stptype=2)
+
+/* find the web app url */
+%mm_getwebappsrvprops(outds= props)
+data _null_;
+  set props(where=(name='webappsrv.server.url'));
+  call symputx('url',value);
+run;
+
+%put NOTE: &sysmacroname: STP &name successfully created in &path;
+%put NOTE-;
+%put NOTE- Check it out here:;
+%put NOTE-; %put NOTE-;
+%put NOTE- &url/SASStoredProcess?_PROGRAM=&path/&name;
+%put NOTE-; %put NOTE-;
 
 %mend;
