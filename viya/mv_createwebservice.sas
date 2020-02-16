@@ -52,6 +52,7 @@ viya:
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
+  @param replace= select YES to replace any existing service in that location
 
 
   @version VIYA V.03.04
@@ -63,6 +64,7 @@ viya:
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
+  @li mv_deletejes.sas
 
 **/
 
@@ -73,6 +75,7 @@ viya:
     ,code=
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=authorization_code
+    ,replace=NO
   );
 /* initial validation checking */
 %mf_abort(iftrue=(%mf_isblank(&path)=1)
@@ -115,7 +118,6 @@ run;
 %local libref1;
 %let libref1=%mf_getuniquelibref();
 libname &libref1 JSON fileref=&fname1;
-%return;
 
 data _null_;
   set &libref1..links;
@@ -141,20 +143,26 @@ run;
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
 
-/* check that job does not already exist in that folder */
-%local libref2;
-%let libref2=%mf_getuniquelibref();
-libname &libref2 JSON fileref=&fname2;
-%local exists; %let exists=0;
-data _null_;
-  set &libref2..items;
-  if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
-    call symputx('exists',1,'l');
-run;
-%mf_abort(iftrue=(&exists=1)
-  ,mac=&sysmacroname
-  ,msg=%str(Job &name already exists in &path)
-)
+%if %upcase(&replace)=YES %then %do;
+  %mv_deletejes(path=&path, name=&name)
+%end;
+%else %do;
+  /* check that job does not already exist in that folder */
+  %local libref2;
+  %let libref2=%mf_getuniquelibref();
+  libname &libref2 JSON fileref=&fname2;
+  %local exists; %let exists=0;
+  data _null_;
+    set &libref2..items;
+    if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
+      call symputx('exists',1,'l');
+  run;
+  %mf_abort(iftrue=(&exists=1)
+    ,mac=&sysmacroname
+    ,msg=%str(Job &name already exists in &path)
+  )
+  libname &libref2 clear;
+%end;
 
 /* set up the body of the request to create the service */
 %local fname3;
@@ -353,7 +361,7 @@ filename &fname3 clear;
 filename &fname4 clear;
 filename &setup clear;
 libname &libref1 clear;
-libname &libref2 clear;
+
 
 /* get the url so we can give a helpful log message */
 %local url;

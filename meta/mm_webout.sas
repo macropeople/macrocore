@@ -4,33 +4,28 @@
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
 
-      %webout(OPEN)
+        %mm_webout(OPEN)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
     following syntax:
 
-      data some datasets; * make some data ;
-      retain some columns;
-      run;
+        data some datasets; * make some data ;
+        retain some columns;
+        run;
 
-      %webout(ARR,some)  * Array format, fast, suitable for large tables ;
-      %webout(OBJ,datasets) * Object format, easier to work with ;
+        %mm_webout(ARR,some)  * Array format, fast, suitable for large tables ;
+        %mm_webout(OBJ,datasets) * Object format, easier to work with ;
 
-     Finally, wrap everything up send some helpful system variables too
+    Finally, wrap everything up send some helpful system variables too
 
-       %webout(CLOSE)
+        %mm_webout(CLOSE)
 
 
-  Notes:
-
-  * The `webout()` macro is a simple wrapper for `mm_webout` to enable cross
-    platform compatibility.  It may be removed if your use case does not involve
-    SAS Viya.
-
-  @param in= provide path or fileref to input csv
-  @param out= output path or fileref to output csv
-  @param qchar= quote char - hex code 22 is the double quote.
+  @param action Either OPEN, ARR, OBJ or CLOSE
+  @param ds The dataset to send back to the frontend
+  @param _webout= fileref for returning the json
+  @param fref= temp fref
 
   @version 9.3
   @author Allan Bowe

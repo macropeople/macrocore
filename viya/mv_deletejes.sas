@@ -103,7 +103,7 @@ libname &libref1a JSON fileref=&fname1a;
 %put Getting object uri from &libref1a..items;
 data _null_;
   set &libref1a..items;
-  if contenttype='jobDefinition' and name='blah' then do;
+  if contenttype='jobDefinition' and name="&name" then do;
     call symputx('uri',uri,'l');
     call symputx('found',1,'l');
   end;

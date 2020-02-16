@@ -21,7 +21,7 @@ Usage:
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
     ;;;;
-    %mm_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
+    %mm_createwebservice(path=/Public/app/common,name=appInit,code=ft15f001,replace=YES)
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas
@@ -39,7 +39,7 @@ Usage:
   @param code= Space seperated fileref(s) of the actual code to be added
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
-
+  @param replace= select YES to replace any existing service in that location
 
   @version 9.2
   @author Allan Bowe
@@ -53,6 +53,7 @@ Usage:
     ,desc=This stp was created automagically by the mm_createwebservice macro
     ,mDebug=0
     ,server=SASApp
+    ,replace=NO
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
@@ -193,6 +194,10 @@ run;
 /* create the metadata folder if not already there */
 %mm_createfolder(path=&path)
 %if &syscc ge 4 %then %return;
+
+%if %upcase(&replace)=YES %then %do;
+  %mm_deletestp(target=&path/&name)
+%end;
 
 /* create the web service */
 %mm_createstp(stpname=&name

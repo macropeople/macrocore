@@ -927,8 +927,7 @@ Usage:
 %mend;/**
   @file mf_isblank.sas
   @brief Checks whether a macro variable is empty (blank)
-  @details
-  Simply performs:
+  @details Simply performs:
 
     %sysevalf(%superq(param)=,boolean)
 
@@ -938,7 +937,6 @@ Usage:
 
   @version 9.2
 **/
-
 
 %macro mf_isblank(param
 )/*/STORE SOURCE*/;
@@ -4487,7 +4485,7 @@ Usage:
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
     ;;;;
-    %mm_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
+    %mm_createwebservice(path=/Public/app/common,name=appInit,code=ft15f001,replace=YES)
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas
@@ -4505,7 +4503,7 @@ Usage:
   @param code= Space seperated fileref(s) of the actual code to be added
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
-
+  @param replace= select YES to replace any existing service in that location
 
   @version 9.2
   @author Allan Bowe
@@ -4519,6 +4517,7 @@ Usage:
     ,desc=This stp was created automagically by the mm_createwebservice macro
     ,mDebug=0
     ,server=SASApp
+    ,replace=NO
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
@@ -4660,6 +4659,10 @@ run;
 %mm_createfolder(path=&path)
 %if &syscc ge 4 %then %return;
 
+%if %upcase(&replace)=YES %then %do;
+  %mm_deletestp(target=&path/&name)
+%end;
+
 /* create the web service */
 %mm_createstp(stpname=&name
   ,filename=&tmpfile
@@ -4789,7 +4792,7 @@ data _null_;
   call symputx('stpuri',uri,'l');
 run;
 %if &cmtype ne ClassifierMap %then %do;
-  %put WARNING: No Stored Process found at &target;
+  %put NOTE: No Stored Process found at &target;
   %return;
 %end;
 
@@ -6760,33 +6763,28 @@ run;
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
 
-      %webout(OPEN)
+        %mm_webout(OPEN)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
     following syntax:
 
-      data some datasets; * make some data ;
-      retain some columns;
-      run;
+        data some datasets; * make some data ;
+        retain some columns;
+        run;
 
-      %webout(ARR,some)  * Array format, fast, suitable for large tables ;
-      %webout(OBJ,datasets) * Object format, easier to work with ;
+        %mm_webout(ARR,some)  * Array format, fast, suitable for large tables ;
+        %mm_webout(OBJ,datasets) * Object format, easier to work with ;
 
-     Finally, wrap everything up send some helpful system variables too
+    Finally, wrap everything up send some helpful system variables too
 
-       %webout(CLOSE)
+        %mm_webout(CLOSE)
 
 
-  Notes:
-
-  * The `webout()` macro is a simple wrapper for `mm_webout` to enable cross
-    platform compatibility.  It may be removed if your use case does not involve
-    SAS Viya.
-
-  @param in= provide path or fileref to input csv
-  @param out= output path or fileref to output csv
-  @param qchar= quote char - hex code 22 is the double quote.
+  @param action Either OPEN, ARR, OBJ or CLOSE
+  @param ds The dataset to send back to the frontend
+  @param _webout= fileref for returning the json
+  @param fref= temp fref
 
   @version 9.3
   @author Allan Bowe
@@ -7105,6 +7103,7 @@ viya:
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
+  @param replace= select YES to replace any existing service in that location
 
 
   @version VIYA V.03.04
@@ -7116,6 +7115,7 @@ viya:
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
+  @li mv_deletejes.sas
 
 **/
 
@@ -7126,6 +7126,7 @@ viya:
     ,code=
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=authorization_code
+    ,replace=NO
   );
 /* initial validation checking */
 %mf_abort(iftrue=(%mf_isblank(&path)=1)
@@ -7168,7 +7169,6 @@ run;
 %local libref1;
 %let libref1=%mf_getuniquelibref();
 libname &libref1 JSON fileref=&fname1;
-%return;
 
 data _null_;
   set &libref1..links;
@@ -7194,20 +7194,25 @@ run;
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
 
-/* check that job does not already exist in that folder */
-%local libref2;
-%let libref2=%mf_getuniquelibref();
-libname &libref2 JSON fileref=&fname2;
-%local exists; %let exists=0;
-data _null_;
-  set &libref2..items;
-  if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
-    call symputx('exists',1,'l');
-run;
-%mf_abort(iftrue=(&exists=1)
-  ,mac=&sysmacroname
-  ,msg=%str(Job &name already exists in &path)
-)
+%if %upcase(&replace)=YES %then %do;
+  %mv_deletejes(path=&path, name=&name)
+%end;
+%else %do;
+  /* check that job does not already exist in that folder */
+  %local libref2;
+  %let libref2=%mf_getuniquelibref();
+  libname &libref2 JSON fileref=&fname2;
+  %local exists; %let exists=0;
+  data _null_;
+    set &libref2..items;
+    if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
+      call symputx('exists',1,'l');
+  run;
+  %mf_abort(iftrue=(&exists=1)
+    ,mac=&sysmacroname
+    ,msg=%str(Job &name already exists in &path)
+  )
+%end;
 
 /* set up the body of the request to create the service */
 %local fname3;
@@ -7534,7 +7539,7 @@ libname &libref1a JSON fileref=&fname1a;
 %put Getting object uri from &libref1a..items;
 data _null_;
   set &libref1a..items;
-  if contenttype='jobDefinition' and name='blah' then do;
+  if contenttype='jobDefinition' and name="&name" then do;
     call symputx('uri',uri,'l');
     call symputx('found',1,'l');
   end;
@@ -8257,29 +8262,25 @@ filename &fref2 clear;
   @details This macro should be added to the start of each Job Execution
   Service, **immediately** followed by a call to:
 
-      %webout(OPEN)
+        %mv_webout(OPEN)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
     following syntax:
 
-      data some datasets; * make some data ;
-      retain some columns;
-      run;
+        data some datasets; * make some data ;
+        retain some columns;
+        run;
 
-      %webout(ARR,some)  * Array format, fast, suitable for large tables ;
-      %webout(OBJ,datasets) * Object format, easier to work with ;
-      %webout(CLOSE)
+        %mv_webout(ARR,some)  * Array format, fast, suitable for large tables ;
+        %mv_webout(OBJ,datasets) * Object format, easier to work with ;
+        %mv_webout(CLOSE)
 
-  Notes:
 
-  * The `webout()` macro is a simple wrapper for `mv_webout` to enable cross
-    platform compatibility.  It may be removed if your use case does not involve
-    SAS 9.
-
-  @param in= provide path or fileref to input csv
-  @param out= output path or fileref to output csv
-  @param qchar= quote char - hex code 22 is the double quote.
+  @param action Either OPEN, ARR, OBJ or CLOSE
+  @param ds The dataset to send back to the frontend
+  @param _webout= fileref for returning the json
+  @param fref= temp fref
 
   @version Viya 3.3
   @author Allan Bowe
