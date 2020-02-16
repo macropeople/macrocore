@@ -38,8 +38,11 @@ for file in files:
         if line=='/* WEBOUT BEGIN */\n':
             delrow=1
             outfile.write('/* WEBOUT BEGIN */\n')
+            stripcomment=1
             for w in webout:
-                outfile.write("  put '" + w.rstrip().replace("'","''") + " ';\n")
+                if w=='**/\n': stripcomment=0
+                elif stripcomment==0:
+                    outfile.write("  put '" + w.rstrip().replace("'","''") + " ';\n")
         elif delrow==1 and line=='/* WEBOUT END */\n':
                 delrow=0
                 outfile.write('/* WEBOUT END */\n')
