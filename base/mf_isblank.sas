@@ -1,8 +1,7 @@
 /**
   @file mf_isblank.sas
   @brief Checks whether a macro variable is empty (blank)
-  @details
-  Simply performs:
+  @details Simply performs:
 
     %sysevalf(%superq(param)=,boolean)
 
@@ -12,7 +11,6 @@
 
   @version 9.2
 **/
-
 
 %macro mf_isblank(param
 )/*/STORE SOURCE*/;
