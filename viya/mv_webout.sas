@@ -37,6 +37,10 @@
 %if &action=OPEN %then %do;
   %put &=_omittextlog;
   %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
+  %if &_WEBIN_FILE_COUNT=1 %then %do;
+    %let _WEBIN_FILEURI1=&_WEBIN_FILEURI;
+    %let _webin_name1=&_webin_name;
+  %end;
 
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;

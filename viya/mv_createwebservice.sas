@@ -115,6 +115,8 @@ run;
 %local libref1;
 %let libref1=%mf_getuniquelibref();
 libname &libref1 JSON fileref=&fname1;
+%return;
+
 data _null_;
   set &libref1..links;
   if rel='members' then call symputx('membercheck',quote(trim(href)),'l');
@@ -399,8 +401,8 @@ run;
 %put NOTE: &sysmacroname: Job &name successfully created in &path;
 %put NOTE-;
 %put NOTE- Check it out here:;
-%put NOTE-; %put NOTE-;
+%put NOTE-;
 %put NOTE- &url/SASJobExecution?_PROGRAM=&path/&name;
-%put NOTE-; %put NOTE-;
+%put NOTE-;
 
 %mend;
