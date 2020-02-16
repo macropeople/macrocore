@@ -5,7 +5,6 @@
 viya:
 
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
-
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
     %let client=new%sysfunc(ranuni(0));
@@ -13,12 +12,10 @@ viya:
     %mv_getapptoken(client_id=&client,client_secret=&secret)
 
     %* Step 2 - navigate to the url in the log and paste the access code below;
-
     %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
     %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
     %* Step 3 - Now we can create some code and add it to a web service;
-
     filename ft15f001 temp;
     parmcards4;
         %* do some sas, any inputs are now already WORK tables;
@@ -30,7 +27,7 @@ viya:
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
     ;;;;
-    %mv_createwebservice(path=/Public/app/common, name=appInit, code=ft15f001)
+    %mv_createwebservice(path=/Public/app/common,name=appInit,code=ft15f001,replace=YES)
 
 
   Notes:
