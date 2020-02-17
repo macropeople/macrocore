@@ -118,10 +118,11 @@ run;
       else put ',' name @@;
       if last.indxname then put ');';
     run;
-
+/*
     ods output IntegrityConstraints=ic;
     proc contents data=testali out2=info;
     run;
+    */
   %end;
 %end;
 %else %if &flavour=TSQL %then %do;
@@ -130,7 +131,7 @@ run;
   proc sql noprint;
   select sysvalue into: schema
     from dictionary.libnames
-    where libname="&libref";
+    where libname="&libref" and engine='SQLSVR';
   %let schema=&schema; /* trim it  */
 
   %do x=1 %to %sysfunc(countw(&dsnlist));
