@@ -7,29 +7,20 @@
 
   Usage:
 
-    %mp_getddl(SOMELIB)  * execute all libs ;
+      data test(index=(pk=(x y)/unique /nomiss));
+        x=1;
+        y='blah';
+        label x='blah';
+      run;
+      proc sql; describe table &syslast;
 
+      %mp_getddl(work,test,flavour=tsql)
 
   @param lib libref of the library to create DDL for.  Should be assigned.
   @param ds dataset to create ddl for
   @param fref= the fileref to which to write the DDL.  If not preassigned, will
     be assigned to TEMP.
-  @param flavour= The type of DDL to create (default=SAS). Supported=SQLSERVER
-
-  Testing:
-
-    data test(index=(pk=(x y)/unique /nomiss));
-      x=1;
-      y='blah';
-      label x='blah';
-    run;
-    proc sql; describe table &syslast;
-
-    %mp_getddl(work,test,flavour=tsql)
-
-data _null_;
-  infile getddl;
-  input; list;run;
+  @param flavour= The type of DDL to create (default=SAS). Supported=TSQL
 
   @version 9.3
   @author Allan Bowe
