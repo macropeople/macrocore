@@ -21,6 +21,7 @@
   @param fref= the fileref to which to write the DDL.  If not preassigned, will
     be assigned to TEMP.
   @param flavour= The type of DDL to create (default=SAS). Supported=TSQL
+  @param showlog= Set to YES to show the DDL in the log
 
   @version 9.3
   @author Allan Bowe
@@ -28,7 +29,7 @@
 
 **/
 
-%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS
+%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS,showlog=NO
 )/*/STORE SOURCE*/;
 
 /* check fileref is assigned */
@@ -200,16 +201,18 @@ run;
       put "  ,@level0type=N'SCHEMA',@level0name=N'&schema' ";
       put "  ,@level1type=N'TABLE',@level1name=N'&curds'";
       put "  ,@level2type=N'COLUMN',@level1name=" nm ;
-      if end=last then put 'GO';
+      if last then put 'GO';
     run;
   %end;
 %end;
 
-options ps=max;
-data _null_;
-  infile &fref;
-  input;
-  putlog _infile_;
-run;
+%if &showlog=YES %then %do;
+  options ps=max;
+  data _null_;
+    infile &fref;
+    input;
+    putlog _infile_;
+  run;
+%end;
 
 %mend;
