@@ -29,17 +29,60 @@
 
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
-%global _WEBIN_FILE_COUNT _debug _omittextlog;
+%global _debug _omittextlog;
 %if &action=OPEN %then %do;
   %put &=_omittextlog;
-  %let _WEBIN_FILE_COUNT=%eval(&_WEBIN_FILE_COUNT+0);
-  %if &_WEBIN_FILE_COUNT=1 %then %do;
-    %let _WEBIN_FILEURI1=&_WEBIN_FILEURI;
-    %let _webin_name1=&_webin_name;
-  %end;
 
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
+  %end;
+
+  %if %symexist(sasjs_tables) %then %do;
+    /* get the data and write to a file */
+    filename _sasjs "%sysfunc(pathname(work))/sasjs.lua";
+    data _null_;
+      file _sasjs;
+      put 's=sas.symget("sasjs_tables")';
+      put 'tablist=s:sub(8,s:len()-1)';
+      put 't=sas.countw(tablist)';
+      put 'for i = 1,t ';
+      put 'do ';
+      put '  tab=sas.scan(tablist,i)';
+      put '  sasdata=""';
+      put '  if (sas.symexist("sasjs"..i.."data0")==0)';
+      put '  then';
+      put '    s=sas.symget("sasjs"..i.."data")';
+      put '    sasdata=s:sub(8,s:len()-1)';
+      put '  else';
+      put '    for d = 1, sas.symget("sasjs"..i.."data0")';
+      put '    do';
+      put '      s=sas.symget("sasjs"..i.."data"..d)';
+      put '      sasdata=sasdata..s:sub(8,s:len()-1)';
+      put '    end';
+      put '  end';
+      put '  file = io.open(sas.pathname("work").."/"..tab..".csv", "a")';
+      put '  io.output(file)';
+      put '  io.write(sasdata)';
+      put '  io.close(file)';
+      put 'end';
+    run;
+    %inc _sasjs;
+
+    /* now read in the data */
+    %local i;
+    %do i=1 %to %sysfunc(countw(&sasjs_tables));
+      %local table; %let table=%scan(&sasjs_tables,&i);
+      data _null_;
+        infile "%sysfunc(pathname(work))/&table..csv" termstr=crlf ;
+        input;
+        if _n_=1 then call symputx('input_statement',_infile_);
+        list;
+      run;
+      data &table;
+        infile "%sysfunc(pathname(work))/&table..csv" firstobs=2 dsd termstr=crlf;
+        input &input_statement;
+      run;
+    %end;
   %end;
 
   /* setup webout */
@@ -48,22 +91,6 @@
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
     filename &fref temp lrecl=999999;
-  %end;
-
-  /* now read in the data */
-  %local i;
-  %do i=1 %to &_webin_file_count;
-    filename indata filesrvc "&&_WEBIN_FILEURI&i";
-    data _null_;
-      infile indata termstr=crlf ;
-      input;
-      if _n_=1 then call symputx('input_statement',_infile_);
-      list;
-    run;
-    data &&_webin_name&i;
-      infile indata firstobs=2 dsd termstr=crlf ;
-      input &input_statement;
-    run;
   %end;
 
   /* setup json */

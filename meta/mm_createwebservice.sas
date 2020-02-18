@@ -78,7 +78,7 @@ Usage:
  */
 data _null_;
   file "&work/&tmpfile" lrecl=3000 ;
-  put "/* Created on %sysfunc(today(),datetime19.) by %mf_getuser() */";
+  put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
   put '%global _webin_file_count _program _debug; ';
