@@ -42,6 +42,12 @@
     data _null_;
       file _sasjs;
       put 's=sas.symget("sasjs_tables")';
+      put 'if(s:sub(1,7) == "%nrstr(")';
+      put 'then';
+      put ' tablist=s:sub(8,s:len()-1)';
+      put 'else';
+      put ' tablist=s';
+      put 'end';
       put 'tablist=s:sub(8,s:len()-1)';
       put 't=sas.countw(tablist)';
       put 'for i = 1,t ';
@@ -100,17 +106,15 @@
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
 
-  %global sasjs_tabcnt;
-  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
-
   data _null_;file &fref mod;
     put ', "' "%lowcase(&ds)" '" :{"data":[';
 
-  proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+  proc sort data=sashelp.vcolumn
+      (where=(upcase(libname)='WORK' & upcase(memname)="%upcase(&ds)"))
     out=_data_;
     by varnum;
 
-  data _null_; set &syslast end=last;
+  data _null_; set _last_ end=last;
     call symputx(cats('name',_n_),name,'l');
     call symputx(cats('type',_n_),type,'l');
     if last then call symputx('cols',_n_,'l');

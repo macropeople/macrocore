@@ -7274,6 +7274,12 @@ data _null_;
   put '    data _null_; ';
   put '      file _sasjs; ';
   put '      put ''s=sas.symget("sasjs_tables")''; ';
+  put '      put ''if(s:sub(1,7) == "%nrstr(")''; ';
+  put '      put ''then''; ';
+  put '      put '' tablist=s:sub(8,s:len()-1)''; ';
+  put '      put ''else''; ';
+  put '      put '' tablist=s''; ';
+  put '      put ''end''; ';
   put '      put ''tablist=s:sub(8,s:len()-1)''; ';
   put '      put ''t=sas.countw(tablist)''; ';
   put '      put ''for i = 1,t ''; ';
@@ -7332,17 +7338,15 @@ data _null_;
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  options validvarname=upcase; ';
   put ' ';
-  put '  %global sasjs_tabcnt; ';
-  put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
-  put ' ';
   put '  data _null_;file &fref mod; ';
   put '    put '', "'' "%lowcase(&ds)" ''" :{"data":[''; ';
   put ' ';
-  put '  proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
+  put '  proc sort data=sashelp.vcolumn ';
+  put '      (where=(upcase(libname)=''WORK'' & upcase(memname)="%upcase(&ds)")) ';
   put '    out=_data_; ';
   put '    by varnum; ';
   put ' ';
-  put '  data _null_; set &syslast end=last; ';
+  put '  data _null_; set _last_ end=last; ';
   put '    call symputx(cats(''name'',_n_),name,''l''); ';
   put '    call symputx(cats(''type'',_n_),type,''l''); ';
   put '    if last then call symputx(''cols'',_n_,''l''); ';
@@ -8357,6 +8361,12 @@ filename &fref2 clear;
     data _null_;
       file _sasjs;
       put 's=sas.symget("sasjs_tables")';
+      put 'if(s:sub(1,7) == "%nrstr(")';
+      put 'then';
+      put ' tablist=s:sub(8,s:len()-1)';
+      put 'else';
+      put ' tablist=s';
+      put 'end';
       put 'tablist=s:sub(8,s:len()-1)';
       put 't=sas.countw(tablist)';
       put 'for i = 1,t ';
@@ -8415,17 +8425,15 @@ filename &fref2 clear;
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
 
-  %global sasjs_tabcnt;
-  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
-
   data _null_;file &fref mod;
     put ', "' "%lowcase(&ds)" '" :{"data":[';
 
-  proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+  proc sort data=sashelp.vcolumn
+      (where=(upcase(libname)='WORK' & upcase(memname)="%upcase(&ds)"))
     out=_data_;
     by varnum;
 
-  data _null_; set &syslast end=last;
+  data _null_; set _last_ end=last;
     call symputx(cats('name',_n_),name,'l');
     call symputx(cats('type',_n_),type,'l');
     if last then call symputx('cols',_n_,'l');
