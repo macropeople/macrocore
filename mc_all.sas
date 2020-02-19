@@ -4659,8 +4659,8 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
-  put '  %mm_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%macro webout(action,ds);';
+  put '  %mm_webout(&action,ds=&ds)';
   put '%mend;';
   put '%webout(OPEN)';
 run;
