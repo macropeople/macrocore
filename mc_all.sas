@@ -4569,40 +4569,35 @@ data _null_;
   file "&work/&tmpfile" lrecl=3000 ;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
-  put '%macro mm_webout(action,ds=,_webout=_webout,fref=_temp); ';
+  put '%macro mm_webout(action,ds); ';
   put '%global _webin_file_count _program _debug; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %if %upcase(&_debug)=LOG %then %do; ';
+  put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
   put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
-  put '  /* setup temp ref */ ';
-  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
-  put '    filename &fref temp lrecl=999999; ';
-  put '  %end; ';
   put '  /* now read in the data */ ';
   put '  %local i; ';
   put '  %do i=1 %to &_webin_file_count; ';
-  put '    filename indata filesrvc "&&_WEBIN_FILEURI&i"; ';
+  put '    filename indata "&&_WEBIN_FILEURI&i"; ';
   put '    data _null_; ';
   put '      infile indata; ';
   put '      input; ';
   put '      call symputx(''input_statement'',_infile_); ';
   put '      putlog "&&_webin_name&i input statement: "  _infile_; ';
   put '      stop; ';
-  put '    run; ';
   put '    data &&_webin_name&i; ';
   put '      infile indata firstobs=2 dsd termstr=crlf ; ';
   put '      input &input_statement; ';
   put '    run; ';
   put '  %end; ';
   put '  /* setup json */ ';
-  put '  data _null_;file &fref; ';
-  put '  %if %upcase(&_debug)=LOG %then %do; ';
+  put '  data _null_;file _webout; ';
+  put '  %if &_debug ge 131 %then %do; ';
   put '    put ''>>weboutBEGIN<<''; ';
   put '  %end; ';
-  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''", "data":{''; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -4610,25 +4605,32 @@ data _null_;
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  options validvarname=upcase; ';
   put ' ';
-  put '  %global sasjs_tabcnt; ';
-  put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
+  put '  data _null_;file _webout; ';
+  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":[''; ';
   put ' ';
-  put '  data _null_;file &fref mod; ';
-  put '    if &sasjs_tabcnt=1 then put ''"'' "&ds" ''" :''; ';
-  put '    else put '', "'' "&ds" ''" :''; ';
-  put '  run; ';
+  put '  proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
+  put '    out=_data_; ';
+  put '    by varnum; ';
   put ' ';
-  put '  filename _web2 temp lrecl=999999; ';
-  put '  %local nokeys; ';
-  put '  %if &action=ARR %then %let nokeys=nokeys; ';
-  put '  proc json out=_web2; ';
-  put '    export &ds / nosastags &nokeys; ';
-  put '  run; ';
-  put '  data _null_; ';
-  put '    file &fref mod; ';
-  put '    infile _web2 ; ';
-  put '    input; ';
-  put '    put _infile_; ';
+  put '  data _null_; set &syslast end=last; ';
+  put '    call symputx(cats(''name'',_n_),name,''l''); ';
+  put '    call symputx(cats(''type'',_n_),type,''l''); ';
+  put '    if last then call symputx(''cols'',_n_,''l''); ';
+  put ' ';
+  put '  data _null_; file _webout dsd; ';
+  put '    set &ds; ';
+  put '    if _n_>1 then put "," @; ';
+  put '    put ';
+  put '    %if &action=ARR %then "[" ; %else "{" ; ';
+  put '    %local c; %do c=1 %to &cols; ';
+  put '      %if &action=OBJ %then """&&name&c"":" ; ';
+  put '       &&name&c ';
+  put '      %if &&type&c=char %then  ~ ; ';
+  put '    %end; ';
+  put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put ' ';
+  put '  data _null_; file _webout; ';
+  put '    put "]}"; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -4636,9 +4638,9 @@ data _null_;
   put '%else %if &action=CLOSE %then %do; ';
   put ' ';
   put '  /* close off json */ ';
-  put '  data _null_;file &fref mod; ';
+  put '  data _null_;file _webout mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
-  put '    put ''},"SYSUSERID" : "'' "&sysuserid." ''",''; ';
+  put '    put '',"SYSUSERID" : "'' "&sysuserid." ''",''; ';
   put '    _METAUSER=quote(trim(symget(''_METAUSER''))); ';
   put '    put ''"_METAUSER": '' _METAUSER '',''; ';
   put '    _METAPERSON=quote(trim(symget(''_METAPERSON''))); ';
@@ -4646,13 +4648,9 @@ data _null_;
   put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
   put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
-  put '  %if %upcase(&_debug)=LOG %then %do; ';
+  put '  %if &_debug ge 131 %then %do; ';
   put '    put ''>>weboutEND<<''; ';
   put '  %end; ';
-  put '  run; ';
-  put ' ';
-  put '  data _null_; ';
-  put '    rc=fcopy("&fref","&_webout"); ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -6808,47 +6806,41 @@ run;
 
   @param action Either OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
-  @param _webout= fileref for returning the json
   @param fref= temp fref
 
   @version 9.3
   @author Allan Bowe
 
 **/
-%macro mm_webout(action,ds=,_webout=_webout,fref=_temp);
+%macro mm_webout(action,ds);
 %global _webin_file_count _program _debug;
 %if &action=OPEN %then %do;
-  %if %upcase(&_debug)=LOG %then %do;
+  %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
 
   %let _webin_file_count=%eval(&_webin_file_count+0);
-  /* setup temp ref */
-  %if %upcase(&fref) ne _WEBOUT %then %do;
-    filename &fref temp lrecl=999999;
-  %end;
   /* now read in the data */
   %local i;
   %do i=1 %to &_webin_file_count;
-    filename indata filesrvc "&&_WEBIN_FILEURI&i";
+    filename indata "&&_WEBIN_FILEURI&i";
     data _null_;
       infile indata;
       input;
       call symputx('input_statement',_infile_);
       putlog "&&_webin_name&i input statement: "  _infile_;
       stop;
-    run;
     data &&_webin_name&i;
       infile indata firstobs=2 dsd termstr=crlf ;
       input &input_statement;
     run;
   %end;
   /* setup json */
-  data _null_;file &fref;
-  %if %upcase(&_debug)=LOG %then %do;
+  data _null_;file _webout;
+  %if &_debug ge 131 %then %do;
     put '>>weboutBEGIN<<';
   %end;
-    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
 
 %end;
@@ -6856,25 +6848,32 @@ run;
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
 
-  %global sasjs_tabcnt;
-  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
+  data _null_;file _webout;
+    put ', "' "%lowcase(&ds)" '" :{"data":[';
 
-  data _null_;file &fref mod;
-    if &sasjs_tabcnt=1 then put '"' "&ds" '" :';
-    else put ', "' "&ds" '" :';
-  run;
+  proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+    out=_data_;
+    by varnum;
 
-  filename _web2 temp lrecl=999999;
-  %local nokeys;
-  %if &action=ARR %then %let nokeys=nokeys;
-  proc json out=_web2;
-    export &ds / nosastags &nokeys;
-  run;
-  data _null_;
-    file &fref mod;
-    infile _web2 ;
-    input;
-    put _infile_;
+  data _null_; set &syslast end=last;
+    call symputx(cats('name',_n_),name,'l');
+    call symputx(cats('type',_n_),type,'l');
+    if last then call symputx('cols',_n_,'l');
+
+  data _null_; file _webout dsd;
+    set &ds;
+    if _n_>1 then put "," @;
+    put
+    %if &action=ARR %then "[" ; %else "{" ;
+    %local c; %do c=1 %to &cols;
+      %if &action=OBJ %then """&&name&c"":" ;
+       &&name&c
+      %if &&type&c=char %then  ~ ;
+    %end;
+    %if &action=ARR %then "]" ; %else "}" ; ;
+
+  data _null_; file _webout;
+    put "]}";
   run;
 
 %end;
@@ -6882,9 +6881,9 @@ run;
 %else %if &action=CLOSE %then %do;
 
   /* close off json */
-  data _null_;file &fref mod;
+  data _null_;file _webout mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
-    put '},"SYSUSERID" : "' "&sysuserid." '",';
+    put ',"SYSUSERID" : "' "&sysuserid." '",';
     _METAUSER=quote(trim(symget('_METAUSER')));
     put '"_METAUSER": ' _METAUSER ',';
     _METAPERSON=quote(trim(symget('_METAPERSON')));
@@ -6892,13 +6891,9 @@ run;
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
-  %if %upcase(&_debug)=LOG %then %do;
+  %if &_debug ge 131 %then %do;
     put '>>weboutEND<<';
   %end;
-  run;
-
-  data _null_;
-    rc=fcopy("&fref","&_webout");
   run;
 
 %end;
@@ -7264,7 +7259,6 @@ data _null_;
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
   put '%global _debug _omittextlog; ';
   put '%if &action=OPEN %then %do; ';
-  put '  %put &=_omittextlog; ';
   put ' ';
   put '  %if %upcase(&_omittextlog)=FALSE %then %do; ';
   put '    options mprint notes mprintnest; ';
@@ -7302,15 +7296,13 @@ data _null_;
   put '    %inc _sasjs; ';
   put ' ';
   put '    /* now read in the data */ ';
-  put '    %local i; ';
-  put '    %do i=1 %to %sysfunc(countw(&sasjs_tables)); ';
+  put '    %local i; %do i=1 %to %sysfunc(countw(&sasjs_tables)); ';
   put '      %local table; %let table=%scan(&sasjs_tables,&i); ';
   put '      data _null_; ';
   put '        infile "%sysfunc(pathname(work))/&table..csv" termstr=crlf ; ';
   put '        input; ';
   put '        if _n_=1 then call symputx(''input_statement'',_infile_); ';
   put '        list; ';
-  put '      run; ';
   put '      data &table; ';
   put '        infile "%sysfunc(pathname(work))/&table..csv" firstobs=2 dsd termstr=crlf; ';
   put '        input &input_statement; ';
@@ -7328,7 +7320,7 @@ data _null_;
   put ' ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
-  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''", "data":{''; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -7340,21 +7332,31 @@ data _null_;
   put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
   put ' ';
   put '  data _null_;file &fref mod; ';
-  put '    if &sasjs_tabcnt=1 then put ''"'' "&ds" ''" :''; ';
-  put '    else put '', "'' "&ds" ''" :''; ';
-  put '  run; ';
+  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":''; ';
   put ' ';
-  put '  filename _web2 temp; ';
-  put '  %local nokeys; ';
-  put '  %if &action=ARR %then %let nokeys=nokeys; ';
-  put '  proc json out=_web2; ';
-  put '    export &ds / nosastags &nokeys; ';
-  put '  run; ';
-  put '  data _null_; ';
-  put '    file &fref mod; ';
-  put '    infile _web2 ; ';
-  put '    input; ';
-  put '    put _infile_; ';
+  put '  proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
+  put '    out=_data_; ';
+  put '    by varnum; ';
+  put ' ';
+  put '  data _null_; set &syslast end=last; ';
+  put '    call symputx(cats(''name'',_n_),name,''l''); ';
+  put '    call symputx(cats(''type'',_n_),type,''l''); ';
+  put '    if last then call symputx(''cols'',_n_,''l''); ';
+  put ' ';
+  put '  data _null_; file &fref dsd mod; ';
+  put '    set &ds; ';
+  put '    if _n_>1 then put "," @; ';
+  put '    put ';
+  put '    %if &action=ARR %then "[" ; %else "{" ; ';
+  put '    %local c; %do c=1 %to &cols; ';
+  put '      %if &action=OBJ %then """&&name&c"":" ; ';
+  put '       &&name&c ';
+  put '      %if &&type&c=char %then  ~ ; ';
+  put '    %end; ';
+  put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put ' ';
+  put '  data _null_; file &fref mod; ';
+  put '    put "]}"; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -7364,7 +7366,7 @@ data _null_;
   put '  /* close off json */ ';
   put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
-  put '    put ''},"SYSUSERID" : "'' "&sysuserid." ''",''; ';
+  put '    put '',"SYSUSERID" : "'' "&sysuserid." ''",''; ';
   put '    SYS_JES_JOB_URI=quote(trim(resolve(symget(''SYS_JES_JOB_URI'')))); ';
   put '    jobid=quote(scan(SYS_JES_JOB_URI,-2,''/"'')); ';
   put '    put ''"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI '',''; ';
@@ -7373,7 +7375,6 @@ data _null_;
   put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
   put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
-  put '  run; ';
   put ' ';
   put '  data _null_; ';
   put '    rc=fcopy("&fref","&_webout"); ';
@@ -8339,7 +8340,6 @@ filename &fref2 clear;
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
 %global _debug _omittextlog;
 %if &action=OPEN %then %do;
-  %put &=_omittextlog;
 
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
@@ -8377,15 +8377,13 @@ filename &fref2 clear;
     %inc _sasjs;
 
     /* now read in the data */
-    %local i;
-    %do i=1 %to %sysfunc(countw(&sasjs_tables));
+    %local i; %do i=1 %to %sysfunc(countw(&sasjs_tables));
       %local table; %let table=%scan(&sasjs_tables,&i);
       data _null_;
         infile "%sysfunc(pathname(work))/&table..csv" termstr=crlf ;
         input;
         if _n_=1 then call symputx('input_statement',_infile_);
         list;
-      run;
       data &table;
         infile "%sysfunc(pathname(work))/&table..csv" firstobs=2 dsd termstr=crlf;
         input &input_statement;
@@ -8403,7 +8401,7 @@ filename &fref2 clear;
 
   /* setup json */
   data _null_;file &fref;
-    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '", "data":{';
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
 
 %end;
@@ -8415,21 +8413,31 @@ filename &fref2 clear;
   %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
 
   data _null_;file &fref mod;
-    if &sasjs_tabcnt=1 then put '"' "&ds" '" :';
-    else put ', "' "&ds" '" :';
-  run;
+    put ', "' "%lowcase(&ds)" '" :{"data":';
 
-  filename _web2 temp;
-  %local nokeys;
-  %if &action=ARR %then %let nokeys=nokeys;
-  proc json out=_web2;
-    export &ds / nosastags &nokeys;
-  run;
-  data _null_;
-    file &fref mod;
-    infile _web2 ;
-    input;
-    put _infile_;
+  proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+    out=_data_;
+    by varnum;
+
+  data _null_; set &syslast end=last;
+    call symputx(cats('name',_n_),name,'l');
+    call symputx(cats('type',_n_),type,'l');
+    if last then call symputx('cols',_n_,'l');
+
+  data _null_; file &fref dsd mod;
+    set &ds;
+    if _n_>1 then put "," @;
+    put
+    %if &action=ARR %then "[" ; %else "{" ;
+    %local c; %do c=1 %to &cols;
+      %if &action=OBJ %then """&&name&c"":" ;
+       &&name&c
+      %if &&type&c=char %then  ~ ;
+    %end;
+    %if &action=ARR %then "]" ; %else "}" ; ;
+
+  data _null_; file &fref mod;
+    put "]}";
   run;
 
 %end;
@@ -8439,7 +8447,7 @@ filename &fref2 clear;
   /* close off json */
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
-    put '},"SYSUSERID" : "' "&sysuserid." '",';
+    put ',"SYSUSERID" : "' "&sysuserid." '",';
     SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
     jobid=quote(scan(SYS_JES_JOB_URI,-2,'/"'));
     put '"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ',';
@@ -8448,7 +8456,6 @@ filename &fref2 clear;
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
-  run;
 
   data _null_;
     rc=fcopy("&fref","&_webout");
