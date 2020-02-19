@@ -78,15 +78,17 @@
     call symputx(cats('type',_n_),type,'l');
     if last then call symputx('cols',_n_,'l');
 
-  data _null_; file _webout dsd;
+  data _null_; file _webout mod dsd dlm=" ";
     set &ds;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
+      %if &c>1 %then  "," ;
       %if &action=OBJ %then """&&name&c"":" ;
        &&name&c
       %if &&type&c=char %then  ~ ;
+      +(-1)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 

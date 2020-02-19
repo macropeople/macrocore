@@ -4617,15 +4617,17 @@ data _null_;
   put '    call symputx(cats(''type'',_n_),type,''l''); ';
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
-  put '  data _null_; file _webout dsd; ';
+  put '  data _null_; file _webout mod dsd dlm=" "; ';
   put '    set &ds; ';
   put '    if _n_>1 then put "," @; ';
   put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
   put '    %local c; %do c=1 %to &cols; ';
+  put '      %if &c>1 %then  "," ; ';
   put '      %if &action=OBJ %then """&&name&c"":" ; ';
   put '       &&name&c ';
   put '      %if &&type&c=char %then  ~ ; ';
+  put '      +(-1) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
@@ -6860,15 +6862,17 @@ run;
     call symputx(cats('type',_n_),type,'l');
     if last then call symputx('cols',_n_,'l');
 
-  data _null_; file _webout dsd;
+  data _null_; file _webout mod dsd dlm=" ";
     set &ds;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
+      %if &c>1 %then  "," ;
       %if &action=OBJ %then """&&name&c"":" ;
        &&name&c
       %if &&type&c=char %then  ~ ;
+      +(-1)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
@@ -7332,7 +7336,7 @@ data _null_;
   put '  %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1); ';
   put ' ';
   put '  data _null_;file &fref mod; ';
-  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":''; ';
+  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":[''; ';
   put ' ';
   put '  proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
   put '    out=_data_; ';
@@ -7343,15 +7347,17 @@ data _null_;
   put '    call symputx(cats(''type'',_n_),type,''l''); ';
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
-  put '  data _null_; file &fref dsd mod; ';
+  put '  data _null_; file &fref mod dsd dlm=" "; ';
   put '    set &ds; ';
   put '    if _n_>1 then put "," @; ';
   put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
   put '    %local c; %do c=1 %to &cols; ';
+  put '      %if &c>1 %then  "," ; ';
   put '      %if &action=OBJ %then """&&name&c"":" ; ';
   put '       &&name&c ';
   put '      %if &&type&c=char %then  ~ ; ';
+  put '      +(-1) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
@@ -8413,7 +8419,7 @@ filename &fref2 clear;
   %let sasjs_tabcnt=%eval(&sasjs_tabcnt+1);
 
   data _null_;file &fref mod;
-    put ', "' "%lowcase(&ds)" '" :{"data":';
+    put ', "' "%lowcase(&ds)" '" :{"data":[';
 
   proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
     out=_data_;
@@ -8424,15 +8430,17 @@ filename &fref2 clear;
     call symputx(cats('type',_n_),type,'l');
     if last then call symputx('cols',_n_,'l');
 
-  data _null_; file &fref dsd mod;
+  data _null_; file &fref mod dsd dlm=" ";
     set &ds;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
+      %if &c>1 %then  "," ;
       %if &action=OBJ %then """&&name&c"":" ;
        &&name&c
       %if &&type&c=char %then  ~ ;
+      +(-1)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
