@@ -200,7 +200,7 @@ run;
       put "  @name=N'MS_Description',@value=" lab ;
       put "  ,@level0type=N'SCHEMA',@level0name=N'&schema' ";
       put "  ,@level1type=N'TABLE',@level1name=N'&curds'";
-      put "  ,@level2type=N'COLUMN',@level1name=" nm ;
+      put "  ,@level2type=N'COLUMN',@level2name=" nm ;
       if last then put 'GO';
     run;
   %end;
