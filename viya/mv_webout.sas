@@ -48,9 +48,7 @@
       put 'else';
       put ' tablist=s';
       put 'end';
-      put 'tablist=s:sub(8,s:len()-1)';
-      put 't=sas.countw(tablist)';
-      put 'for i = 1,t ';
+      put 'for i = 1,sas.countw(tablist) ';
       put 'do ';
       put '  tab=sas.scan(tablist,i)';
       put '  sasdata=""';
