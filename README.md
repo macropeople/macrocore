@@ -4,7 +4,7 @@ Much quality.  Many standards.  The **Macro Core** library exists to save time a
 
 You can download and compile them all in just two lines of SAS code:
 ```sas
-filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
 %inc mc;
 ```
 Documentation:  https://macropeople.github.io/macrocore.github.io/files.html
