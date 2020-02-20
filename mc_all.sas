@@ -4612,23 +4612,27 @@ data _null_;
   put '    out=_data_; ';
   put '    by varnum; ';
   put ' ';
-  put '  data _null_; set &syslast end=last; ';
+  put '  data _null_; set _last_ end=last; ';
   put '    call symputx(cats(''name'',_n_),name,''l''); ';
   put '    call symputx(cats(''type'',_n_),type,''l''); ';
+  put '    call symputx(cats(''len'',_n_),length,''l''); ';
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
-  put '  data _null_; file _webout mod dsd dlm=" "; ';
+  put '  proc format; /* credit yabwon for special null removal */ ';
+  put '    value bart ._ - .z = null; ';
+  put ' ';
+  put '  data _null_; file &fref mod ; ';
   put '    set &ds; ';
-  put '    format _numeric_ best32.; ';
+  put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; ';
-  put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
   put '    %local c; %do c=1 %to &cols; ';
   put '      %if &c>1 %then  "," ; ';
   put '      %if &action=OBJ %then """&&name&c"":" ; ';
   put '       &&name&c ';
-  put '      %if &&type&c=char %then  ~ ; ';
-  put '      +(-1) ';
+  put '      %if &&type&c=char %then $quote%eval(&&len&c+2). ; ';
+  put '      %else bart. ; ';
+  put '      +(0) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
@@ -6858,23 +6862,27 @@ run;
     out=_data_;
     by varnum;
 
-  data _null_; set &syslast end=last;
+  data _null_; set _last_ end=last;
     call symputx(cats('name',_n_),name,'l');
     call symputx(cats('type',_n_),type,'l');
+    call symputx(cats('len',_n_),length,'l');
     if last then call symputx('cols',_n_,'l');
 
-  data _null_; file _webout mod dsd dlm=" ";
+  proc format; /* credit yabwon for special null removal */
+    value bart ._ - .z = null;
+
+  data _null_; file &fref mod ;
     set &ds;
-    format _numeric_ best32.;
+    format _numeric_ ;
     if _n_>1 then put "," @;
-    put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
       %if &c>1 %then  "," ;
       %if &action=OBJ %then """&&name&c"":" ;
        &&name&c
-      %if &&type&c=char %then  ~ ;
-      +(-1)
+      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
+      %else bart. ;
+      +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
@@ -7349,20 +7357,24 @@ data _null_;
   put '  data _null_; set _last_ end=last; ';
   put '    call symputx(cats(''name'',_n_),name,''l''); ';
   put '    call symputx(cats(''type'',_n_),type,''l''); ';
+  put '    call symputx(cats(''len'',_n_),length,''l''); ';
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
-  put '  data _null_; file &fref mod dsd dlm=" "; ';
+  put '  proc format; /* credit yabwon for special null removal */ ';
+  put '    value bart ._ - .z = null; ';
+  put ' ';
+  put '  data _null_; file &fref mod ; ';
   put '    set &ds; ';
-  put '    format _numeric_ best32.; ';
+  put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; ';
-  put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
   put '    %local c; %do c=1 %to &cols; ';
   put '      %if &c>1 %then  "," ; ';
   put '      %if &action=OBJ %then """&&name&c"":" ; ';
   put '       &&name&c ';
-  put '      %if &&type&c=char %then  ~ ; ';
-  put '      +(-1) ';
+  put '      %if &&type&c=char %then $quote%eval(&&len&c+2). ; ';
+  put '      %else bart. ; ';
+  put '      +(0) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
@@ -8435,20 +8447,24 @@ filename &fref2 clear;
   data _null_; set _last_ end=last;
     call symputx(cats('name',_n_),name,'l');
     call symputx(cats('type',_n_),type,'l');
+    call symputx(cats('len',_n_),length,'l');
     if last then call symputx('cols',_n_,'l');
 
-  data _null_; file &fref mod dsd dlm=" ";
+  proc format; /* credit yabwon for special null removal */
+    value bart ._ - .z = null;
+
+  data _null_; file &fref mod ;
     set &ds;
-    format _numeric_ best32.;
+    format _numeric_ ;
     if _n_>1 then put "," @;
-    put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
       %if &c>1 %then  "," ;
       %if &action=OBJ %then """&&name&c"":" ;
        &&name&c
-      %if &&type&c=char %then  ~ ;
-      +(-1)
+      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
+      %else bart. ;
+      +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
