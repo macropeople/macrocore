@@ -80,6 +80,7 @@
 
   data _null_; file _webout mod dsd dlm=" ";
     set &ds;
+    format _numeric_ best32.;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;

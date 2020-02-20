@@ -130,6 +130,7 @@ data _null_;
   put ' ';
   put '  data _null_; file _webout mod dsd dlm=" "; ';
   put '    set &ds; ';
+  put '    format _numeric_ best32.; ';
   put '    if _n_>1 then put "," @; ';
   put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';

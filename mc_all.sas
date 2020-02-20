@@ -4619,6 +4619,7 @@ data _null_;
   put ' ';
   put '  data _null_; file _webout mod dsd dlm=" "; ';
   put '    set &ds; ';
+  put '    format _numeric_ best32.; ';
   put '    if _n_>1 then put "," @; ';
   put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
@@ -6864,6 +6865,7 @@ run;
 
   data _null_; file _webout mod dsd dlm=" ";
     set &ds;
+    format _numeric_ best32.;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;
@@ -7351,6 +7353,7 @@ data _null_;
   put ' ';
   put '  data _null_; file &fref mod dsd dlm=" "; ';
   put '    set &ds; ';
+  put '    format _numeric_ best32.; ';
   put '    if _n_>1 then put "," @; ';
   put '    put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
@@ -8436,6 +8439,7 @@ filename &fref2 clear;
 
   data _null_; file &fref mod dsd dlm=" ";
     set &ds;
+    format _numeric_ best32.;
     if _n_>1 then put "," @;
     put
     %if &action=ARR %then "[" ; %else "{" ;
