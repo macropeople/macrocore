@@ -281,7 +281,7 @@ data _null_;
   put '  data _null_; file &fref mod ; ';
   put '    set &ds; ';
   put '    format _numeric_ ; ';
-  put '    if _n_>1 then put "," @; ';
+  put '    if _n_>1 then put "," @; put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
   put '    %local c; %do c=1 %to &cols; ';
   put '      %if &c>1 %then  "," ; ';

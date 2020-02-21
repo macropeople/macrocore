@@ -85,7 +85,7 @@
   data _null_; file &fref mod ;
     set &ds;
     format _numeric_ ;
-    if _n_>1 then put "," @;
+    if _n_>1 then put "," @; put
     %if &action=ARR %then "[" ; %else "{" ;
     %local c; %do c=1 %to &cols;
       %if &c>1 %then  "," ;
