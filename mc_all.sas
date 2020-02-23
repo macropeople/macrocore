@@ -4606,7 +4606,7 @@ data _null_;
   put '  options validvarname=upcase; ';
   put ' ';
   put '  data _null_;file _webout; ';
-  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":[''; ';
+  put '    put ", ""%lowcase(&ds)"":["; ';
   put ' ';
   put '  proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
   put '    out=_data_; ';
@@ -4621,7 +4621,7 @@ data _null_;
   put '  proc format; /* credit yabwon for special null removal */ ';
   put '    value bart ._ - .z = null; ';
   put ' ';
-  put '  data _null_; file &fref mod ; ';
+  put '  data _null_; file _webout mod ; ';
   put '    set &ds; ';
   put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; put ';
@@ -4637,7 +4637,7 @@ data _null_;
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
   put '  data _null_; file _webout; ';
-  put '    put "]}"; ';
+  put '    put "]"; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -6813,7 +6813,6 @@ run;
 
   @param action Either OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
-  @param fref= temp fref
 
   @version 9.3
   @author Allan Bowe
@@ -6856,7 +6855,7 @@ run;
   options validvarname=upcase;
 
   data _null_;file _webout;
-    put ', "' "%lowcase(&ds)" '" :{"data":[';
+    put ", ""%lowcase(&ds)"":[";
 
   proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
     out=_data_;
@@ -6871,7 +6870,7 @@ run;
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file &fref mod ;
+  data _null_; file _webout mod ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
@@ -6887,7 +6886,7 @@ run;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
   data _null_; file _webout;
-    put "]}";
+    put "]";
   run;
 
 %end;
@@ -7347,7 +7346,7 @@ data _null_;
   put '  options validvarname=upcase; ';
   put ' ';
   put '  data _null_;file &fref mod; ';
-  put '    put '', "'' "%lowcase(&ds)" ''" :{"data":[''; ';
+  put '    put ", ""%lowcase(&ds)"":["; ';
   put ' ';
   put '  proc sort data=sashelp.vcolumn ';
   put '      (where=(upcase(libname)=''WORK'' & upcase(memname)="%upcase(&ds)")) ';
@@ -7379,7 +7378,7 @@ data _null_;
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
   put '  data _null_; file &fref mod; ';
-  put '    put "]}"; ';
+  put '    put "]"; ';
   put '  run; ';
   put ' ';
   put '%end; ';
@@ -8437,7 +8436,7 @@ filename &fref2 clear;
   options validvarname=upcase;
 
   data _null_;file &fref mod;
-    put ', "' "%lowcase(&ds)" '" :{"data":[';
+    put ", ""%lowcase(&ds)"":[";
 
   proc sort data=sashelp.vcolumn
       (where=(upcase(libname)='WORK' & upcase(memname)="%upcase(&ds)"))
@@ -8469,7 +8468,7 @@ filename &fref2 clear;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
   data _null_; file &fref mod;
-    put "]}";
+    put "]";
   run;
 
 %end;

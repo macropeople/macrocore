@@ -24,7 +24,6 @@
 
   @param action Either OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
-  @param fref= temp fref
 
   @version 9.3
   @author Allan Bowe
@@ -67,7 +66,7 @@
   options validvarname=upcase;
 
   data _null_;file _webout;
-    put ', "' "%lowcase(&ds)" '" :{"data":[';
+    put ", ""%lowcase(&ds)"":[";
 
   proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
     out=_data_;
@@ -82,7 +81,7 @@
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file &fref mod ;
+  data _null_; file _webout mod ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
@@ -98,7 +97,7 @@
     %if &action=ARR %then "]" ; %else "}" ; ;
 
   data _null_; file _webout;
-    put "]}";
+    put "]";
   run;
 
 %end;

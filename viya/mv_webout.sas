@@ -105,7 +105,7 @@
   options validvarname=upcase;
 
   data _null_;file &fref mod;
-    put ', "' "%lowcase(&ds)" '" :{"data":[';
+    put ", ""%lowcase(&ds)"":[";
 
   proc sort data=sashelp.vcolumn
       (where=(upcase(libname)='WORK' & upcase(memname)="%upcase(&ds)"))
@@ -137,7 +137,7 @@
     %if &action=ARR %then "]" ; %else "}" ; ;
 
   data _null_; file &fref mod;
-    put "]}";
+    put "]";
   run;
 
 %end;
