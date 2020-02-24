@@ -13,7 +13,7 @@
 
   @param libref the libref (not name) of the metadata library
   @param mDebug= set to 1 to show debug messages in the log
-  @param mAbort= set to 1 to call %mf_abort().
+  @param mAbort= If not assigned, HARD will call %mf_abort(), SOFT will silently return
 
   @returns libname statement
 
@@ -25,17 +25,8 @@
 %macro mm_assignlib(
      libref
     ,mDebug=0
-    ,mAbort=0
+    ,mAbort=HARD
 )/*/STORE SOURCE*/;
-
-%local mD;
-%if &mDebug=1 %then %let mD=;
-%else %let mD=%str(*);
-%&mD.put Executing mm_assignlib.sas;
-%&mD.put _local_;
-
-%if &mAbort=1 %then %let mAbort=;
-%else %let mAbort=%str(*);
 
 %if %sysfunc(libref(&libref)) %then %do;
   %local mf_abort msg; %let mf_abort=0;
@@ -50,11 +41,11 @@
        call symputx('liburi',liburi,'L');
     end;
     else if nobj>1 then do;
-      call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mf_abort',1);
       call symputx('msg',"More than one library with libref=&libref");
     end;
     else do;
-      call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mf_abort',1);
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
@@ -65,14 +56,20 @@
     )
     %return;
   %end;
+  %else %if %length(&msg)>2 %then %do;
+    %put NOTE: &msg;
+    %return;
+  %end;
+
   libname &libref meta liburi="&liburi";
-  %if %sysfunc(libref(&libref)) %then %do;
+
+  %if %sysfunc(libref(&libref)) and &mabort=HARD %then %do;
     %mf_abort(msg=mm_assignlib macro could not assign &libref (&libname)
       ,mac=mm_assignlib.sas)
     %return;
   %end;
 %end;
 %else %do;
-  %&mD.put NOTE: Library &libref is already assigned;
+  %put NOTE: Library &libref is already assigned;
 %end;
 %mend;

@@ -4,7 +4,7 @@
 
   @param outds= the dataset to create that contains the list of repos
 
-  @returns outds  dataset containing all objects
+  @returns outds  dataset containing all repositories
 
   @warning The following filenames are created and then de-assigned:
 
@@ -31,17 +31,19 @@ proc metadata in=
 run;
 
 /* write the response to the log for debugging */
+/*
 data _null_;
   infile response lrecl=1048576;
   input;
   put _infile_;
 run;
+*/
 
 /* create an XML map to read the response */
 filename sxlemap temp;
 data _null_;
   file sxlemap;
-  put '<SXLEMAP version="1.2" name="SASObjects"><TABLE name="SASObjects">';
+  put '<SXLEMAP version="1.2" name="SASRepos"><TABLE name="SASRepos">';
   put "<TABLE-PATH syntax='XPath'>/GetRepositories/Repositories/Repository</TABLE-PATH>";
   put '<COLUMN name="id">';
   put "<PATH syntax='XPath'>/GetRepositories/Repositories/Repository/@Id</PATH>";
@@ -103,7 +105,7 @@ data _null_;
 run;
 libname _XML_ xml xmlfileref=response xmlmap=sxlemap;
 
-proc sort data= _XML_.SASObjects out=&outds;
+proc sort data= _XML_.SASRepos out=&outds;
   by name;
 run;
 

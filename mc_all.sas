@@ -3204,7 +3204,7 @@ run;
 
   @param libref the libref (not name) of the metadata library
   @param mDebug= set to 1 to show debug messages in the log
-  @param mAbort= set to 1 to call %mf_abort().
+  @param mAbort= If not assigned, HARD will call %mf_abort(), SOFT will silently return
 
   @returns libname statement
 
@@ -3216,17 +3216,8 @@ run;
 %macro mm_assignlib(
      libref
     ,mDebug=0
-    ,mAbort=0
+    ,mAbort=HARD
 )/*/STORE SOURCE*/;
-
-%local mD;
-%if &mDebug=1 %then %let mD=;
-%else %let mD=%str(*);
-%&mD.put Executing mm_assignlib.sas;
-%&mD.put _local_;
-
-%if &mAbort=1 %then %let mAbort=;
-%else %let mAbort=%str(*);
 
 %if %sysfunc(libref(&libref)) %then %do;
   %local mf_abort msg; %let mf_abort=0;
@@ -3241,11 +3232,11 @@ run;
        call symputx('liburi',liburi,'L');
     end;
     else if nobj>1 then do;
-      call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mf_abort',1);
       call symputx('msg',"More than one library with libref=&libref");
     end;
     else do;
-      call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mf_abort',1);
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
@@ -3256,15 +3247,21 @@ run;
     )
     %return;
   %end;
+  %else %if %length(&msg)>2 %then %do;
+    %put NOTE: &msg;
+    %return;
+  %end;
+
   libname &libref meta liburi="&liburi";
-  %if %sysfunc(libref(&libref)) %then %do;
+
+  %if %sysfunc(libref(&libref)) and &mabort=HARD %then %do;
     %mf_abort(msg=mm_assignlib macro could not assign &libref (&libname)
       ,mac=mm_assignlib.sas)
     %return;
   %end;
 %end;
 %else %do;
-  %&mD.put NOTE: Library &libref is already assigned;
+  %put NOTE: Library &libref is already assigned;
 %end;
 %mend;/**
   @file
@@ -5709,7 +5706,7 @@ libname _XML_ clear;
 
   @param outds= the dataset to create that contains the list of repos
 
-  @returns outds  dataset containing all objects
+  @returns outds  dataset containing all repositories
 
   @warning The following filenames are created and then de-assigned:
 
@@ -5736,17 +5733,19 @@ proc metadata in=
 run;
 
 /* write the response to the log for debugging */
+/*
 data _null_;
   infile response lrecl=1048576;
   input;
   put _infile_;
 run;
+*/
 
 /* create an XML map to read the response */
 filename sxlemap temp;
 data _null_;
   file sxlemap;
-  put '<SXLEMAP version="1.2" name="SASObjects"><TABLE name="SASObjects">';
+  put '<SXLEMAP version="1.2" name="SASRepos"><TABLE name="SASRepos">';
   put "<TABLE-PATH syntax='XPath'>/GetRepositories/Repositories/Repository</TABLE-PATH>";
   put '<COLUMN name="id">';
   put "<PATH syntax='XPath'>/GetRepositories/Repositories/Repository/@Id</PATH>";
@@ -5808,7 +5807,7 @@ data _null_;
 run;
 libname _XML_ xml xmlfileref=response xmlmap=sxlemap;
 
-proc sort data= _XML_.SASObjects out=&outds;
+proc sort data= _XML_.SASRepos out=&outds;
   by name;
 run;
 
