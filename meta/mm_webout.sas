@@ -40,7 +40,10 @@
   /* now read in the data */
   %local i;
   %do i=1 %to &_webin_file_count;
-    %if not(%symexist(_WEBIN_FILEREF1)) %then %let _WEBIN_FILEREF1=&__WEBIN_FILEREF;
+    %if not(%symexist(_WEBIN_FILEREF1)) %then do;
+      %let _WEBIN_FILEREF1=&_WEBIN_FILEREF;
+      %let _webin_name1=&_webin_name;
+    %end;
     filename indata "&&_WEBIN_FILEREF&i";
     data _null_;
       infile indata;
