@@ -30,7 +30,7 @@
 
 **/
 %macro mm_webout(action,ds);
-%global _webin_file_count _program _debug;
+%global _webin_file_count _webin_fileref1 _program _debug;
 %if &action=OPEN %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
@@ -40,18 +40,18 @@
   /* now read in the data */
   %local i;
   %do i=1 %to &_webin_file_count;
-    %if not(%symexist(_WEBIN_FILEREF1)) %then %do;
-      %let _WEBIN_FILEREF1=&_WEBIN_FILEREF;
+    %if not(%symexist(_webin_fileref1)) %then %do;
+      %let _webin_fileref1=&_webin_fileref;
       %let _webin_name1=&_webin_name;
     %end;
     data _null_;
-      infile &&_WEBIN_FILEREF&i termstr=crlf;
+      infile &&_webin_fileref&i termstr=crlf;
       input;
       call symputx('input_statement',_infile_);
       putlog "&&_webin_name&i input statement: "  _infile_;
       stop;
     data &&_webin_name&i;
-      infile &&_WEBIN_FILEREF&i firstobs=2 dsd termstr=crlf ;
+      infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf ;
       input &input_statement;
     run;
   %end;
