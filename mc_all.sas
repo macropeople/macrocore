@@ -4577,7 +4577,7 @@ data _null_;
   put '  /* now read in the data */ ';
   put '  %local i; ';
   put '  %do i=1 %to &_webin_file_count; ';
-  put '    %if not(%symexist(_WEBIN_FILEREF1)) %then do; ';
+  put '    %if not(%symexist(_WEBIN_FILEREF1)) %then %do; ';
   put '      %let _WEBIN_FILEREF1=&_WEBIN_FILEREF; ';
   put '      %let _webin_name1=&_webin_name; ';
   put '    %end; ';
@@ -6946,7 +6946,7 @@ run;
   /* now read in the data */
   %local i;
   %do i=1 %to &_webin_file_count;
-    %if not(%symexist(_WEBIN_FILEREF1)) %then do;
+    %if not(%symexist(_WEBIN_FILEREF1)) %then %do;
       %let _WEBIN_FILEREF1=&_WEBIN_FILEREF;
       %let _webin_name1=&_webin_name;
     %end;

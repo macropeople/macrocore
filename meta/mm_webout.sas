@@ -40,7 +40,7 @@
   /* now read in the data */
   %local i;
   %do i=1 %to &_webin_file_count;
-    %if not(%symexist(_WEBIN_FILEREF1)) %then do;
+    %if not(%symexist(_WEBIN_FILEREF1)) %then %do;
       %let _WEBIN_FILEREF1=&_WEBIN_FILEREF;
       %let _webin_name1=&_webin_name;
     %end;
