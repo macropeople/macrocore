@@ -44,15 +44,14 @@
       %let _WEBIN_FILEREF1=&_WEBIN_FILEREF;
       %let _webin_name1=&_webin_name;
     %end;
-    filename indata "&&_WEBIN_FILEREF&i";
     data _null_;
-      infile indata;
+      infile &&_WEBIN_FILEREF&i termstr=crlf;
       input;
       call symputx('input_statement',_infile_);
       putlog "&&_webin_name&i input statement: "  _infile_;
       stop;
     data &&_webin_name&i;
-      infile indata firstobs=2 dsd termstr=crlf ;
+      infile &&_WEBIN_FILEREF&i firstobs=2 dsd termstr=crlf ;
       input &input_statement;
     run;
   %end;
