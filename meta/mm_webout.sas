@@ -114,7 +114,7 @@
     put '"_METAPERSON": ' _METAPERSON ',';
     put '"_PROGRAM" : ' _PROGRAM ',';
     put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
-    put "}";
+    put "}" @;
   %if &_debug ge 131 %then %do;
     put '>>weboutEND<<';
   %end;

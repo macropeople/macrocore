@@ -165,7 +165,7 @@ data _null_;
   put '    put ''"_METAPERSON": '' _METAPERSON '',''; ';
   put '    put ''"_PROGRAM" : '' _PROGRAM '',''; ';
   put '    put ''"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
-  put '    put "}"; ';
+  put '    put "}" @; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    put ''>>weboutEND<<''; ';
   put '  %end; ';
