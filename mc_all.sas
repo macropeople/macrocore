@@ -3197,13 +3197,14 @@ run;
 
   usage:
 
-      %mm_assign_lib(SOMEREF);
+      %macro mf_abort(iftrue,mac,msg);%put &=msg;%mend;
+
+      %mm_assignlib(SOMEREF)
 
   <h4> Dependencies </h4>
   @li mf_abort.sas
 
   @param libref the libref (not name) of the metadata library
-  @param mDebug= set to 1 to show debug messages in the log
   @param mAbort= If not assigned, HARD will call %mf_abort(), SOFT will silently return
 
   @returns libname statement
@@ -3215,7 +3216,6 @@ run;
 
 %macro mm_assignlib(
      libref
-    ,mDebug=0
     ,mAbort=HARD
 )/*/STORE SOURCE*/;
 
@@ -3226,10 +3226,17 @@ run;
     call missing(of _all_);
     nobj=metadata_getnobj("omsobj:SASLibrary?@Libref='&libref'",1,liburi);
     if nobj=1 then do;
-       rc=metadata_getattr(liburi,"Name",LibName);
-       put (_all_)(=);
-       call symputx('libname',libname,'L');
-       call symputx('liburi',liburi,'L');
+      rc=metadata_getattr(liburi,"Name",LibName);
+      /* now try and assign it */
+      if libname("&libref",,'meta',cats('liburi="',liburi,'";')) ne 0 then do;
+        call symputx('msg',sysmsg(),'l');
+        if "&mabort"='HARD' then call symputx('mf_abort',1,'l');
+      end;
+      else do;
+        put (_all_)(=);
+        call symputx('libname',libname,'L');
+        call symputx('liburi',liburi,'L');
+      end;
     end;
     else if nobj>1 then do;
       if "&mabort"='HARD' then call symputx('mf_abort',1);
@@ -3240,9 +3247,10 @@ run;
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
+
   %if &mf_abort=1 %then %do;
     %mf_abort(iftrue= (&mf_abort=1)
-      ,mac=mm_assignlib.sas
+      ,mac=&sysmacroname
       ,msg=&msg
     )
     %return;
@@ -3252,13 +3260,6 @@ run;
     %return;
   %end;
 
-  libname &libref meta liburi="&liburi";
-
-  %if %sysfunc(libref(&libref)) and &mabort=HARD %then %do;
-    %mf_abort(msg=mm_assignlib macro could not assign &libref (&libname)
-      ,mac=mm_assignlib.sas)
-    %return;
-  %end;
 %end;
 %else %do;
   %put NOTE: Library &libref is already assigned;
