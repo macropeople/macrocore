@@ -30,7 +30,7 @@
 
 **/
 %macro mm_webout(action,ds);
-%global _webin_file_count _webin_fileref1 _program _debug;
+%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
 %if &action=OPEN %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;

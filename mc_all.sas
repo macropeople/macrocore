@@ -4567,7 +4567,7 @@ data _null_;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds); ';
-  put '%global _webin_file_count _webin_fileref1 _program _debug; ';
+  put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
   put '%if &action=OPEN %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
@@ -7074,7 +7074,7 @@ run;
 
 **/
 %macro mm_webout(action,ds);
-%global _webin_file_count _webin_fileref1 _program _debug;
+%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
 %if &action=OPEN %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
