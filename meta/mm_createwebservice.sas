@@ -91,7 +91,7 @@ data _null_;
   put '  /* now read in the data */ ';
   put '  %local i; ';
   put '  %do i=1 %to &_webin_file_count; ';
-  put '    %if not(%symexist(_webin_fileref1)) %then %do; ';
+  put '    %if &_webin_file_count=1 %then %do; ';
   put '      %let _webin_fileref1=&_webin_fileref; ';
   put '      %let _webin_name1=&_webin_name; ';
   put '    %end; ';
