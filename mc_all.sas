@@ -1802,6 +1802,19 @@ create table _data_ as
   order by idxusage, indxname, indxpos
   ;
 %local idxinfo; %let idxinfo=&syslast;
+/*
+create table _data_ as
+  select ucpase(a.column_name) as column_name,b.*
+from dictionary.CONSTRAINT_COLUMN_USAGE a
+left join dictionary.TABLE_CONSTRAINTS b
+on a.TABLE_CATALOG=b.TABLE_CATALOG
+  and a.TABLE_NAME=b.TABLE_NAME
+  and a.CONSTRAINT_NAME=b.CONSTRAINT_NAME
+where upcase(a.table_catalog)="%upcase(&libref)"
+  and  upcase(a.table_name)="%upcase(&ds)"
+  and upcase(b.table_catalog)="%upcase(&libref)"
+  and  upcase(b.table_name)="%upcase(&ds)";
+*/
 
 create table _data_ as
   select * from dictionary.columns
@@ -4489,7 +4502,7 @@ run;
   @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
   @details This macro creates a Type 2 Stored Process with the macropeople
-mm_webout macro included as pre-code.
+            mm_webout macro included as pre-code.
 Usage:
 
     %* compile macros ;
@@ -4504,6 +4517,7 @@ Usage:
           set sashelp.class;
         run;
         %* send data back;
+        %webout(OPEN)
         %webout(ARR,example1) * Array format, fast, suitable for large tables ;
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
@@ -4569,7 +4583,7 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
-  put '%if &action=OPEN %then %do; ';
+  put '%if &action=FETCH %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
@@ -4593,6 +4607,9 @@ data _null_;
   put '      input &input_statement; ';
   put '    run; ';
   put '  %end; ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
   put '  data _null_;file _webout; ';
   put '  %if &_debug ge 131 %then %do; ';
@@ -4668,7 +4685,7 @@ data _null_;
   put '%macro webout(action,ds);';
   put '  %mm_webout(&action,ds=&ds)';
   put '%mend;';
-  put '%webout(OPEN)';
+  put '%webout(FETCH)';
 run;
 
 /* add precode and code */
@@ -7049,7 +7066,7 @@ run;
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
 
-        %mm_webout(OPEN)
+        %mm_webout(FETCH)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
@@ -7059,6 +7076,7 @@ run;
         retain some columns;
         run;
 
+        %mm_webout(OPEN)
         %mm_webout(ARR,some)  * Array format, fast, suitable for large tables ;
         %mm_webout(OBJ,datasets) * Object format, easier to work with ;
 
@@ -7067,7 +7085,7 @@ run;
         %mm_webout(CLOSE)
 
 
-  @param action Either OPEN, ARR, OBJ or CLOSE
+  @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
 
   @version 9.3
@@ -7076,7 +7094,7 @@ run;
 **/
 %macro mm_webout(action,ds);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
-%if &action=OPEN %then %do;
+%if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
@@ -7100,6 +7118,9 @@ run;
       input &input_statement;
     run;
   %end;
+%end;
+
+%else %if &action=OPEN %then %do;
   /* setup json */
   data _null_;file _webout;
   %if &_debug ge 131 %then %do;
@@ -7530,7 +7551,9 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
   put '%global _debug _omittextlog; ';
-  put '%if &action=OPEN %then %do; ';
+  put '%let action=%upcase(&action); ';
+  put ' ';
+  put '%if &action=FETCH %then %do; ';
   put ' ';
   put '  %if %upcase(&_omittextlog)=FALSE %then %do; ';
   put '    options mprint notes mprintnest; ';
@@ -7594,6 +7617,9 @@ data _null_;
   put '    filename &fref temp lrecl=999999; ';
   put '  %end; ';
   put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
@@ -7668,7 +7694,7 @@ data _null_;
   put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
   put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
   put '%mend;';
-  put '%webout(OPEN)';
+  put '%webout(FETCH)';
 run;
 
 /* insert the code, escaping double quotes and carriage returns */
@@ -8594,7 +8620,7 @@ filename &fref2 clear;
   @details This macro should be added to the start of each Job Execution
   Service, **immediately** followed by a call to:
 
-        %mv_webout(OPEN)
+        %mv_webout(FETCH)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
@@ -8604,6 +8630,7 @@ filename &fref2 clear;
         retain some columns;
         run;
 
+        %mv_webout(OPEN)
         %mv_webout(ARR,some)  * Array format, fast, suitable for large tables ;
         %mv_webout(OBJ,datasets) * Object format, easier to work with ;
         %mv_webout(CLOSE)
@@ -8620,7 +8647,9 @@ filename &fref2 clear;
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
 %global _debug _omittextlog;
-%if &action=OPEN %then %do;
+%let action=%upcase(&action);
+
+%if &action=FETCH %then %do;
 
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
@@ -8684,6 +8713,9 @@ filename &fref2 clear;
     filename &fref temp lrecl=999999;
   %end;
 
+%end;
+
+%else %if &action=OPEN %then %do;
   /* setup json */
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';

@@ -2,7 +2,7 @@
   @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
   @details This macro creates a Type 2 Stored Process with the macropeople
-mm_webout macro included as pre-code.
+            mm_webout macro included as pre-code.
 Usage:
 
     %* compile macros ;
@@ -17,6 +17,7 @@ Usage:
           set sashelp.class;
         run;
         %* send data back;
+        %webout(OPEN)
         %webout(ARR,example1) * Array format, fast, suitable for large tables ;
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
@@ -82,7 +83,7 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
-  put '%if &action=OPEN %then %do; ';
+  put '%if &action=FETCH %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
@@ -106,6 +107,9 @@ data _null_;
   put '      input &input_statement; ';
   put '    run; ';
   put '  %end; ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
   put '  data _null_;file _webout; ';
   put '  %if &_debug ge 131 %then %do; ';
@@ -181,7 +185,7 @@ data _null_;
   put '%macro webout(action,ds);';
   put '  %mm_webout(&action,ds=&ds)';
   put '%mend;';
-  put '%webout(OPEN)';
+  put '%webout(FETCH)';
 run;
 
 /* add precode and code */

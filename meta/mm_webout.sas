@@ -4,7 +4,7 @@
   @details This macro should be added to the start of each Stored Process,
   **immediately** followed by a call to:
 
-        %mm_webout(OPEN)
+        %mm_webout(FETCH)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
@@ -14,6 +14,7 @@
         retain some columns;
         run;
 
+        %mm_webout(OPEN)
         %mm_webout(ARR,some)  * Array format, fast, suitable for large tables ;
         %mm_webout(OBJ,datasets) * Object format, easier to work with ;
 
@@ -22,7 +23,7 @@
         %mm_webout(CLOSE)
 
 
-  @param action Either OPEN, ARR, OBJ or CLOSE
+  @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
 
   @version 9.3
@@ -31,7 +32,7 @@
 **/
 %macro mm_webout(action,ds);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
-%if &action=OPEN %then %do;
+%if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
@@ -55,6 +56,9 @@
       input &input_statement;
     run;
   %end;
+%end;
+
+%else %if &action=OPEN %then %do;
   /* setup json */
   data _null_;file _webout;
   %if &_debug ge 131 %then %do;

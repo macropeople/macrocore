@@ -187,7 +187,9 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
   put '%global _debug _omittextlog; ';
-  put '%if &action=OPEN %then %do; ';
+  put '%let action=%upcase(&action); ';
+  put ' ';
+  put '%if &action=FETCH %then %do; ';
   put ' ';
   put '  %if %upcase(&_omittextlog)=FALSE %then %do; ';
   put '    options mprint notes mprintnest; ';
@@ -251,6 +253,9 @@ data _null_;
   put '    filename &fref temp lrecl=999999; ';
   put '  %end; ';
   put ' ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
@@ -325,7 +330,7 @@ data _null_;
   put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
   put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
   put '%mend;';
-  put '%webout(OPEN)';
+  put '%webout(FETCH)';
 run;
 
 /* insert the code, escaping double quotes and carriage returns */

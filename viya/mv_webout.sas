@@ -4,7 +4,7 @@
   @details This macro should be added to the start of each Job Execution
   Service, **immediately** followed by a call to:
 
-        %mv_webout(OPEN)
+        %mv_webout(FETCH)
 
     This will read all the input data and create same-named SAS datasets in the
     WORK library.  You can then insert your code, and send data back using the
@@ -14,6 +14,7 @@
         retain some columns;
         run;
 
+        %mv_webout(OPEN)
         %mv_webout(ARR,some)  * Array format, fast, suitable for large tables ;
         %mv_webout(OBJ,datasets) * Object format, easier to work with ;
         %mv_webout(CLOSE)
@@ -30,7 +31,9 @@
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp);
 %global _debug _omittextlog;
-%if &action=OPEN %then %do;
+%let action=%upcase(&action);
+
+%if &action=FETCH %then %do;
 
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
@@ -94,6 +97,9 @@
     filename &fref temp lrecl=999999;
   %end;
 
+%end;
+
+%else %if &action=OPEN %then %do;
   /* setup json */
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
