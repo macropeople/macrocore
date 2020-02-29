@@ -223,9 +223,11 @@ run;
 
 /* find the web app url */
 %mm_getwebappsrvprops(outds= props)
+%local url;
+%let url=localhost/;
 data _null_;
   set props(where=(name='webappsrv.server.url'));
-  call symputx('url',value);
+  call symputx('url',value,'l');
 run;
 
 %put NOTE: &sysmacroname: STP &name successfully created in &path;
