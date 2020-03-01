@@ -88,7 +88,9 @@
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file _webout mod lrecl=131068 ;
+  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
+  filename _sasjs temp lrecl=131068 ;
+  data _null_; file _sasjs ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
@@ -102,6 +104,12 @@
       +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
+  /* now write the long strings to _webout 1 char at a time */
+  data _null_;
+    infile _sjs RECFM=N;
+    file _webout RECFM=N;
+    input string $CHAR1. @;
+    put string $CHAR1. @;
 
   data _null_; file _webout;
     put "]";

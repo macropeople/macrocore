@@ -4639,7 +4639,9 @@ data _null_;
   put '  proc format; /* credit yabwon for special null removal */ ';
   put '    value bart ._ - .z = null; ';
   put ' ';
-  put '  data _null_; file _webout mod lrecl=131068 ; ';
+  put '  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */ ';
+  put '  filename _sasjs temp lrecl=131068 ; ';
+  put '  data _null_; file _sasjs ; ';
   put '    set &ds; ';
   put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; put ';
@@ -4653,6 +4655,12 @@ data _null_;
   put '      +(0) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put '  /* now write the long strings to _webout 1 char at a time */ ';
+  put '  data _null_; ';
+  put '    infile _sjs RECFM=N; ';
+  put '    file _webout RECFM=N; ';
+  put '    input string $CHAR1. @; ';
+  put '    put string $CHAR1. @; ';
   put ' ';
   put '  data _null_; file _webout; ';
   put '    put "]"; ';
@@ -7152,7 +7160,9 @@ run;
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file _webout mod lrecl=131068 ;
+  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
+  filename _sasjs temp lrecl=131068 ;
+  data _null_; file _sasjs ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
@@ -7166,6 +7176,12 @@ run;
       +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
+  /* now write the long strings to _webout 1 char at a time */
+  data _null_;
+    infile _sjs RECFM=N;
+    file _webout RECFM=N;
+    input string $CHAR1. @;
+    put string $CHAR1. @;
 
   data _null_; file _webout;
     put "]";
