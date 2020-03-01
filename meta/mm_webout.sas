@@ -90,7 +90,7 @@
 
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
   filename _sjs temp lrecl=131068 ;
-  data _null_; file _sasjs ;
+  data _null_; file _sjs ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
