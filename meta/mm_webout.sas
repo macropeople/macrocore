@@ -89,7 +89,7 @@
     value bart ._ - .z = null;
 
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
-  filename _sasjs temp lrecl=131068 ;
+  filename _sjs temp lrecl=131068 ;
   data _null_; file _sasjs ;
     set &ds;
     format _numeric_ ;
