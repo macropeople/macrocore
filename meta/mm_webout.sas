@@ -88,7 +88,7 @@
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file _webout mod ;
+  data _null_; file _webout mod lrecl=131068 ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put

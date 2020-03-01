@@ -139,7 +139,7 @@ data _null_;
   put '  proc format; /* credit yabwon for special null removal */ ';
   put '    value bart ._ - .z = null; ';
   put ' ';
-  put '  data _null_; file _webout mod ; ';
+  put '  data _null_; file _webout mod lrecl=131068 ; ';
   put '    set &ds; ';
   put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; put ';
