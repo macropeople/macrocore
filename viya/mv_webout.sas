@@ -90,7 +90,8 @@
   %end;
 
   /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
+  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+    name="_webout.json" lrecl=999999 ;
 
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
@@ -127,7 +128,7 @@
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file &fref mod ;
+  data _null_; file &fref mod lrecl=131068 ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put

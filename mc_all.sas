@@ -7628,7 +7628,8 @@ data _null_;
   put '  %end; ';
   put ' ';
   put '  /* setup webout */ ';
-  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json"; ';
+  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
+  put '    name="_webout.json" lrecl=999999 ; ';
   put ' ';
   put '  /* setup temp ref */ ';
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
@@ -7665,7 +7666,7 @@ data _null_;
   put '  proc format; /* credit yabwon for special null removal */ ';
   put '    value bart ._ - .z = null; ';
   put ' ';
-  put '  data _null_; file &fref mod ; ';
+  put '  data _null_; file &fref mod lrecl=131068 ; ';
   put '    set &ds; ';
   put '    format _numeric_ ; ';
   put '    if _n_>1 then put "," @; put ';
@@ -8724,7 +8725,8 @@ filename &fref2 clear;
   %end;
 
   /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
+  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+    name="_webout.json" lrecl=999999 ;
 
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
@@ -8761,7 +8763,7 @@ filename &fref2 clear;
   proc format; /* credit yabwon for special null removal */
     value bart ._ - .z = null;
 
-  data _null_; file &fref mod ;
+  data _null_; file &fref mod lrecl=131068 ;
     set &ds;
     format _numeric_ ;
     if _n_>1 then put "," @; put
