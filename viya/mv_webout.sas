@@ -126,7 +126,8 @@
     if last then call symputx('cols',_n_,'l');
 
   proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null;
+    value bart ._ - .z = null
+    other = [best.];
 
   data _null_; file &fref mod lrecl=131068 ;
     set &ds;

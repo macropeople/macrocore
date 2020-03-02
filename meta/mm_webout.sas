@@ -86,7 +86,8 @@
     if last then call symputx('cols',_n_,'l');
 
   proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null;
+    value bart ._ - .z = null
+    other = [best.];
 
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
   filename _sjs temp lrecl=131068 ;

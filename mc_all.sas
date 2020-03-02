@@ -4637,7 +4637,8 @@ data _null_;
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
   put '  proc format; /* credit yabwon for special null removal */ ';
-  put '    value bart ._ - .z = null; ';
+  put '    value bart ._ - .z = null ';
+  put '    other = [best.]; ';
   put ' ';
   put '  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */ ';
   put '  filename _sjs temp lrecl=131068 ; ';
@@ -7158,7 +7159,8 @@ run;
     if last then call symputx('cols',_n_,'l');
 
   proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null;
+    value bart ._ - .z = null
+    other = [best.];
 
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
   filename _sjs temp lrecl=131068 ;
@@ -7664,7 +7666,8 @@ data _null_;
   put '    if last then call symputx(''cols'',_n_,''l''); ';
   put ' ';
   put '  proc format; /* credit yabwon for special null removal */ ';
-  put '    value bart ._ - .z = null; ';
+  put '    value bart ._ - .z = null ';
+  put '    other = [best.]; ';
   put ' ';
   put '  data _null_; file &fref mod lrecl=131068 ; ';
   put '    set &ds; ';
@@ -8761,7 +8764,8 @@ filename &fref2 clear;
     if last then call symputx('cols',_n_,'l');
 
   proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null;
+    value bart ._ - .z = null
+    other = [best.];
 
   data _null_; file &fref mod lrecl=131068 ;
     set &ds;
