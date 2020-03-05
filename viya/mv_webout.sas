@@ -129,18 +129,35 @@
     value bart ._ - .z = null
     other = [best.];
 
-  data _null_; file &fref mod lrecl=131068 ;
+  data;run; %let tempds=&syslast; /* temp table */
+  proc sql; drop table &tempds;
+  data &tempds/view=&tempds;
+    attrib _all_ label='';
+    %do i=1 %to &cols;
+      %if &&type&i=char %then %do;
+        length &&name&i $32767;
+      %end;
+    %end;
     set &ds;
-    format _numeric_ ;
+    format _numeric_ bart.;
+  %do i=1 %to &cols;
+    %if &&type&i=char %then %do;
+      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                  prxchange('s/'!!'0A'x!!'/\n/',-1,
+                  prxchange('s/'!!'0D'x!!'/\r/',-1,
+                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
+        ))))!!'"';
+    %end;
+  %end;
+
+  data _null_; file &fref mod lrecl=131068 ;
+    set &tempds;
     if _n_>1 then put "," @; put
     %if &action=ARR %then "[" ; %else "{" ;
-    %local c; %do c=1 %to &cols;
-      %if &c>1 %then  "," ;
-      %if &action=OBJ %then """&&name&c"":" ;
-       &&name&c
-      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
-      %else bart. ;
-      +(0)
+    %do i=1 %to &cols;
+      %if &i>1 %then  "," ;
+      %if &action=OBJ %then """&&name&i"":" ;
+      &&name&i +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 

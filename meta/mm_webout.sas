@@ -32,14 +32,13 @@
 **/
 %macro mm_webout(action,ds);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
+%local i;
 %if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
-
   %let _webin_file_count=%eval(&_webin_file_count+0);
   /* now read in the data */
-  %local i;
   %do i=1 %to &_webin_file_count;
     %if &_webin_file_count=1 %then %do;
       %let _webin_fileref1=&_webin_fileref;
@@ -89,22 +88,40 @@
     value bart ._ - .z = null
     other = [best.];
 
+  data;run; %let tempds=&syslast; /* temp table */
+  proc sql; drop table &tempds;
+  data &tempds/view=&tempds;
+    attrib _all_ label='';
+    %do i=1 %to &cols;
+      %if &&type&i=char %then %do;
+        length &&name&i $32767;
+      %end;
+    %end;
+    set &ds;
+    format _numeric_ bart.;
+  %do i=1 %to &cols;
+    %if &&type&i=char %then %do;
+      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                  prxchange('s/'!!'0A'x!!'/\n/',-1,
+                  prxchange('s/'!!'0D'x!!'/\r/',-1,
+                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
+        ))))!!'"';
+    %end;
+  %end;
+
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
   filename _sjs temp lrecl=131068 ;
   data _null_; file _sjs ;
-    set &ds;
-    format _numeric_ ;
+    set &tempds;
     if _n_>1 then put "," @; put
     %if &action=ARR %then "[" ; %else "{" ;
-    %local c; %do c=1 %to &cols;
-      %if &c>1 %then  "," ;
-      %if &action=OBJ %then """&&name&c"":" ;
-       &&name&c
-      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
-      %else bart. ;
-      +(0)
+    %do i=1 %to &cols;
+      %if &i>1 %then  "," ;
+      %if &action=OBJ %then """&&name&i"":" ;
+      &&name&i +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
+
   /* now write the long strings to _webout 1 char at a time */
   data _null_;
     infile _sjs RECFM=N;

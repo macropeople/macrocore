@@ -4583,14 +4583,13 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
+  put '%local i; ';
   put '%if &action=FETCH %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
-  put ' ';
   put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
   put '  /* now read in the data */ ';
-  put '  %local i; ';
   put '  %do i=1 %to &_webin_file_count; ';
   put '    %if &_webin_file_count=1 %then %do; ';
   put '      %let _webin_fileref1=&_webin_fileref; ';
@@ -4640,22 +4639,40 @@ data _null_;
   put '    value bart ._ - .z = null ';
   put '    other = [best.]; ';
   put ' ';
+  put '  data;run; %let tempds=&syslast; /* temp table */ ';
+  put '  proc sql; drop table &tempds; ';
+  put '  data &tempds/view=&tempds; ';
+  put '    attrib _all_ label=''''; ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &&type&i=char %then %do; ';
+  put '        length &&name&i $32767; ';
+  put '      %end; ';
+  put '    %end; ';
+  put '    set &ds; ';
+  put '    format _numeric_ bart.; ';
+  put '  %do i=1 %to &cols; ';
+  put '    %if &&type&i=char %then %do; ';
+  put '      &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
+  put '                  prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
+  put '                  prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
+  put '                  prxchange(''s/''!!''09''x!!''/\t/'',-1,&&name&i) ';
+  put '        ))))!!''"''; ';
+  put '    %end; ';
+  put '  %end; ';
+  put ' ';
   put '  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */ ';
   put '  filename _sjs temp lrecl=131068 ; ';
   put '  data _null_; file _sjs ; ';
-  put '    set &ds; ';
-  put '    format _numeric_ ; ';
+  put '    set &tempds; ';
   put '    if _n_>1 then put "," @; put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
-  put '    %local c; %do c=1 %to &cols; ';
-  put '      %if &c>1 %then  "," ; ';
-  put '      %if &action=OBJ %then """&&name&c"":" ; ';
-  put '       &&name&c ';
-  put '      %if &&type&c=char %then $quote%eval(&&len&c+2). ; ';
-  put '      %else bart. ; ';
-  put '      +(0) ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &i>1 %then  "," ; ';
+  put '      %if &action=OBJ %then """&&name&i"":" ; ';
+  put '      &&name&i +(0) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put ' ';
   put '  /* now write the long strings to _webout 1 char at a time */ ';
   put '  data _null_; ';
   put '    infile _sjs RECFM=N; ';
@@ -7105,14 +7122,13 @@ run;
 **/
 %macro mm_webout(action,ds);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
+%local i;
 %if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
-
   %let _webin_file_count=%eval(&_webin_file_count+0);
   /* now read in the data */
-  %local i;
   %do i=1 %to &_webin_file_count;
     %if &_webin_file_count=1 %then %do;
       %let _webin_fileref1=&_webin_fileref;
@@ -7162,22 +7178,40 @@ run;
     value bart ._ - .z = null
     other = [best.];
 
+  data;run; %let tempds=&syslast; /* temp table */
+  proc sql; drop table &tempds;
+  data &tempds/view=&tempds;
+    attrib _all_ label='';
+    %do i=1 %to &cols;
+      %if &&type&i=char %then %do;
+        length &&name&i $32767;
+      %end;
+    %end;
+    set &ds;
+    format _numeric_ bart.;
+  %do i=1 %to &cols;
+    %if &&type&i=char %then %do;
+      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                  prxchange('s/'!!'0A'x!!'/\n/',-1,
+                  prxchange('s/'!!'0D'x!!'/\r/',-1,
+                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
+        ))))!!'"';
+    %end;
+  %end;
+
   /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
   filename _sjs temp lrecl=131068 ;
   data _null_; file _sjs ;
-    set &ds;
-    format _numeric_ ;
+    set &tempds;
     if _n_>1 then put "," @; put
     %if &action=ARR %then "[" ; %else "{" ;
-    %local c; %do c=1 %to &cols;
-      %if &c>1 %then  "," ;
-      %if &action=OBJ %then """&&name&c"":" ;
-       &&name&c
-      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
-      %else bart. ;
-      +(0)
+    %do i=1 %to &cols;
+      %if &i>1 %then  "," ;
+      %if &action=OBJ %then """&&name&i"":" ;
+      &&name&i +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
+
   /* now write the long strings to _webout 1 char at a time */
   data _null_;
     infile _sjs RECFM=N;
@@ -7669,18 +7703,35 @@ data _null_;
   put '    value bart ._ - .z = null ';
   put '    other = [best.]; ';
   put ' ';
-  put '  data _null_; file &fref mod lrecl=131068 ; ';
+  put '  data;run; %let tempds=&syslast; /* temp table */ ';
+  put '  proc sql; drop table &tempds; ';
+  put '  data &tempds/view=&tempds; ';
+  put '    attrib _all_ label=''''; ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &&type&i=char %then %do; ';
+  put '        length &&name&i $32767; ';
+  put '      %end; ';
+  put '    %end; ';
   put '    set &ds; ';
-  put '    format _numeric_ ; ';
+  put '    format _numeric_ bart.; ';
+  put '  %do i=1 %to &cols; ';
+  put '    %if &&type&i=char %then %do; ';
+  put '      &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
+  put '                  prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
+  put '                  prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
+  put '                  prxchange(''s/''!!''09''x!!''/\t/'',-1,&&name&i) ';
+  put '        ))))!!''"''; ';
+  put '    %end; ';
+  put '  %end; ';
+  put ' ';
+  put '  data _null_; file &fref mod lrecl=131068 ; ';
+  put '    set &tempds; ';
   put '    if _n_>1 then put "," @; put ';
   put '    %if &action=ARR %then "[" ; %else "{" ; ';
-  put '    %local c; %do c=1 %to &cols; ';
-  put '      %if &c>1 %then  "," ; ';
-  put '      %if &action=OBJ %then """&&name&c"":" ; ';
-  put '       &&name&c ';
-  put '      %if &&type&c=char %then $quote%eval(&&len&c+2). ; ';
-  put '      %else bart. ; ';
-  put '      +(0) ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &i>1 %then  "," ; ';
+  put '      %if &action=OBJ %then """&&name&i"":" ; ';
+  put '      &&name&i +(0) ';
   put '    %end; ';
   put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
   put ' ';
@@ -8767,18 +8818,35 @@ filename &fref2 clear;
     value bart ._ - .z = null
     other = [best.];
 
-  data _null_; file &fref mod lrecl=131068 ;
+  data;run; %let tempds=&syslast; /* temp table */
+  proc sql; drop table &tempds;
+  data &tempds/view=&tempds;
+    attrib _all_ label='';
+    %do i=1 %to &cols;
+      %if &&type&i=char %then %do;
+        length &&name&i $32767;
+      %end;
+    %end;
     set &ds;
-    format _numeric_ ;
+    format _numeric_ bart.;
+  %do i=1 %to &cols;
+    %if &&type&i=char %then %do;
+      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                  prxchange('s/'!!'0A'x!!'/\n/',-1,
+                  prxchange('s/'!!'0D'x!!'/\r/',-1,
+                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
+        ))))!!'"';
+    %end;
+  %end;
+
+  data _null_; file &fref mod lrecl=131068 ;
+    set &tempds;
     if _n_>1 then put "," @; put
     %if &action=ARR %then "[" ; %else "{" ;
-    %local c; %do c=1 %to &cols;
-      %if &c>1 %then  "," ;
-      %if &action=OBJ %then """&&name&c"":" ;
-       &&name&c
-      %if &&type&c=char %then $quote%eval(&&len&c+2). ;
-      %else bart. ;
-      +(0)
+    %do i=1 %to &cols;
+      %if &i>1 %then  "," ;
+      %if &action=OBJ %then """&&name&i"":" ;
+      &&name&i +(0)
     %end;
     %if &action=ARR %then "]" ; %else "}" ; ;
 
