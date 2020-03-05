@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="1.1.1"></a>
+## [1.1.1](https://github.com/macropeople/macrocore/compare/v1.1.0...v1.1.1) (2020-03-05)
+
+
+### Bug Fixes
+
+* dealing with special characters in webout macros ([181f0f2](https://github.com/macropeople/macrocore/commit/181f0f2))
+
+
+
 <a name="1.1.0"></a>
 # [1.1.0](https://github.com/macropeople/macrocore/compare/v1.0.0...v1.1.0) (2020-03-02)
 
