@@ -39,6 +39,8 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_isblank.sas
+  @li mv_deletejes.sas
 
   @param path= The full path (on SAS Drive) where the service will be created
   @param name= The name of the service
@@ -55,13 +57,6 @@ viya:
   @version VIYA V.03.04
   @author Allan Bowe
   @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mf_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-  @li mf_isblank.sas
-  @li mv_deletejes.sas
 
 **/
 
