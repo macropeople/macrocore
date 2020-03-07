@@ -28,6 +28,9 @@ Usage:
   @li mm_createstp.sas
   @li mm_getwebappsrvprops.sas
   @li mf_getuser.sas
+  @li mm_createfolder.sas
+  @li mm_deletestp.sas
+
 
 
   @param path= The full path (in SAS Metadata) where the service will be created
