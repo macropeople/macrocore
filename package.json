@@ -10,7 +10,10 @@
     "type": "git",
     "url": "https://github.com/macropeople/macrocore"
   },
+    "scripts": {
+    "semantic-release": "semantic-release"
+  },
   "dependencies": {
-    "standard-version": "^7.1.0"
+    "semantic-release": "^17.0.4"
   }
 }
