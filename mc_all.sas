@@ -4528,6 +4528,9 @@ Usage:
   @li mm_createstp.sas
   @li mm_getwebappsrvprops.sas
   @li mf_getuser.sas
+  @li mm_createfolder.sas
+  @li mm_deletestp.sas
+
 
 
   @param path= The full path (in SAS Metadata) where the service will be created
@@ -7425,7 +7428,7 @@ viya:
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %let client=new%sysfunc(ranuni(0));
+    %let client=new%sysfunc(ranuni(0),hex16.);
     %let secret=MySecret;
     %mv_getapptoken(client_id=&client,client_secret=&secret)
 
@@ -7457,6 +7460,8 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_isblank.sas
+  @li mv_deletejes.sas
 
   @param path= The full path (on SAS Drive) where the service will be created
   @param name= The name of the service
@@ -7473,13 +7478,6 @@ viya:
   @version VIYA V.03.04
   @author Allan Bowe
   @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mf_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-  @li mf_isblank.sas
-  @li mv_deletejes.sas
 
 **/
 
@@ -7608,7 +7606,6 @@ data _null_;
   put '%let action=%upcase(&action); ';
   put ' ';
   put '%if &action=FETCH %then %do; ';
-  put ' ';
   put '  %if %upcase(&_omittextlog)=FALSE %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
@@ -7671,7 +7668,6 @@ data _null_;
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
   put '    filename &fref temp lrecl=999999; ';
   put '  %end; ';
-  put ' ';
   put '%end; ';
   put ' ';
   put '%else %if &action=OPEN %then %do; ';
@@ -7679,70 +7675,19 @@ data _null_;
   put '  data _null_;file &fref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
   put '  run; ';
-  put ' ';
   put '%end; ';
-  put ' ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  options validvarname=upcase; ';
-  put ' ';
   put '  data _null_;file &fref mod; ';
-  put '    put ", ""%lowcase(&ds)"":["; ';
+  put '    put ", ""%lowcase(&ds)"":"; ';
   put ' ';
-  put '  proc sort data=sashelp.vcolumn ';
-  put '      (where=(upcase(libname)=''WORK'' & upcase(memname)="%upcase(&ds)")) ';
-  put '    out=_data_; ';
-  put '    by varnum; ';
-  put ' ';
-  put '  data _null_; set _last_ end=last; ';
-  put '    call symputx(cats(''name'',_n_),name,''l''); ';
-  put '    call symputx(cats(''type'',_n_),type,''l''); ';
-  put '    call symputx(cats(''len'',_n_),length,''l''); ';
-  put '    if last then call symputx(''cols'',_n_,''l''); ';
-  put ' ';
-  put '  proc format; /* credit yabwon for special null removal */ ';
-  put '    value bart ._ - .z = null ';
-  put '    other = [best.]; ';
-  put ' ';
-  put '  data;run; %let tempds=&syslast; /* temp table */ ';
-  put '  proc sql; drop table &tempds; ';
-  put '  data &tempds/view=&tempds; ';
-  put '    attrib _all_ label=''''; ';
-  put '    %do i=1 %to &cols; ';
-  put '      %if &&type&i=char %then %do; ';
-  put '        length &&name&i $32767; ';
-  put '      %end; ';
-  put '    %end; ';
-  put '    set &ds; ';
-  put '    format _numeric_ bart.; ';
-  put '  %do i=1 %to &cols; ';
-  put '    %if &&type&i=char %then %do; ';
-  put '      &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
-  put '                  prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
-  put '                  prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
-  put '                  prxchange(''s/''!!''09''x!!''/\t/'',-1,&&name&i) ';
-  put '        ))))!!''"''; ';
-  put '    %end; ';
-  put '  %end; ';
-  put ' ';
-  put '  data _null_; file &fref mod lrecl=131068 ; ';
-  put '    set &tempds; ';
-  put '    if _n_>1 then put "," @; put ';
-  put '    %if &action=ARR %then "[" ; %else "{" ; ';
-  put '    %do i=1 %to &cols; ';
-  put '      %if &i>1 %then  "," ; ';
-  put '      %if &action=OBJ %then """&&name&i"":" ; ';
-  put '      &&name&i +(0) ';
-  put '    %end; ';
-  put '    %if &action=ARR %then "]" ; %else "}" ; ; ';
-  put ' ';
-  put '  data _null_; file &fref mod; ';
-  put '    put "]"; ';
+  put '  proc json out=&fref ';
+  put '      %if &action=ARR %then nokeys ; ';
+  put '      %if &_debug ge 131  %then pretty ; ';
+  put '    ;export &ds / nosastags; ';
   put '  run; ';
-  put ' ';
   put '%end; ';
-  put ' ';
   put '%else %if &action=CLOSE %then %do; ';
-  put ' ';
   put '  /* close off json */ ';
   put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
@@ -7759,7 +7704,6 @@ data _null_;
   put '  data _null_; ';
   put '    rc=fcopy("&fref","&_webout"); ';
   put '  run; ';
-  put ' ';
   put '%end; ';
   put ' ';
   put '%mend; ';
@@ -8723,7 +8667,6 @@ filename &fref2 clear;
 %let action=%upcase(&action);
 
 %if &action=FETCH %then %do;
-
   %if %upcase(&_omittextlog)=FALSE %then %do;
     options mprint notes mprintnest;
   %end;
@@ -8786,7 +8729,6 @@ filename &fref2 clear;
   %if %upcase(&fref) ne _WEBOUT %then %do;
     filename &fref temp lrecl=999999;
   %end;
-
 %end;
 
 %else %if &action=OPEN %then %do;
@@ -8794,70 +8736,19 @@ filename &fref2 clear;
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
-
 %end;
-
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
-
   data _null_;file &fref mod;
-    put ", ""%lowcase(&ds)"":[";
+    put ", ""%lowcase(&ds)"":";
 
-  proc sort data=sashelp.vcolumn
-      (where=(upcase(libname)='WORK' & upcase(memname)="%upcase(&ds)"))
-    out=_data_;
-    by varnum;
-
-  data _null_; set _last_ end=last;
-    call symputx(cats('name',_n_),name,'l');
-    call symputx(cats('type',_n_),type,'l');
-    call symputx(cats('len',_n_),length,'l');
-    if last then call symputx('cols',_n_,'l');
-
-  proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null
-    other = [best.];
-
-  data;run; %let tempds=&syslast; /* temp table */
-  proc sql; drop table &tempds;
-  data &tempds/view=&tempds;
-    attrib _all_ label='';
-    %do i=1 %to &cols;
-      %if &&type&i=char %then %do;
-        length &&name&i $32767;
-      %end;
-    %end;
-    set &ds;
-    format _numeric_ bart.;
-  %do i=1 %to &cols;
-    %if &&type&i=char %then %do;
-      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
-                  prxchange('s/'!!'0A'x!!'/\n/',-1,
-                  prxchange('s/'!!'0D'x!!'/\r/',-1,
-                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
-        ))))!!'"';
-    %end;
-  %end;
-
-  data _null_; file &fref mod lrecl=131068 ;
-    set &tempds;
-    if _n_>1 then put "," @; put
-    %if &action=ARR %then "[" ; %else "{" ;
-    %do i=1 %to &cols;
-      %if &i>1 %then  "," ;
-      %if &action=OBJ %then """&&name&i"":" ;
-      &&name&i +(0)
-    %end;
-    %if &action=ARR %then "]" ; %else "}" ; ;
-
-  data _null_; file &fref mod;
-    put "]";
+  proc json out=&fref
+      %if &action=ARR %then nokeys ;
+      %if &_debug ge 131  %then pretty ;
+    ;export &ds / nosastags;
   run;
-
 %end;
-
 %else %if &action=CLOSE %then %do;
-
   /* close off json */
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
@@ -8874,7 +8765,6 @@ filename &fref2 clear;
   data _null_;
     rc=fcopy("&fref","&_webout");
   run;
-
 %end;
 
 %mend;
