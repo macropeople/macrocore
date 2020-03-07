@@ -47,7 +47,7 @@ The above can be done directly in your sas program, via an autoexec, or an initi
 Alternatively - for quick access - simply run the following!  This file contains all the macros.
 
 ```sas
-filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
 %inc mc;
 ```
 
