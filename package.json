@@ -1,6 +1,6 @@
 {
   "name": "macrocore",
-  "version": "1.1.5",
+  "version": "1.2.0",
   "description": "SAS Macro Library for Application Development",
   "keywords": [
     "sas"
@@ -10,10 +10,13 @@
     "type": "git",
     "url": "https://github.com/macropeople/macrocore"
   },
-    "scripts": {
+  "scripts": {
     "semantic-release": "semantic-release"
   },
   "dependencies": {
+    "semantic-release": "^17.0.4"
+  },
+  "devDependencies": {
     "semantic-release": "^17.0.4"
   }
 }
