@@ -24,22 +24,29 @@
   @param ds The dataset to send back to the frontend
   @param _webout= fileref for returning the json
   @param fref= temp fref
+  @param dslabel= value to use instead of the real name for sending to JSON
 
   @version Viya 3.3
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp);
-%global _debug _omittextlog;
+%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=);
+%global _webin_file_count _webout_fileuri _debug _omittextlog;
+%local i;
 %let action=%upcase(&action);
 
 %if &action=FETCH %then %do;
-  %if %upcase(&_omittextlog)=FALSE %then %do;
+  %if %upcase(&_omittextlog)=FALSE or &_debug ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
 
+  %if not %symexist(_webout_fileuri1) %then %do;
+    %let _webin_file_count=%eval(&_webin_file_count+0);
+    %let _webout_fileuri1=&_webout_fileuri;
+  %end;
+
   %if %symexist(sasjs_tables) %then %do;
-    /* get the data and write to a file */
+    /* small volumes of non-special data are sent as params for responsiveness */
     filename _sasjs "%sysfunc(pathname(work))/sasjs.lua";
     data _null_;
       file _sasjs;
@@ -74,7 +81,7 @@
     %inc _sasjs;
 
     /* now read in the data */
-    %local i; %do i=1 %to %sysfunc(countw(&sasjs_tables));
+    %do i=1 %to %sysfunc(countw(&sasjs_tables));
       %local table; %let table=%scan(&sasjs_tables,&i);
       data _null_;
         infile "%sysfunc(pathname(work))/&table..csv" termstr=crlf ;
@@ -87,18 +94,33 @@
       run;
     %end;
   %end;
-
-  /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
-    name="_webout.json" lrecl=999999 ;
-
-  /* setup temp ref */
-  %if %upcase(&fref) ne _WEBOUT %then %do;
-    filename &fref temp lrecl=999999;
+  %else %do i=1 %to &_webin_file_count;
+    /* read in any files that are sent */
+    filename indata filesrvc "&&_webout_fileuri&i" lrecl=999999;
+    data _null_;
+      infile indata termstr=crlf ;
+      input;
+      if _n_=1 then call symputx('input_statement',_infile_);
+      list;
+    run;
+    data &&_webin_name&i;
+      infile indata firstobs=2 dsd termstr=crlf ;
+      input &input_statement;
+    run;
   %end;
+
 %end;
 
 %else %if &action=OPEN %then %do;
+  /* setup webout */
+  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+    name="_webout.json" lrecl=999999 mod;
+
+  /* setup temp ref */
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    filename &fref temp lrecl=999999 mod;
+  %end;
+
   /* setup json */
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
@@ -107,7 +129,7 @@
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
   data _null_;file &fref mod;
-    put ", ""%lowcase(&ds)"":";
+    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   proc json out=&fref
       %if &action=ARR %then nokeys ;
@@ -119,14 +141,15 @@
   /* close off json */
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
-    put ',"SYSUSERID" : "' "&sysuserid." '",';
+    put ",""SYSUSERID"" : ""&sysuserid"" ";
     SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
-    jobid=quote(scan(SYS_JES_JOB_URI,-2,'/"'));
-    put '"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ',';
-    put '"X-SAS-JOBEXEC-ID" : ' jobid ',';
-    put '"SYSJOBID" : "' "&sysjobid." '",';
-    put '"_PROGRAM" : ' _PROGRAM ',';
-    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
+    put ',"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ;
+    put ",""SYSJOBID"" : ""&sysjobid"" ";
+    put ',"_PROGRAM" : ' _PROGRAM ;
+    put ",""SYSCC"" : ""&syscc"" ";
+    put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
+    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
+    put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
 
   data _null_;

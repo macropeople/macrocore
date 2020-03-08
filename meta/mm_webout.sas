@@ -25,12 +25,13 @@
 
   @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
+  @param dslabel= value to use instead of the real name for sending to JSON
 
   @version 9.3
   @author Allan Bowe
 
 **/
-%macro mm_webout(action,ds);
+%macro mm_webout(action,ds,dslabel=);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
 %local i;
 %if &action=FETCH %then %do;
@@ -51,8 +52,11 @@
       putlog "&&_webin_name&i input statement: "  _infile_;
       stop;
     data &&_webin_name&i;
-      infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf ;
+      infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf encoding='utf-8';
       input &input_statement;
+      %if &_debug ge 131 %then %do;
+        putlog _infile_;
+      %end;
     run;
   %end;
 %end;
@@ -70,89 +74,102 @@
 
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
+  data _null_;file _webout mod;
+    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
-  data _null_;file _webout;
-    put ", ""%lowcase(&ds)"":[";
+  %if &sysver=9.4 %then %do;
+    /* yay - we have proc json */
+    proc json out=_webout
+        %if &action=ARR %then nokeys ;
+        %if &_debug ge 131  %then pretty ;
+      ;export &ds / nosastags;
+    run;
+  %end;
+  %else %do;
+    /* time to get our hands dirty */
+    data _null_;file _webout; put "[";
 
-  proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
-    out=_data_;
-    by varnum;
+    proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+      out=_data_;
+      by varnum;
 
-  data _null_; set _last_ end=last;
-    call symputx(cats('name',_n_),name,'l');
-    call symputx(cats('type',_n_),type,'l');
-    call symputx(cats('len',_n_),length,'l');
-    if last then call symputx('cols',_n_,'l');
+    data _null_; set _last_ end=last;
+      call symputx(cats('name',_n_),name,'l');
+      call symputx(cats('type',_n_),type,'l');
+      call symputx(cats('len',_n_),length,'l');
+      if last then call symputx('cols',_n_,'l');
 
-  proc format; /* credit yabwon for special null removal */
-    value bart ._ - .z = null
-    other = [best.];
+    proc format; /* credit yabwon for special null removal */
+      value bart ._ - .z = null
+      other = [best.];
 
-  data;run; %let tempds=&syslast; /* temp table */
-  proc sql; drop table &tempds;
-  data &tempds/view=&tempds;
-    attrib _all_ label='';
+    data;run; %let tempds=&syslast; /* temp table for spesh char management */
+    proc sql; drop table &tempds;
+    data &tempds/view=&tempds;
+      attrib _all_ label='';
+      %do i=1 %to &cols;
+        %if &&type&i=char %then %do;
+          length &&name&i $32767;
+        %end;
+      %end;
+      set &ds;
+      format _numeric_ bart.;
     %do i=1 %to &cols;
       %if &&type&i=char %then %do;
-        length &&name&i $32767;
+        &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                    prxchange('s/'!!'0A'x!!'/\n/',-1,
+                    prxchange('s/'!!'0D'x!!'/\r/',-1,
+                    prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
+          ))))!!'"';
       %end;
     %end;
-    set &ds;
-    format _numeric_ bart.;
-  %do i=1 %to &cols;
-    %if &&type&i=char %then %do;
-      &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
-                  prxchange('s/'!!'0A'x!!'/\n/',-1,
-                  prxchange('s/'!!'0D'x!!'/\r/',-1,
-                  prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
-        ))))!!'"';
-    %end;
+
+    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
+    filename _sjs temp lrecl=131068 ;
+    data _null_; file _sjs ;
+      set &tempds;
+      if _n_>1 then put "," @; put
+      %if &action=ARR %then "[" ; %else "{" ;
+      %do i=1 %to &cols;
+        %if &i>1 %then  "," ;
+        %if &action=OBJ %then """&&name&i"":" ;
+        &&name&i +(0)
+      %end;
+      %if &action=ARR %then "]" ; %else "}" ; ;
+
+    /* now write the long strings to _webout 1 char at a time */
+    data _null_;
+      infile _sjs RECFM=N;
+      file _webout RECFM=N;
+      input string $CHAR1. @;
+      put string $CHAR1. @;
+
+    data _null_; file _webout;
+      put "]";
+    run;
   %end;
 
-  /* write to temp loc to avoid truncation - https://support.sas.com/kb/49/325.html */
-  filename _sjs temp lrecl=131068 ;
-  data _null_; file _sjs ;
-    set &tempds;
-    if _n_>1 then put "," @; put
-    %if &action=ARR %then "[" ; %else "{" ;
-    %do i=1 %to &cols;
-      %if &i>1 %then  "," ;
-      %if &action=OBJ %then """&&name&i"":" ;
-      &&name&i +(0)
-    %end;
-    %if &action=ARR %then "]" ; %else "}" ; ;
-
-  /* now write the long strings to _webout 1 char at a time */
-  data _null_;
-    infile _sjs RECFM=N;
-    file _webout RECFM=N;
-    input string $CHAR1. @;
-    put string $CHAR1. @;
-
-  data _null_; file _webout;
-    put "]";
-  run;
-
 %end;
-
 %else %if &action=CLOSE %then %do;
 
   /* close off json */
   data _null_;file _webout mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
-    put ',"SYSUSERID" : "' "&sysuserid." '",';
+    put ",""SYSUSERID"" : ""&sysuserid"" ";
     _METAUSER=quote(trim(symget('_METAUSER')));
-    put '"_METAUSER": ' _METAUSER ',';
+    put ",""_METAUSER"": " _METAUSER;
     _METAPERSON=quote(trim(symget('_METAPERSON')));
-    put '"_METAPERSON": ' _METAPERSON ',';
-    put '"_PROGRAM" : ' _PROGRAM ',';
-    put '"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
+    put ',"_METAPERSON": ' _METAPERSON;
+    put ',"_PROGRAM" : ' _PROGRAM ;
+    put ",""SYSCC"" : ""&syscc"" ";
+    put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
+    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
+    put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}" @;
   %if &_debug ge 131 %then %do;
     put '>>weboutEND<<';
   %end;
   run;
-
 %end;
 
 %mend;
