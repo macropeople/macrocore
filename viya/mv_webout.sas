@@ -138,6 +138,38 @@
   run;
 %end;
 %else %if &action=CLOSE %then %do;
+  %if &_debug ge 131 %then %do;
+    /* send back first 10 records of each work table for debugging */
+    options obs=10;
+    data;run;%let tempds=&syslast;
+    ods output Members=&tempds;
+    proc datasets library=WORK memtype=data;
+    data _null_; set &tempds;
+      if name ne "&tempds";
+      i+1;
+      call symputx('wt'!!left(_n_),name);
+      call symputx('wtcnt',i);
+    data _null_; file &fref; put ",""WORK"":{";
+    %do i=1 %to &wtcnt;
+      %let wt=&&wt&i;
+      proc contents noprint data=&wt
+        out=&tempds (keep=name type length format:);
+      data _null_; file &fref;
+        dsid=open("WORK.&wt",'is');
+        nlobs=attrn(dsid,'NLOBS');
+        nvars=attrn(dsid,'NVARS');
+        rc=close(dsid);
+        if &i>1 then put ','@;
+        put " ""&wt"" : {";
+        put '"nlobs":' nlobs;
+        put ',"nvars":' nvars;
+      %mv_webout(OBJ,&wt,dslabel=first10rows)
+      %mv_webout(ARR,&tempds,dslabel=colattrs)
+      data _null_; file &fref;put "}";
+    %end;
+    data _null_; file &fref;put "}";run;
+  %end;
+
   /* close off json */
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
@@ -152,9 +184,8 @@
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
 
-  data _null_;
-    rc=fcopy("&fref","&_webout");
-  run;
+  data _null_; rc=fcopy("&fref","&_webout");run;
+
 %end;
 
 %mend;

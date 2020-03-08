@@ -4584,9 +4584,10 @@ data _null_;
   file "&work/&tmpfile" lrecl=3000 ;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
-  put '%macro mm_webout(action,ds); ';
+  put '%macro mm_webout(action,ds,dslabel=,fref=_webout); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
-  put '%local i; ';
+  put '%local i ; ';
+  put ' ';
   put '%if &action=FETCH %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
@@ -4616,7 +4617,7 @@ data _null_;
   put ' ';
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
-  put '  data _null_;file _webout; ';
+  put '  data _null_;file &fref; ';
   put '  %if &_debug ge 131 %then %do; ';
   put '    put ''>>weboutBEGIN<<''; ';
   put '  %end; ';
@@ -4627,13 +4628,12 @@ data _null_;
   put ' ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  options validvarname=upcase; ';
+  put '  data _null_;file &fref mod; ';
+  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
   put ' ';
   put '  %if &sysver=9.4 %then %do; ';
   put '    /* yay - we have proc json */ ';
-  put '    data _null_;file _webout mod; ';
-  put '      put ", ""%lowcase(&ds)"":"; ';
-  put ' ';
-  put '    proc json out=_webout ';
+  put '    proc json out=&fref ';
   put '        %if &action=ARR %then nokeys ; ';
   put '        %if &_debug ge 131  %then pretty ; ';
   put '      ;export &ds / nosastags; ';
@@ -4641,8 +4641,7 @@ data _null_;
   put '  %end; ';
   put '  %else %do; ';
   put '    /* time to get our hands dirty */ ';
-  put '    data _null_;file _webout; ';
-  put '      put ", ""%lowcase(&ds)"":["; ';
+  put '    data _null_;file &fref; put "["; ';
   put ' ';
   put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
   put '      out=_data_; ';
@@ -4695,20 +4694,51 @@ data _null_;
   put '    /* now write the long strings to _webout 1 char at a time */ ';
   put '    data _null_; ';
   put '      infile _sjs RECFM=N; ';
-  put '      file _webout RECFM=N; ';
+  put '      file &fref RECFM=N; ';
   put '      input string $CHAR1. @; ';
   put '      put string $CHAR1. @; ';
   put ' ';
-  put '    data _null_; file _webout; ';
+  put '    data _null_; file &fref; ';
   put '      put "]"; ';
   put '    run; ';
   put '  %end; ';
   put ' ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
-  put ' ';
+  put '  %if &_debug ge 131 %then %do; ';
+  put '    /* if debug mode, send back first 10 records of each work table also */ ';
+  put '    options obs=10; ';
+  put '    data;run;%let tempds=&syslast; ';
+  put '    ods output Members=&tempds; ';
+  put '    proc datasets library=WORK; ';
+  put '    data _null_; ';
+  put '      set &tempds; ';
+  put '      if name ne "&tempds"; ';
+  put '      i+1; ';
+  put '      call symputx(''wt''!!left(_n_),name); ';
+  put '      call symputx(''wtcnt'',i); ';
+  put '    data _null_; file &fref; put ",""WORK"":{"; ';
+  put '    %do i=1 %to &wtcnt; ';
+  put '      %let wt=&&wt&i; ';
+  put '      proc contents noprint data=&wt ';
+  put '        out=&tempds (keep=name type length format:); ';
+  put '      data _null_; file &fref; ';
+  put '        dsid=open("WORK.&wt",''is''); ';
+  put '        nlobs=attrn(dsid,''NLOBS''); ';
+  put '        nvars=attrn(dsid,''NVARS''); ';
+  put '        rc=close(dsid); ';
+  put '        if &i>1 then put '',''@; ';
+  put '        put " ""&wt"" : {"; ';
+  put '        put ''"nlobs":'' nlobs; ';
+  put '        put '',"nvars":'' nvars; ';
+  put '      %mv_webout(OBJ,&wt,dslabel=first10rows) ';
+  put '      %mv_webout(ARR,&tempds,dslabel=colattrs) ';
+  put '      data _null_; file &fref;put "}"; ';
+  put '    %end; ';
+  put '    data _null_; file &fref;put "}";run; ';
+  put '  %end; ';
   put '  /* close off json */ ';
-  put '  data _null_;file _webout mod; ';
+  put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
   put '    put ",""SYSUSERID"" : ""&sysuserid"" "; ';
   put '    _METAUSER=quote(trim(symget(''_METAUSER''))); ';
@@ -7136,14 +7166,16 @@ run;
 
   @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
+  @param dslabel= value to use instead of the real name for sending to JSON
 
   @version 9.3
   @author Allan Bowe
 
 **/
-%macro mm_webout(action,ds);
+%macro mm_webout(action,ds,dslabel=,fref=_webout);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
-%local i;
+%local i ;
+
 %if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;
     options mprint notes mprintnest;
@@ -7173,7 +7205,7 @@ run;
 
 %else %if &action=OPEN %then %do;
   /* setup json */
-  data _null_;file _webout;
+  data _null_;file &fref;
   %if &_debug ge 131 %then %do;
     put '>>weboutBEGIN<<';
   %end;
@@ -7184,13 +7216,12 @@ run;
 
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
+  data _null_;file &fref mod;
+    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   %if &sysver=9.4 %then %do;
     /* yay - we have proc json */
-    data _null_;file _webout mod;
-      put ", ""%lowcase(&ds)"":";
-
-    proc json out=_webout
+    proc json out=&fref
         %if &action=ARR %then nokeys ;
         %if &_debug ge 131  %then pretty ;
       ;export &ds / nosastags;
@@ -7198,8 +7229,7 @@ run;
   %end;
   %else %do;
     /* time to get our hands dirty */
-    data _null_;file _webout;
-      put ", ""%lowcase(&ds)"":[";
+    data _null_;file &fref; put "[";
 
     proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
       out=_data_;
@@ -7252,20 +7282,51 @@ run;
     /* now write the long strings to _webout 1 char at a time */
     data _null_;
       infile _sjs RECFM=N;
-      file _webout RECFM=N;
+      file &fref RECFM=N;
       input string $CHAR1. @;
       put string $CHAR1. @;
 
-    data _null_; file _webout;
+    data _null_; file &fref;
       put "]";
     run;
   %end;
 
 %end;
 %else %if &action=CLOSE %then %do;
-
+  %if &_debug ge 131 %then %do;
+    /* if debug mode, send back first 10 records of each work table also */
+    options obs=10;
+    data;run;%let tempds=&syslast;
+    ods output Members=&tempds;
+    proc datasets library=WORK;
+    data _null_;
+      set &tempds;
+      if name ne "&tempds";
+      i+1;
+      call symputx('wt'!!left(_n_),name);
+      call symputx('wtcnt',i);
+    data _null_; file &fref; put ",""WORK"":{";
+    %do i=1 %to &wtcnt;
+      %let wt=&&wt&i;
+      proc contents noprint data=&wt
+        out=&tempds (keep=name type length format:);
+      data _null_; file &fref;
+        dsid=open("WORK.&wt",'is');
+        nlobs=attrn(dsid,'NLOBS');
+        nvars=attrn(dsid,'NVARS');
+        rc=close(dsid);
+        if &i>1 then put ','@;
+        put " ""&wt"" : {";
+        put '"nlobs":' nlobs;
+        put ',"nvars":' nvars;
+      %mv_webout(OBJ,&wt,dslabel=first10rows)
+      %mv_webout(ARR,&tempds,dslabel=colattrs)
+      data _null_; file &fref;put "}";
+    %end;
+    data _null_; file &fref;put "}";run;
+  %end;
   /* close off json */
-  data _null_;file _webout mod;
+  data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
     _METAUSER=quote(trim(symget('_METAUSER')));
@@ -7638,7 +7699,7 @@ data _null_;
   file &setup;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
-  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp); ';
+  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog; ';
   put '%local i; ';
   put '%let action=%upcase(&action); ';
@@ -7648,7 +7709,7 @@ data _null_;
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
-  put '  %if not symexist(_webout_fileuri1) %then %do; ';
+  put '  %if not %symexist(_webout_fileuri1) %then %do; ';
   put '    %let _webin_file_count=%eval(&_webin_file_count+0); ';
   put '    %let _webout_fileuri1=&_webout_fileuri; ';
   put '  %end; ';
@@ -7717,17 +7778,18 @@ data _null_;
   put '    run; ';
   put '  %end; ';
   put ' ';
-  put '  /* setup webout */ ';
-  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
-  put '    name="_webout.json" lrecl=999999 ; ';
-  put ' ';
-  put '  /* setup temp ref */ ';
-  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
-  put '    filename &fref temp lrecl=999999; ';
-  put '  %end; ';
   put '%end; ';
   put ' ';
   put '%else %if &action=OPEN %then %do; ';
+  put '  /* setup webout */ ';
+  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
+  put '    name="_webout.json" lrecl=999999 mod; ';
+  put ' ';
+  put '  /* setup temp ref */ ';
+  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
+  put '    filename &fref temp lrecl=999999 mod; ';
+  put '  %end; ';
+  put ' ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
@@ -7736,7 +7798,7 @@ data _null_;
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  options validvarname=upcase; ';
   put '  data _null_;file &fref mod; ';
-  put '    put ", ""%lowcase(&ds)"":"; ';
+  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
   put ' ';
   put '  proc json out=&fref ';
   put '      %if &action=ARR %then nokeys ; ';
@@ -7745,6 +7807,39 @@ data _null_;
   put '  run; ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
+  put '  %if &_debug ge 131 %then %do; ';
+  put '    /* send back first 10 records of each work table for debugging */ ';
+  put '    options obs=10; ';
+  put '    data;run;%let tempds=&syslast; ';
+  put '    ods output Members=&tempds; ';
+  put '    proc datasets library=WORK memtype=data; ';
+  put '    data _null_; ';
+  put '      set &tempds; ';
+  put '      if name ne "&tempds"; ';
+  put '      i+1; ';
+  put '      call symputx(''wt''!!left(_n_),name); ';
+  put '      call symputx(''wtcnt'',i); ';
+  put '    data _null_; file &fref; put ",""WORK"":{"; ';
+  put '    %do i=1 %to &wtcnt; ';
+  put '      %let wt=&&wt&i; ';
+  put '      proc contents noprint data=&wt ';
+  put '        out=&tempds (keep=name type length format:); ';
+  put '      data _null_; file &fref; ';
+  put '        dsid=open("WORK.&wt",''is''); ';
+  put '        nlobs=attrn(dsid,''NLOBS''); ';
+  put '        nvars=attrn(dsid,''NVARS''); ';
+  put '        rc=close(dsid); ';
+  put '        if &i>1 then put '',''@; ';
+  put '        put " ""&wt"" : {"; ';
+  put '        put ''"nlobs":'' nlobs; ';
+  put '        put '',"nvars":'' nvars; ';
+  put '      %mv_webout(OBJ,&wt,dslabel=first10rows) ';
+  put '      %mv_webout(ARR,&tempds,dslabel=colattrs) ';
+  put '      data _null_; file &fref;put "}"; ';
+  put '    %end; ';
+  put '    data _null_; file &fref;put "}";run; ';
+  put '  %end; ';
+  put ' ';
   put '  /* close off json */ ';
   put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
@@ -7759,9 +7854,8 @@ data _null_;
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
   put ' ';
-  put '  data _null_; ';
-  put '    rc=fcopy("&fref","&_webout"); ';
-  put '  run; ';
+  put '  data _null_; rc=fcopy("&fref","&_webout");run; ';
+  put ' ';
   put '%end; ';
   put ' ';
   put '%mend; ';
@@ -8715,12 +8809,13 @@ filename &fref2 clear;
   @param ds The dataset to send back to the frontend
   @param _webout= fileref for returning the json
   @param fref= temp fref
+  @param dslabel= value to use instead of the real name for sending to JSON
 
   @version Viya 3.3
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp);
+%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=);
 %global _webin_file_count _webout_fileuri _debug _omittextlog;
 %local i;
 %let action=%upcase(&action);
@@ -8730,7 +8825,7 @@ filename &fref2 clear;
     options mprint notes mprintnest;
   %end;
 
-  %if not symexist(_webout_fileuri1) %then %do;
+  %if not %symexist(_webout_fileuri1) %then %do;
     %let _webin_file_count=%eval(&_webin_file_count+0);
     %let _webout_fileuri1=&_webout_fileuri;
   %end;
@@ -8799,17 +8894,18 @@ filename &fref2 clear;
     run;
   %end;
 
-  /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
-    name="_webout.json" lrecl=999999 ;
-
-  /* setup temp ref */
-  %if %upcase(&fref) ne _WEBOUT %then %do;
-    filename &fref temp lrecl=999999;
-  %end;
 %end;
 
 %else %if &action=OPEN %then %do;
+  /* setup webout */
+  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+    name="_webout.json" lrecl=999999 mod;
+
+  /* setup temp ref */
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    filename &fref temp lrecl=999999 mod;
+  %end;
+
   /* setup json */
   data _null_;file &fref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
@@ -8818,7 +8914,7 @@ filename &fref2 clear;
 %else %if &action=ARR or &action=OBJ %then %do;
   options validvarname=upcase;
   data _null_;file &fref mod;
-    put ", ""%lowcase(&ds)"":";
+    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   proc json out=&fref
       %if &action=ARR %then nokeys ;
@@ -8827,6 +8923,39 @@ filename &fref2 clear;
   run;
 %end;
 %else %if &action=CLOSE %then %do;
+  %if &_debug ge 131 %then %do;
+    /* send back first 10 records of each work table for debugging */
+    options obs=10;
+    data;run;%let tempds=&syslast;
+    ods output Members=&tempds;
+    proc datasets library=WORK memtype=data;
+    data _null_;
+      set &tempds;
+      if name ne "&tempds";
+      i+1;
+      call symputx('wt'!!left(_n_),name);
+      call symputx('wtcnt',i);
+    data _null_; file &fref; put ",""WORK"":{";
+    %do i=1 %to &wtcnt;
+      %let wt=&&wt&i;
+      proc contents noprint data=&wt
+        out=&tempds (keep=name type length format:);
+      data _null_; file &fref;
+        dsid=open("WORK.&wt",'is');
+        nlobs=attrn(dsid,'NLOBS');
+        nvars=attrn(dsid,'NVARS');
+        rc=close(dsid);
+        if &i>1 then put ','@;
+        put " ""&wt"" : {";
+        put '"nlobs":' nlobs;
+        put ',"nvars":' nvars;
+      %mv_webout(OBJ,&wt,dslabel=first10rows)
+      %mv_webout(ARR,&tempds,dslabel=colattrs)
+      data _null_; file &fref;put "}";
+    %end;
+    data _null_; file &fref;put "}";run;
+  %end;
+
   /* close off json */
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
@@ -8841,9 +8970,8 @@ filename &fref2 clear;
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
 
-  data _null_;
-    rc=fcopy("&fref","&_webout");
-  run;
+  data _null_; rc=fcopy("&fref","&_webout");run;
+
 %end;
 
 %mend;
