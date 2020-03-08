@@ -63,13 +63,24 @@
       put '  sasdata=""';
       put '  if (sas.symexist("sasjs"..i.."data0")==0)';
       put '  then';
+      /* TODO - condense this logic */
       put '    s=sas.symget("sasjs"..i.."data")';
-      put '    sasdata=s:sub(8,s:len()-1)';
+      put '    if(s:sub(1,7) == "%nrstr(")';
+      put '    then';
+      put '      sasdata=s:sub(8,s:len()-1)';
+      put '    else';
+      put '      sasdata=s';
+      put '    end';
       put '  else';
       put '    for d = 1, sas.symget("sasjs"..i.."data0")';
       put '    do';
       put '      s=sas.symget("sasjs"..i.."data"..d)';
-      put '      sasdata=sasdata..s:sub(8,s:len()-1)';
+      put '      if(s:sub(1,7) == "%nrstr(")';
+      put '      then';
+      put '        sasdata=sasdata..s:sub(8,s:len()-1)';
+      put '      else';
+      put '        sasdata=sasdata..s';
+      put '      end';
       put '    end';
       put '  end';
       put '  file = io.open(sas.pathname("work").."/"..tab..".csv", "a")';
