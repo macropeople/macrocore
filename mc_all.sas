@@ -4183,6 +4183,8 @@ filename &frefout temp;
     filerefs are left open, to enable inspection after running the
     macro (or importing into an xmlmap if needed).
   @param frefout= fileref to use (enables change if there is a conflict)
+  @param repo= ServerContext is tied to a repo, if you are not using the
+    foundation repo then select a different one here
 
   @returns outds  dataset containing the following columns:
    - stpuri
@@ -4210,7 +4212,13 @@ filename &frefout temp;
     ,minify=NO
     ,frefin=mm_in
     ,frefout=mm_out
+    ,repo=foundation
 )/*/STORE SOURCE*/;
+%local oldrepo;
+%let oldrepo=%upcase(%sysfunc(getoption(METAREPOSITORY)));
+%if &oldrepo ne %upcase(&repo) %then %do;
+  options metarepository=&repo;
+%end;
 
 %local mD;
 %if &mDebug=1 %then %let mD=;
@@ -4497,6 +4505,9 @@ run;
 %end;
 %else %do;
   %put WARNING:  STPTYPE=*&stptype* not recognised!;
+%end;
+%if &oldrepo ne %upcase(&repo) %then %do;
+  options metarepository=&oldrepo;
 %end;
 %mend;/**
   @file mm_createwebservice.sas
