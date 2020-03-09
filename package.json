@@ -2,7 +2,7 @@
   "name": "macrocore",
   "description": "SAS Macro Library for Application Development",
   "keywords": [
-    "sas"
+    "sas, viya, sasmacro, sasjs"
   ],
   "author": "Allan Bowe <support@macropeople.com>",
   "repository": {
