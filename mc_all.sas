@@ -4161,6 +4161,7 @@ filename &frefout temp;
   @li mm_getdirectories.sas
   @li mm_updatestpsourcecode.sas
   @li mp_dropmembers.sas
+  @li mm_getservercontexts.sas
 
   @param stpname= Stored Process name.  Avoid spaces - testing has shown that
     the check to avoid creating multiple STPs in the same folder with the same
@@ -4212,13 +4213,7 @@ filename &frefout temp;
     ,minify=NO
     ,frefin=mm_in
     ,frefout=mm_out
-    ,repo=foundation
 )/*/STORE SOURCE*/;
-%local oldrepo;
-%let oldrepo=%upcase(%sysfunc(getoption(METAREPOSITORY)));
-%if &oldrepo ne %upcase(&repo) %then %do;
-  options metarepository=&repo;
-%end;
 
 %local mD;
 %if &mDebug=1 %then %let mD=;
@@ -4423,14 +4418,14 @@ run;
     %return;
   %end;
   /* check we have the correct ServerContext */
+  %mm_getservercontexts(outds=contexts)
+  %local serveruri; %let serveruri=NOTFOUND;
   data _null_;
-    length type uri $256;
-    rc=metadata_resolve("omsobj:ServerContext?@Name='&server'",type,uri);
-    call symputx('servertype',type,'l');
-    call symputx('serveruri',uri,'l');
-    put type= uri=;
+    set contexts;
+    where upcase(servername)="%upcase(&server)";
+    call symputx('serveruri',serveruri);
   run;
-  %if &servertype ne ServerContext %then %do;
+  %if &serveruri=NOTFOUND %then %do;
     %put WARNING: ServerContext *&server* not found!;
     %return;
   %end;
@@ -4506,9 +4501,7 @@ run;
 %else %do;
   %put WARNING:  STPTYPE=*&stptype* not recognised!;
 %end;
-%if &oldrepo ne %upcase(&repo) %then %do;
-  options metarepository=&oldrepo;
-%end;
+
 %mend;/**
   @file mm_createwebservice.sas
   @brief Create a Web Ready Stored Process
@@ -5997,6 +5990,89 @@ libname _XML_ clear;
 
 %mend;
 /**
+  @file mm_getservercontexts.sas
+  @brief Creates a dataset with all server contexts in all repos
+  @details
+  Usage:
+
+    %mm_getservercontexts(outds=mm_getservercontexts)
+
+  @param outds= the dataset to create that contains the list
+
+  @warning The following filenames are created and then de-assigned:
+
+      filename __mc1 clear;
+      filename __mc2 clear;
+      libname __mc3 clear;
+
+  <h4> Dependencies </h4>
+  @li mm_getrepos.sas
+
+  @version 9.3
+  @author Allan Bowe
+
+**/
+
+%macro mm_getservercontexts(
+  outds=work.mm_getrepos
+)/*/STORE SOURCE*/;
+%local repo repocnt x;
+%let repo=%sysfunc(getoption(metarepository));
+
+/* first get list of available repos */
+%mm_getrepos(outds=work.repos)
+%let repocnt=0;
+data _null_;
+  set repos;
+  where repositorytype in('CUSTOM','FOUNDATION');
+  keep id name ;
+  call symputx('repo'!!left(_n_),name,'l');
+  call symputx('repocnt',_n_,'l');
+run;
+
+filename __mc1 temp;
+filename __mc2 temp;
+data &outds; length serveruri servername $200; stop;run;
+%do x=1 %to &repocnt;
+  options metarepository=&&repo&x;
+  proc metadata in=
+  "<GetMetadataObjects><Reposid>$METAREPOSITORY</Reposid>
+  <Type>ServerContext</Type><Objects/><NS>SAS</NS>
+  <Flags>0</Flags><Options/></GetMetadataObjects>"
+    out=__mc1;
+  run;
+  /*
+  data _null_;
+    infile __mc1 lrecl=1048576;
+    input;
+    put _infile_;
+  run;
+  */
+  data _null_;
+    file __mc2;
+    put '<SXLEMAP version="1.2" name="SASContexts"><TABLE name="SASContexts">';
+    put "<TABLE-PATH syntax='XPath'>/GetMetadataObjects/Objects/ServerContext</TABLE-PATH>";
+    put '<COLUMN name="serveruri">';
+    put "<PATH syntax='XPath'>/GetMetadataObjects/Objects/ServerContext/@Id</PATH>";
+    put "<TYPE>character</TYPE><DATATYPE>string</DATATYPE><LENGTH>200</LENGTH>";
+    put '</COLUMN>';
+    put '<COLUMN name="servername">';
+    put "<PATH syntax='XPath'>/GetMetadataObjects/Objects/ServerContext/@Name</PATH>";
+    put "<TYPE>character</TYPE><DATATYPE>string</DATATYPE><LENGTH>200</LENGTH>";
+    put '</COLUMN>';
+    put '</TABLE></SXLEMAP>';
+  run;
+  libname __mc3 xml xmlfileref=__mc1 xmlmap=__mc2;
+  proc append base=&outds data=__mc3.SASContexts;run;
+  libname __mc3 clear;
+%end;
+
+options metarepository=&repo;
+
+filename __mc1 clear;
+filename __mc2 clear;
+
+%mend;/**
   @file
   @brief Writes the code of an to an external file, or the log if none provided
   @details Get the
@@ -6640,6 +6716,8 @@ run ;
 proc metadata in=__in out=__out verbose;run;
 
 /* find the beginning of the text */
+%local start;
+%let start=0;
 data _null_;
   infile __out lrecl=10000;
   input;
@@ -6653,56 +6731,60 @@ data _null_;
   stop;
 run;
 %put &=start;
-/* read the content, byte by byte, resolving escaped chars */
-data _null_;
- length filein 8 fileid 8;
- filein = fopen("__out","I",1,"B");
- fileid = fopen("__shake","O",1,"B");
- rec = "20"x;
- length entity $6;
- do while(fread(filein)=0);
-   x+1;
-   if x>&start then do;
-    rc = fget(filein,rec,1);
-    if rec='"' then leave;
-    else if rec="&" then do;
-      entity=rec;
-      do until (rec=";");
-        if fread(filein) ne 0 then goto getout;
-        rc = fget(filein,rec,1);
-        entity=cats(entity,rec);
+%if &start>0 %then %do;
+  /* read the content, byte by byte, resolving escaped chars */
+  data _null_;
+  length filein 8 fileid 8;
+  filein = fopen("__out","I",1,"B");
+  fileid = fopen("__shake","O",1,"B");
+  rec = "20"x;
+  length entity $6;
+  do while(fread(filein)=0);
+    x+1;
+    if x>&start then do;
+      rc = fget(filein,rec,1);
+      if rec='"' then leave;
+      else if rec="&" then do;
+        entity=rec;
+        do until (rec=";");
+          if fread(filein) ne 0 then goto getout;
+          rc = fget(filein,rec,1);
+          entity=cats(entity,rec);
+        end;
+        select (entity);
+          when ('&amp;' ) rec='&'  ;
+          when ('&lt;'  ) rec='<'  ;
+          when ('&gt;'  ) rec='>'  ;
+          when ('&apos;') rec="'"  ;
+          when ('&quot;') rec='"'  ;
+          when ('&#x0a;') rec='0A'x;
+          when ('&#x0d;') rec='0D'x;
+          when ('&#36;' ) rec='$'  ;
+          otherwise putlog "WARNING: missing value for " entity=;
+        end;
+        rc =fput(fileid, substr(rec,1,1));
+        rc =fwrite(fileid);
       end;
-      select (entity);
-        when ('&amp;' ) rec='&'  ;
-        when ('&lt;'  ) rec='<'  ;
-        when ('&gt;'  ) rec='>'  ;
-        when ('&apos;') rec="'"  ;
-        when ('&quot;') rec='"'  ;
-        when ('&#x0a;') rec='0A'x;
-        when ('&#x0d;') rec='0D'x;
-        when ('&#36;' ) rec='$'  ;
-        otherwise putlog "WARNING: missing value for " entity=;
+      else do;
+        rc =fput(fileid,rec);
+        rc =fwrite(fileid);
       end;
-      rc =fput(fileid, substr(rec,1,1));
-      rc =fwrite(fileid);
     end;
-    else do;
-      rc =fput(fileid,rec);
-      rc =fwrite(fileid);
-    end;
-   end;
- end;
- getout:
- rc=fclose(filein);
- rc=fclose(fileid);
-run;
+  end;
+  getout:
+  rc=fclose(filein);
+  rc=fclose(fileid);
+  run;
 
-data &outds ;
-  infile __shake dlm='=' missover;
-  length name $50 value $500;
-  input name $ value $;
-run;
-
+  data &outds ;
+    infile __shake dlm='=' missover;
+    length name $50 value $500;
+    input name $ value $;
+  run;
+%end;
+%else %do;
+  %put NOTE: Unable to retrieve Web App Server Properties;
+%end;
 /* clear references */
 filename __in clear;
 filename __out clear;
