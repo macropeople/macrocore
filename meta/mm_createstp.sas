@@ -45,6 +45,7 @@
   @li mm_getdirectories.sas
   @li mm_updatestpsourcecode.sas
   @li mp_dropmembers.sas
+  @li mm_getservercontexts.sas
 
   @param stpname= Stored Process name.  Avoid spaces - testing has shown that
     the check to avoid creating multiple STPs in the same folder with the same
@@ -96,13 +97,7 @@
     ,minify=NO
     ,frefin=mm_in
     ,frefout=mm_out
-    ,repo=foundation
 )/*/STORE SOURCE*/;
-%local oldrepo;
-%let oldrepo=%upcase(%sysfunc(getoption(METAREPOSITORY)));
-%if &oldrepo ne %upcase(&repo) %then %do;
-  options metarepository=&repo;
-%end;
 
 %local mD;
 %if &mDebug=1 %then %let mD=;
@@ -307,14 +302,14 @@ run;
     %return;
   %end;
   /* check we have the correct ServerContext */
+  %mm_getservercontexts(outds=contexts)
+  %local serveruri; %let serveruri=NOTFOUND;
   data _null_;
-    length type uri $256;
-    rc=metadata_resolve("omsobj:ServerContext?@Name='&server'",type,uri);
-    call symputx('servertype',type,'l');
-    call symputx('serveruri',uri,'l');
-    put type= uri=;
+    set contexts;
+    where upcase(servername)="%upcase(&server)";
+    call symputx('serveruri',serveruri);
   run;
-  %if &servertype ne ServerContext %then %do;
+  %if &serveruri=NOTFOUND %then %do;
     %put WARNING: ServerContext *&server* not found!;
     %return;
   %end;
@@ -390,7 +385,5 @@ run;
 %else %do;
   %put WARNING:  STPTYPE=*&stptype* not recognised!;
 %end;
-%if &oldrepo ne %upcase(&repo) %then %do;
-  options metarepository=&oldrepo;
-%end;
+
 %mend;
