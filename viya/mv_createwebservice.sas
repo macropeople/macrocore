@@ -52,7 +52,8 @@ viya:
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
   @param replace= select YES to replace any existing service in that location
-
+  @param adapter= the macro uses the sasjs adapter by default.  To use another
+    adapter, add a (different) fileref here.
 
   @version VIYA V.03.04
   @author Allan Bowe
@@ -68,6 +69,7 @@ viya:
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=authorization_code
     ,replace=NO
+    ,adapter=sasjs
   );
 /* initial validation checking */
 %mf_abort(iftrue=(%mf_isblank(&path)=1)
@@ -174,10 +176,9 @@ run;
  * These put statements are auto generated - to change the macro, change the
  * source (mv_webout) and run `build.py`
  */
-%local setup;
-%let setup=%mf_getuniquefileref();
+filename sasjs temp lrecl=3000;
 data _null_;
-  file &setup;
+  file sasjs;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=); ';
@@ -359,7 +360,7 @@ run;
 
 /* insert the code, escaping double quotes and carriage returns */
 %local x fref freflist;
-%let freflist= &setup &precode &code ;
+%let freflist= &adapter &precode &code ;
 %do x=1 %to %sysfunc(countw(&freflist));
   %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
@@ -427,7 +428,7 @@ filename &fname1 clear;
 filename &fname2 clear;
 filename &fname3 clear;
 filename &fname4 clear;
-filename &setup clear;
+filename &adapter clear;
 libname &libref1 clear;
 
 
