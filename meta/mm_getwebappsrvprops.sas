@@ -113,7 +113,6 @@ run;
   rc=fclose(filein);
   rc=fclose(fileid);
   run;
-
   data &outds ;
     infile __shake dlm='=' missover;
     length name $50 value $500;
@@ -122,7 +121,11 @@ run;
 %end;
 %else %do;
   %put NOTE: Unable to retrieve Web App Server Properties;
+  data &outds;
+    length name $50 value $500;
+  run;
 %end;
+
 /* clear references */
 filename __in clear;
 filename __out clear;

@@ -73,7 +73,7 @@
       %end;
     %end;
 
-    /* send response in Boemska h54s JSON format */
+    /* send response in JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;

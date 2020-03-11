@@ -90,7 +90,7 @@
       %end;
     %end;
 
-    /* send response in Boemska h54s JSON format */
+    /* send response in JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
@@ -3277,7 +3277,8 @@ run;
 %else %do;
   %put NOTE: Library &libref is already assigned;
 %end;
-%mend;/**
+%mend;
+/**
   @file
   @brief Create an Application object in a metadata folder
   @details Application objects are useful for storing properties in metadata.
@@ -6775,7 +6776,6 @@ run;
   rc=fclose(filein);
   rc=fclose(fileid);
   run;
-
   data &outds ;
     infile __shake dlm='=' missover;
     length name $50 value $500;
@@ -6784,7 +6784,11 @@ run;
 %end;
 %else %do;
   %put NOTE: Unable to retrieve Web App Server Properties;
+  data &outds;
+    length name $50 value $500;
+  run;
 %end;
+
 /* clear references */
 filename __in clear;
 filename __out clear;
