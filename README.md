@@ -62,15 +62,14 @@ filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/
    - _mf_ for macro functions (can be used in open code).
    - _mp_ for macro procedures (which generate sas code)
    - _mm_ for metadata macros (interface with the metadata server).
-   - _mw_ for macros that only work in Windows (should work in ALL versions of windows)
-   - _mu_ for macros that only work in Unix type environments (should work in ALL types of unix environment)
-   - _mx_ for macros that use X command and will work in both windows and unix environments.
+   - _mmx_ for macros that use metadata and are XCMD enabled
+   - _mx_ for macros that are XCMD enabled
+   - _mv_ for macros that will only work in Viya
  - follow verb-noun convention
  - unix style line endings (lf)
  - individual lines should be no more than 80 characters long
  - UTF-8
  - no trailing white space
- - no trailing empty lines
 
 ## Header Properties
 The **Macro Core** documentation is created using [doxygen](http://www.doxygen.nl).  A full list of attributes can be found [here](http://www.doxygen.nl/manual/commands.html) but the following are most relevant:
