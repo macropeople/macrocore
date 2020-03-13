@@ -12,9 +12,6 @@
   "scripts": {
     "semantic-release": "semantic-release"
   },
-  "dependencies": {
-    "semantic-release": "^17.0.4"
-  },
   "devDependencies": {
     "semantic-release": "^17.0.4"
   }
