@@ -44,6 +44,8 @@ Usage:
   @param server= The server which will run the STP.  Server name or uri is fine.
   @param mDebug= set to 1 to show debug messages in the log
   @param replace= select YES to replace any existing service in that location
+  @param adapter= the macro uses the sasjs adapter by default.  To use another
+    adapter, add a (different) fileref here.
 
   @version 9.2
   @author Allan Bowe
@@ -58,6 +60,7 @@ Usage:
     ,mDebug=0
     ,server=SASApp
     ,replace=NO
+    ,adapter=sasjs
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
@@ -71,17 +74,14 @@ Usage:
 %&mD.put Executing mm_createwebservice.sas;
 %&mD.put _local_;
 
-%local work tmpfile;
-%let work=%sysfunc(pathname(work));
-%let tmpfile=__mm_createwebservice.temp;
-
 /**
  * Add webout macro
  * These put statements are auto generated - to change the macro, change the
  * source (mm_webout) and run `build.py`
  */
+filename sasjs temp;
 data _null_;
-  file "&work/&tmpfile" lrecl=3000 ;
+  file sasjs lrecl=3000 ;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds,dslabel=,fref=_webout); ';
@@ -266,14 +266,18 @@ data _null_;
 run;
 
 /* add precode and code */
-%local x fref freflist;
-%let freflist= &precode &code ;
+%local work tmpfile;
+%let work=%sysfunc(pathname(work));
+%let tmpfile=__mm_createwebservice.temp;
+%local x fref freflist mod;
+%let freflist= &adapter &precode &code ;
 %do x=1 %to %sysfunc(countw(&freflist));
+  %if &x>1 %then %let mod=mod;
 
   %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
   data _null_;
-    file "&work/&tmpfile" lrecl=3000 mod;
+    file "&work/&tmpfile" lrecl=3000 &mod;
     infile &fref;
     input;
     put _infile_;
