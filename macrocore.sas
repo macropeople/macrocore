@@ -4773,14 +4773,15 @@ run;
 %local work tmpfile;
 %let work=%sysfunc(pathname(work));
 %let tmpfile=__mm_createwebservice.temp;
-%local x fref freflist;
+%local x fref freflist mod;
 %let freflist= &adapter &precode &code ;
 %do x=1 %to %sysfunc(countw(&freflist));
+  %if &x>1 %then %let mod=mod;
 
   %let fref=%scan(&freflist,&x);
   %put &sysmacroname: adding &fref;
   data _null_;
-    file "&work/&tmpfile" lrecl=3000 mod;
+    file "&work/&tmpfile" lrecl=3000 &mod;
     infile &fref;
     input;
     put _infile_;
