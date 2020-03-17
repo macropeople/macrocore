@@ -91,6 +91,10 @@ viya:
 
 options noquotelenmax;
 
+* remove any trailing slash ;
+%if "%substr(&path,%length(&path),1)" = "/" %then
+  %let path=%substr(&path,1,%length(&path)-1);
+
 /* ensure folder exists */
 %put &sysmacroname: Path &path being checked / created;
 %mv_createfolder(path=&path)

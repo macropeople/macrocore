@@ -4612,6 +4612,10 @@ Usage:
 %&mD.put Executing mm_createwebservice.sas;
 %&mD.put _local_;
 
+* remove any trailing slash ;
+%if "%substr(&path,%length(&path),1)" = "/" %then
+  %let path=%substr(&path,1,%length(&path)-1);
+
 /**
  * Add webout macro
  * These put statements are auto generated - to change the macro, change the
@@ -7743,6 +7747,10 @@ viya:
 )
 
 options noquotelenmax;
+
+* remove any trailing slash ;
+%if "%substr(&path,%length(&path),1)" = "/" %then
+  %let path=%substr(&path,1,%length(&path)-1);
 
 /* ensure folder exists */
 %put &sysmacroname: Path &path being checked / created;
