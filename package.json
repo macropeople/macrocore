@@ -1,6 +1,7 @@
 {
   "name": "macrocore",
   "description": "SAS Macro Library for Application Development",
+  "license":"MIT",
   "keywords": [
     "sas, viya, sasmacro, sasjs"
   ],
