@@ -1,7 +1,7 @@
 {
   "name": "macrocore",
   "description": "SAS Macro Library for Application Development",
-  "license":"MIT",
+  "license": "MIT",
   "keywords": [
     "sas, viya, sasmacro, sasjs"
   ],
@@ -10,10 +10,5 @@
     "type": "git",
     "url": "https://github.com/macropeople/macrocore"
   },
-  "scripts": {
-    "semantic-release": "semantic-release"
-  },
-  "devDependencies": {
-    "semantic-release": "^17.0.4"
-  }
+  "devDependencies": {}
 }
