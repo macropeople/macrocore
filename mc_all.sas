@@ -5467,8 +5467,8 @@ filename __outdoc clear;
 
 /* get folder contents */
 data &outds.TMP/view=&outds.TMP;
-  length metauri pathuri name assoctype $256 path $1024
-    publictype MetadataUpdated MetadataCreated $32;
+  length metauri pathuri $64 name $256 path $1024
+    assoctype publictype MetadataUpdated MetadataCreated $32;
   keep metauri assoctype name publictype MetadataUpdated MetadataCreated path;
   call missing(of _all_);
   path="&root";
