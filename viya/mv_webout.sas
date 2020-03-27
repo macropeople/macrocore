@@ -112,7 +112,13 @@
       infile indata termstr=crlf ;
       input;
       if _n_=1 then call symputx('input_statement',_infile_);
-      list;
+      %if &_debug ge 131 %then %do;
+        if _n_<20 then putlog _infile_;
+        else stop;
+      %end;
+      %else %do;
+        stop;
+      %end;
     run;
     data &&_webin_name&i;
       infile indata firstobs=2 dsd termstr=crlf ;
@@ -141,12 +147,15 @@
   options validvarname=upcase;
   data _null_;file &fref mod;
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
-
+  data;run;%let tempds=&syslast;
+  proc sql;drop table &tempds;
+  data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
   proc json out=&fref
       %if &action=ARR %then nokeys ;
       %if &_debug ge 131  %then pretty ;
-    ;export &ds / nosastags;
+    ;export &tempds / nosastags fmtnumeric;
   run;
+  proc sql;drop view &tempds;
 %end;
 %else %if &action=CLOSE %then %do;
   %if &_debug ge 131 %then %do;

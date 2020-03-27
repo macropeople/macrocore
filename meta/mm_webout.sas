@@ -56,7 +56,7 @@
       infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf encoding='utf-8';
       input &input_statement;
       %if &_debug ge 131 %then %do;
-        putlog _infile_;
+        if _n_<20 then putlog _infile_;
       %end;
     run;
   %end;
@@ -79,12 +79,15 @@
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   %if &sysver=9.4 %then %do;
-    /* yay - we have proc json */
+    data;run;%let tempds=&syslast;
+    proc sql;drop table &tempds;
+    data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
     proc json out=&fref
         %if &action=ARR %then nokeys ;
         %if &_debug ge 131  %then pretty ;
-      ;export &ds / nosastags;
+      ;export &tempds / nosastags;
     run;
+    proc sql;drop view &tempds;
   %end;
   %else %do;
     /* time to get our hands dirty */
