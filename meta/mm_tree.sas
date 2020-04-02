@@ -6,6 +6,9 @@
 
   Usage:
 
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
     %mm_tree(root=, outds=iwantthisdataset)
     
   @param root= the parent folder under which to return all contents
