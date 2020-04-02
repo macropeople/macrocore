@@ -26,12 +26,9 @@ Usage:
 
   <h4> Dependencies </h4>
   @li mm_createstp.sas
-  @li mm_getwebappsrvprops.sas
   @li mf_getuser.sas
   @li mm_createfolder.sas
   @li mm_deletestp.sas
-
-
 
   @param path= The full path (in SAS Metadata) where the service will be created
   @param name= Stored Process name.  Avoid spaces - testing has shown that
@@ -310,19 +307,19 @@ run;
   ,stptype=2)
 
 /* find the web app url */
-%mm_getwebappsrvprops(outds= props)
 %local url;
-%let url=localhost/;
+%let url=localhost/SASStoredProcess;
 data _null_;
-  set props(where=(name='webappsrv.server.url'));
-  call symputx('url',value,'l');
+  length url $128;
+  rc=METADATA_GETURI("Stored Process Web App",url);
+  if rc=0 then call symputx('url',url,'l');
 run;
 
 %put NOTE: &sysmacroname: STP &name successfully created in &path;
 %put NOTE-;
 %put NOTE- Check it out here:;
 %put NOTE-; %put NOTE-;
-%put NOTE- &url.SASStoredProcess?_PROGRAM=&path/&name;
+%put NOTE- &url?_PROGRAM=&path/&name;
 %put NOTE-; %put NOTE-;
 
 %mend;
