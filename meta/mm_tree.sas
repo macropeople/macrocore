@@ -60,7 +60,7 @@ data _null_;
 run;
 libname _XML_ xml xmlfileref=response xmlmap=sxlemap;
 
-data fullpath;
+data &outds;
   length metauri pathuri $64 name $256 path $1024
     publictype MetadataUpdated MetadataCreated $32;
   set _XML_.SASObjects;
