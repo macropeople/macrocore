@@ -165,7 +165,7 @@
     ods output Members=&tempds;
     proc datasets library=WORK memtype=data;
     data _null_; set &tempds;
-      if name ne "&tempds";
+      if name ne "&tempds" and not (name =:"DATA");
       i+1;
       call symputx('wt'!!left(_n_),name);
       call symputx('wtcnt',i);

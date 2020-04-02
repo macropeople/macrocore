@@ -217,7 +217,7 @@ data _null_;
   put '    proc datasets library=WORK memtype=data; ';
   put '    data _null_; ';
   put '      set &tempds; ';
-  put '      if name ne "&tempds"; ';
+  put '      if name ne "&tempds" and not (name =:"DATA"); ';
   put '      i+1; ';
   put '      call symputx(''wt''!!left(_n_),name); ';
   put '      call symputx(''wtcnt'',i); ';
