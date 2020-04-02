@@ -31,8 +31,8 @@
 
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=);
-%global _webin_file_count _webout_fileuri _debug _omittextlog;
-%local i;
+%global _webin_file_count _webout_fileuri _debug _omittextlog ;
+%local i tempds;
 %let action=%upcase(&action);
 
 %if &action=FETCH %then %do;

@@ -33,7 +33,7 @@
 **/
 %macro mm_webout(action,ds,dslabel=,fref=_webout);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
-%local i ;
+%local i tempds;
 
 %if &action=FETCH %then %do;
   %if &_debug ge 131 %then %do;

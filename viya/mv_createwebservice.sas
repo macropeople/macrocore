@@ -186,8 +186,8 @@ data _null_;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=); ';
-  put '%global _webin_file_count _webout_fileuri _debug _omittextlog; ';
-  put '%local i; ';
+  put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
+  put '%local i tempds; ';
   put '%let action=%upcase(&action); ';
   put ' ';
   put '%if &action=FETCH %then %do; ';

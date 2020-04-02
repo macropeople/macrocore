@@ -87,7 +87,7 @@ data _null_;
 /* WEBOUT BEGIN */
   put '%macro mm_webout(action,ds,dslabel=,fref=_webout); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
-  put '%local i ; ';
+  put '%local i tempds; ';
   put ' ';
   put '%if &action=FETCH %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
