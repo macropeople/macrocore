@@ -198,6 +198,7 @@
     put ',"_PROGRAM" : ' _PROGRAM ;
     put ",""SYSCC"" : ""&syscc"" ";
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
+    put ",""SYSJOBID"" : ""&sysjobid"" ";
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}" @;
