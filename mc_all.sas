@@ -8339,7 +8339,7 @@ proc http method='POST'
             "Authorization"="Bearer &&&access_token_var"
             "Accept"="application/vnd.sas.job.definition+json";
 run;
-data _null_;infile &fname4;input;putlog _infile_;run;
+/*data _null_;infile &fname4;input;putlog _infile_;run;*/
 %mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
@@ -8351,7 +8351,6 @@ filename &fname3 clear;
 filename &fname4 clear;
 filename &adapter clear;
 libname &libref1 clear;
-
 
 /* get the url so we can give a helpful log message */
 %local url;
