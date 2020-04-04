@@ -451,6 +451,42 @@
 %end;
 %else %put %str(ERR)OR: Unable to find key &key in ds &libds;
 %mend;/**
+  @file mf_getplatform
+  @brief Returns platform specific variables
+  @details Enables platform specific variables to be returned
+
+      %put %mf_getplatform()
+      %put %mf_getplatform(weburl)
+
+    returns:
+      SAS9  (or SASVIYA)
+
+  @param switch the param for which to return a platform specific variable
+
+  @version 9.4 / 3.4
+  @author Allan Bowe
+**/
+
+%macro mf_getplatform(
+     switch=NONE
+)/*/STORE SOURCE*/;
+%let switch=%upcase(&switch);
+%if &switch=NONE %then %do;
+  %if %symexist(SYSPROCESSNAME) %then %do;
+    %if "&sysprocessname"="Compute Server" %then %do;
+        SASVIYA
+    %end;
+  %end;
+  %if %symexist(_metaport) %then %do;
+    SAS9
+    %return;
+  %end;
+  %else %do;
+    SASVIYA
+    %return;
+  %end;
+%end;
+%mend;/**
   @file
   @brief Adds custom quotes / delimiters to a space delimited string
   @details Can be used in open code, eg as follows:
@@ -4601,7 +4637,7 @@ run;
 
   filename &frefout temp;
 
-  proc metadata in= &frefin out=&frefout verbose;
+  proc metadata in= &frefin out=&frefout ;
   run;
 
   %if &mdebug=1 %then %do;
@@ -7475,7 +7511,7 @@ run;
 
 filename &frefout temp;
 
-proc metadata in= &frefin out=&frefout verbose;
+proc metadata in= &frefin out=&frefout;
 run;
 
 %if &mdebug=1 %then %do;
