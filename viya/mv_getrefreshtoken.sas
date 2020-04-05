@@ -15,7 +15,7 @@
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
     %let client=testings;

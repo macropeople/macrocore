@@ -1,6 +1,6 @@
 /**
-  @file mv_getgroups.sas
-  @brief Creates a dataset with a list of viya groups
+  @file mv_getusers.sas
+  @brief Creates a dataset with a list of users
   @details First, be sure you have an access token (which requires an app token).
 
   Using the macros here:
@@ -23,7 +23,7 @@
 
   Now we can run the macro!
 
-    %mv_getgroups()
+    %mv_getusers(outds=users)
 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
@@ -42,9 +42,9 @@
 
 **/
 
-%macro mv_getgroups(access_token_var=ACCESS_TOKEN
+%macro mv_getusers(outds=work.mv_getusers
+    ,access_token_var=ACCESS_TOKEN
     ,grant_type=authorization_code
-    ,outds=work.viyagroups
   );
 /* initial validation checking */
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
@@ -60,7 +60,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1
-  url="http://localhost/identities/groups";
+  url="http://localhost/identities/users?limit=2000";
   headers "Authorization"="Bearer &&&access_token_var"
           "Accept"="application/json";
 run;
@@ -74,8 +74,6 @@ libname &libref1 JSON fileref=&fname1;
 data &outds;
   set &libref1..items;
 run;
-
-
 
 /* clear refs */
 filename &fname1 clear;

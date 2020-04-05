@@ -13,7 +13,7 @@
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
     %mv_getapptoken(client_id=client,client_secret=secret)

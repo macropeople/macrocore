@@ -7,7 +7,7 @@
 
     Usage:
 
-      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/macrocore.sas";
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
       %mp_unzip(ziploc="/some/file.zip",outdir=/some/folder)
