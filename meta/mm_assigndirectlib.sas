@@ -16,14 +16,14 @@
 
   <h4> Dependencies </h4>
   @li mf_getengine.sas
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param libref the libref (not name) of the metadata library
   @param open_passthrough= provide an alias to produce the CONNECT TO statement
     for the relevant external database
   @param sql_options= an override default output fileref to avoid naming clash
   @param mDebug= set to 1 to show debug messages in the log
-  @param mAbort= set to 1 to call %mf_abort().
+  @param mAbort= set to 1 to call %mp_abort().
 
   @returns libname statement
 
@@ -372,7 +372,7 @@ run;
 %end;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
-  %&mAbort.mf_abort(
+  %&mAbort.mp_abort(
     msg=%str(ERR)OR: Libref &libref is not registered in metadata
     ,mac=mm_assigndirectlib.sas);
   %return;

@@ -19,7 +19,7 @@
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -31,16 +31,16 @@
     ,grant_type=authorization_code
   );
 
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
 
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -70,7 +70,7 @@ options noquotelenmax;
   %local libref1;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
-  %mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
     ,mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
@@ -110,7 +110,7 @@ options noquotelenmax;
     %put &=SYS_PROCHTTP_STATUS_CODE;
     %put &=SYS_PROCHTTP_STATUS_PHRASE;
     data _null_;infile &fname2;input;putlog _infile_;run;
-    %mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
+    %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
       ,mac=&sysmacroname
       ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
     )

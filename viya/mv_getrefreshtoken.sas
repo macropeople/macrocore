@@ -44,7 +44,7 @@
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
 
 **/
@@ -63,22 +63,22 @@
 %local fref1 fref2 libref;
 
 /* test the validity of inputs */
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
-%mf_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
+%mp_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
   ,mac=&sysmacroname
   ,msg=%str(Authorization code required)
 )
 
-%mf_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
+%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
   ,mac=&sysmacroname
   ,msg=%str(username / password required)
 )
 
-%mf_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
+%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
   ,mac=&sysmacroname
   ,msg=%str(client / secret must both be provided)
 )

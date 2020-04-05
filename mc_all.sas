@@ -48,9 +48,7 @@
   %put NOTE: ///  mf_abort macro executing //;
   %if %length(&mac)>0 %then %put NOTE- called by &mac;
   %put NOTE - &msg;
-  %if not %symexist(h54sDebuggingMode) %then %do;
-    %let h54sDebuggingMode=0;
-  %end;
+
   /* Stored Process Server web app context */
   %if %symexist(_metaperson) or "&SYSPROCESSNAME"="Compute Server" %then %do;
     options obs=max replace nosyntaxcheck mprint;
@@ -90,14 +88,10 @@
       %end;
     %end;
 
-    /* send response in JSON format */
+    /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
-      if symexist('usermessage') then usermessage=quote(trim(symget('usermessage')));
-      else usermessage='"blank"';
-      if symexist('logmessage') then logmessage=quote(trim(symget('logmessage')));
-      else logmessage='"blank"';
       sasdatetime=datetime();
       msg=cats(symget('msg'),'\n\nLog Extract:\n',symget('logmsg'));
       /* escape the quotes */
@@ -107,19 +101,29 @@
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=symget('_debug');
-      if debug=131 then put "--h54s-data-start--";
-      put '{"h54sAbort" : [{';
+      if debug ge 131 then put '>>weboutBEGIN<<';
+      put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
+      put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
-      put ' ,"MAC": "' "&mac" '"}],';
-      put '"usermessage" : ' usermessage ',';
-      put '"logmessage" : ' logmessage ',';
-      put '"errormessage" : "aborted by mf_abort macro",';
-      put '"requestingUser" : "' "&_metauser." '",';
-      put '"requestingPerson" : "' "&_metaperson." '",';
-      put '"executingPid" : ' "&sysjobid." ',';
-      put '"sasDatetime" : ' sasdatetime ',';
-      put '"status" : "success"}';
-      if debug=131 then put "--h54s-data-end--";
+      put ' ,"MAC": "' "&mac" '"}]';
+      put ",""SYSUSERID"" : ""&sysuserid"" ";
+      if symexist('_metauser') then do;
+        _METAUSER=quote(trim(symget('_METAUSER')));
+        put ",""_METAUSER"": " _METAUSER;
+        _METAPERSON=quote(trim(symget('_METAPERSON')));
+        put ',"_METAPERSON": ' _METAPERSON;
+      end;
+      _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
+      put ',"_PROGRAM" : ' _PROGRAM ;
+      put ",""SYSCC"" : ""&syscc"" ";
+      put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
+      put ",""SYSJOBID"" : ""&sysjobid"" ";
+      put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
+      put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
+      put "}" @;
+      %if &_debug ge 131 %then %do;
+        put '>>weboutEND<<';
+      %end;
     run;
     %let syscc=0;
     %if %symexist(SYS_JES_JOB_URI) %then %do;
@@ -143,7 +147,7 @@
     filename skip temp;
     data _null_;
       file skip;
-      put '%macro skippy();';
+      put '%macro skip(); %macro skippy();';
     run;
     %inc skip;
   %end;
@@ -456,10 +460,9 @@
   @details Enables platform specific variables to be returned
 
       %put %mf_getplatform()
-      %put %mf_getplatform(weburl)
 
     returns:
-      SAS9  (or SASVIYA)
+      SASMETA  (or SASVIYA)
 
   @param switch the param for which to return a platform specific variable
 
@@ -472,17 +475,25 @@
 )/*/STORE SOURCE*/;
 %let switch=%upcase(&switch);
 %if &switch=NONE %then %do;
-  %if %symexist(SYSPROCESSNAME) %then %do;
-    %if "&sysprocessname"="Compute Server" %then %do;
+  %if %symexist(sysprocessmode) %then %do;
+    %if "&sysprocessmode"="SAS Object Server" %then %do;
         SASVIYA
     %end;
+    %else %if "&sysprocessmode"="SAS Stored Process Server" %then %do;
+      SASMETA
+      %return;
+    %end;
+    %else %do;
+      SAS
+      %return;
+    %end;
   %end;
-  %if %symexist(_metaport) %then %do;
-    SAS9
+  %else %if %symexist(_metaport) %then %do;
+    SASMETA
     %return;
   %end;
   %else %do;
-    SASVIYA
+    SAS
     %return;
   %end;
 %end;
@@ -1338,7 +1349,7 @@ Usage:
       %end;
     %end;
 
-    /* send response in JSON format */
+    /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
@@ -1351,7 +1362,7 @@ Usage:
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=symget('_debug');
-      if debug=131 then put '>>weboutBEGIN<<';
+      if debug ge 131 then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
@@ -2996,14 +3007,14 @@ filename __us2grp clear;
 
   <h4> Dependencies </h4>
   @li mf_getengine.sas
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param libref the libref (not name) of the metadata library
   @param open_passthrough= provide an alias to produce the CONNECT TO statement
     for the relevant external database
   @param sql_options= an override default output fileref to avoid naming clash
   @param mDebug= set to 1 to show debug messages in the log
-  @param mAbort= set to 1 to call %mf_abort().
+  @param mAbort= set to 1 to call %mp_abort().
 
   @returns libname statement
 
@@ -3352,7 +3363,7 @@ run;
 %end;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
-  %&mAbort.mf_abort(
+  %&mAbort.mp_abort(
     msg=%str(ERR)OR: Libref &libref is not registered in metadata
     ,mac=mm_assigndirectlib.sas);
   %return;
@@ -3372,15 +3383,15 @@ run;
 
   usage:
 
-      %macro mf_abort(iftrue,mac,msg);%put &=msg;%mend;
+      %macro mp_abort(iftrue,mac,msg);%put &=msg;%mend;
 
       %mm_assignlib(SOMEREF)
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param libref the libref (not name) of the metadata library
-  @param mAbort= If not assigned, HARD will call %mf_abort(), SOFT will silently return
+  @param mAbort= If not assigned, HARD will call %mp_abort(), SOFT will silently return
 
   @returns libname statement
 
@@ -3395,7 +3406,7 @@ run;
 )/*/STORE SOURCE*/;
 
 %if %sysfunc(libref(&libref)) %then %do;
-  %local mf_abort msg; %let mf_abort=0;
+  %local mp_abort msg; %let mp_abort=0;
   data _null_;
     length liburi LibName $200;
     call missing(of _all_);
@@ -3405,7 +3416,7 @@ run;
       /* now try and assign it */
       if libname("&libref",,'meta',cats('liburi="',liburi,'";')) ne 0 then do;
         call symputx('msg',sysmsg(),'l');
-        if "&mabort"='HARD' then call symputx('mf_abort',1,'l');
+        if "&mabort"='HARD' then call symputx('mp_abort',1,'l');
       end;
       else do;
         put (_all_)(=);
@@ -3414,17 +3425,17 @@ run;
       end;
     end;
     else if nobj>1 then do;
-      if "&mabort"='HARD' then call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mp_abort',1);
       call symputx('msg',"More than one library with libref=&libref");
     end;
     else do;
-      if "&mabort"='HARD' then call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mp_abort',1);
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
 
-  %if &mf_abort=1 %then %do;
-    %mf_abort(iftrue= (&mf_abort=1)
+  %if &mp_abort=1 %then %do;
+    %mp_abort(iftrue= (&mp_abort=1)
       ,mac=&sysmacroname
       ,msg=&msg
     )
@@ -3458,7 +3469,7 @@ run;
   @warning application components do not get deleted when removing the container folder!  be sure you have the administrative priviliges to remove this kind of metadata from the SMC plugin (or be ready to do to so programmatically).
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_verifymacvars.sas
 
   @param tree= The metadata folder uri, or the metadata path, in which to
@@ -3512,7 +3523,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_createapplication.sas
   ,msg=Tree &tree does not exist!
@@ -3528,7 +3539,7 @@ data _null_;
   putlog (_all_)(=);
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type = SoftwareComponent)
   ,mac=mm_createapplication.sas
   ,msg=Application &name already exists in &tree!
@@ -3689,7 +3700,7 @@ run;
         ,name=MyNote)
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_verifymacvars.sas
 
 
@@ -3736,7 +3747,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_createdocument.sas
   ,msg=Tree &tree does not exist!
@@ -5433,7 +5444,7 @@ run;
       )
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param tree= The metadata path of the document
   @param name= Document object name.
@@ -5468,7 +5479,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_getdocument.sas
   ,msg=Tree &tree does not exist!
@@ -5487,7 +5498,7 @@ data _null_;
   putlog (_all_)(=);
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Document)
   ,mac=mm_getdocument.sas
   ,msg=Document &name could not be found in &tree!
@@ -7796,7 +7807,7 @@ run;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -7808,16 +7819,16 @@ run;
     ,grant_type=authorization_code
   );
 
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
 
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -7847,7 +7858,7 @@ options noquotelenmax;
   %local libref1;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
-  %mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
     ,mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
@@ -7887,7 +7898,7 @@ options noquotelenmax;
     %put &=SYS_PROCHTTP_STATUS_CODE;
     %put &=SYS_PROCHTTP_STATUS_PHRASE;
     data _null_;infile &fname2;input;putlog _infile_;run;
-    %mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
+    %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
       ,mac=&sysmacroname
       ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
     )
@@ -7944,7 +7955,7 @@ viya:
     and then sent to _webout in one go at the end.
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
@@ -7981,19 +7992,19 @@ viya:
     ,adapter=sasjs
   );
 /* initial validation checking */
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%mf_isblank(&name)=1)
+%mp_abort(iftrue=(%mf_isblank(&name)=1)
   ,mac=&sysmacroname
   ,msg=%str(name value must be provided)
 )
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -8016,7 +8027,7 @@ proc http method='GET' out=&fname1
   headers "Authorization"="Bearer &&&access_token_var";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -8045,7 +8056,7 @@ proc http method='GET'
             'Accept-Language'='string';
 run;
 /*data _null_;infile &fname2;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -8064,7 +8075,7 @@ run;
     if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
       call symputx('exists',1,'l');
   run;
-  %mf_abort(iftrue=(&exists=1)
+  %mp_abort(iftrue=(&exists=1)
     ,mac=&sysmacroname
     ,msg=%str(Job &name already exists in &path)
   )
@@ -8343,7 +8354,7 @@ proc http method='POST'
             "Accept"="application/vnd.sas.job.definition+json";
 run;
 /*data _null_;infile &fname4;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -8406,7 +8417,7 @@ run;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -8419,19 +8430,19 @@ run;
     ,grant_type=authorization_code
   );
 
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%mf_isblank(&name)=1)
+%mp_abort(iftrue=(%mf_isblank(&name)=1)
   ,mac=&sysmacroname
   ,msg=%str(name value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -8451,7 +8462,7 @@ run;
 %end;
 %else %if &SYS_PROCHTTP_STATUS_CODE ne 200 %then %do;
   /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-  %mf_abort(mac=&sysmacroname
+  %mp_abort(mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
 %end;
@@ -8495,7 +8506,7 @@ proc http method="DELETE" url="&uri";
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
   data _null_; infile &fname2; input; putlog _infile_;run;
-  %mf_abort(mac=&sysmacroname
+  %mp_abort(mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
 %end;
@@ -8529,7 +8540,7 @@ libname &libref1a clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -8541,15 +8552,15 @@ libname &libref1a clear;
     ,grant_type=authorization_code
   );
 
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -8569,7 +8580,7 @@ run;
 %end;
 %else %if &SYS_PROCHTTP_STATUS_CODE ne 200 %then %do;
   /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-  %mf_abort(mac=&sysmacroname
+  %mp_abort(mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
 %end;
@@ -8618,7 +8629,7 @@ proc http method='DELETE'
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
   data _null_; infile &fname2; input; putlog _infile_;run;
-  %mf_abort(mac=&sysmacroname
+  %mp_abort(mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
 %end;
@@ -8675,7 +8686,7 @@ libname &libref1 clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
 
 **/
@@ -8695,17 +8706,17 @@ options noquotelenmax;
 %local fref1 libref;
 
 /* test the validity of inputs */
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
-%mf_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
+%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
   ,mac=&sysmacroname
   ,msg=%str(username / password required)
 )
 
-%mf_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
+%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
   ,mac=&sysmacroname
   ,msg=%str(client / secret must both be provided)
 )
@@ -8780,7 +8791,7 @@ filename &fref2 clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
@@ -8793,7 +8804,7 @@ filename &fref2 clear;
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
 
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -8909,7 +8920,7 @@ libname &libref clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -8924,7 +8935,7 @@ libname &libref clear;
 
 %if %mf_isblank(&root)=1 %then %let root=/;
 
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -9017,7 +9028,7 @@ libname &libref1 clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -9028,7 +9039,7 @@ libname &libref1 clear;
     ,outds=work.viyagroups
   );
 /* initial validation checking */
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -9046,7 +9057,7 @@ proc http method='GET' out=&fname1
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -9108,7 +9119,7 @@ libname &libref1 clear;
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
 
 **/
@@ -9127,22 +9138,22 @@ libname &libref1 clear;
 %local fref1 fref2 libref;
 
 /* test the validity of inputs */
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
-%mf_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
+%mp_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
   ,mac=&sysmacroname
   ,msg=%str(Authorization code required)
 )
 
-%mf_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
+%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
   ,mac=&sysmacroname
   ,msg=%str(username / password required)
 )
 
-%mf_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
+%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
   ,mac=&sysmacroname
   ,msg=%str(client / secret must both be provided)
 )

@@ -31,9 +31,7 @@
   %put NOTE: ///  mf_abort macro executing //;
   %if %length(&mac)>0 %then %put NOTE- called by &mac;
   %put NOTE - &msg;
-  %if not %symexist(h54sDebuggingMode) %then %do;
-    %let h54sDebuggingMode=0;
-  %end;
+
   /* Stored Process Server web app context */
   %if %symexist(_metaperson) or "&SYSPROCESSNAME"="Compute Server" %then %do;
     options obs=max replace nosyntaxcheck mprint;
@@ -73,14 +71,10 @@
       %end;
     %end;
 
-    /* send response in JSON format */
+    /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
-      if symexist('usermessage') then usermessage=quote(trim(symget('usermessage')));
-      else usermessage='"blank"';
-      if symexist('logmessage') then logmessage=quote(trim(symget('logmessage')));
-      else logmessage='"blank"';
       sasdatetime=datetime();
       msg=cats(symget('msg'),'\n\nLog Extract:\n',symget('logmsg'));
       /* escape the quotes */
@@ -90,19 +84,29 @@
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=symget('_debug');
-      if debug=131 then put "--h54s-data-start--";
-      put '{"h54sAbort" : [{';
+      if debug ge 131 then put '>>weboutBEGIN<<';
+      put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
+      put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
-      put ' ,"MAC": "' "&mac" '"}],';
-      put '"usermessage" : ' usermessage ',';
-      put '"logmessage" : ' logmessage ',';
-      put '"errormessage" : "aborted by mf_abort macro",';
-      put '"requestingUser" : "' "&_metauser." '",';
-      put '"requestingPerson" : "' "&_metaperson." '",';
-      put '"executingPid" : ' "&sysjobid." ',';
-      put '"sasDatetime" : ' sasdatetime ',';
-      put '"status" : "success"}';
-      if debug=131 then put "--h54s-data-end--";
+      put ' ,"MAC": "' "&mac" '"}]';
+      put ",""SYSUSERID"" : ""&sysuserid"" ";
+      if symexist('_metauser') then do;
+        _METAUSER=quote(trim(symget('_METAUSER')));
+        put ",""_METAUSER"": " _METAUSER;
+        _METAPERSON=quote(trim(symget('_METAPERSON')));
+        put ',"_METAPERSON": ' _METAPERSON;
+      end;
+      _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
+      put ',"_PROGRAM" : ' _PROGRAM ;
+      put ",""SYSCC"" : ""&syscc"" ";
+      put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
+      put ",""SYSJOBID"" : ""&sysjobid"" ";
+      put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
+      put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
+      put "}" @;
+      %if &_debug ge 131 %then %do;
+        put '>>weboutEND<<';
+      %end;
     run;
     %let syscc=0;
     %if %symexist(SYS_JES_JOB_URI) %then %do;
@@ -126,7 +130,7 @@
     filename skip temp;
     data _null_;
       file skip;
-      put '%macro skippy();';
+      put '%macro skip(); %macro skippy();';
     run;
     %inc skip;
   %end;

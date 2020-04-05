@@ -12,7 +12,7 @@
       )
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param tree= The metadata path of the document
   @param name= Document object name.
@@ -47,7 +47,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_getdocument.sas
   ,msg=Tree &tree does not exist!
@@ -66,7 +66,7 @@ data _null_;
   putlog (_all_)(=);
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Document)
   ,mac=mm_getdocument.sas
   ,msg=Document &name could not be found in &tree!

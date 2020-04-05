@@ -6,15 +6,15 @@
 
   usage:
 
-      %macro mf_abort(iftrue,mac,msg);%put &=msg;%mend;
+      %macro mp_abort(iftrue,mac,msg);%put &=msg;%mend;
 
       %mm_assignlib(SOMEREF)
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
 
   @param libref the libref (not name) of the metadata library
-  @param mAbort= If not assigned, HARD will call %mf_abort(), SOFT will silently return
+  @param mAbort= If not assigned, HARD will call %mp_abort(), SOFT will silently return
 
   @returns libname statement
 
@@ -29,7 +29,7 @@
 )/*/STORE SOURCE*/;
 
 %if %sysfunc(libref(&libref)) %then %do;
-  %local mf_abort msg; %let mf_abort=0;
+  %local mp_abort msg; %let mp_abort=0;
   data _null_;
     length liburi LibName $200;
     call missing(of _all_);
@@ -39,7 +39,7 @@
       /* now try and assign it */
       if libname("&libref",,'meta',cats('liburi="',liburi,'";')) ne 0 then do;
         call symputx('msg',sysmsg(),'l');
-        if "&mabort"='HARD' then call symputx('mf_abort',1,'l');
+        if "&mabort"='HARD' then call symputx('mp_abort',1,'l');
       end;
       else do;
         put (_all_)(=);
@@ -48,17 +48,17 @@
       end;
     end;
     else if nobj>1 then do;
-      if "&mabort"='HARD' then call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mp_abort',1);
       call symputx('msg',"More than one library with libref=&libref");
     end;
     else do;
-      if "&mabort"='HARD' then call symputx('mf_abort',1);
+      if "&mabort"='HARD' then call symputx('mp_abort',1);
       call symputx('msg',"Library &libref not found in metadata");
     end;
   run;
 
-  %if &mf_abort=1 %then %do;
-    %mf_abort(iftrue= (&mf_abort=1)
+  %if &mp_abort=1 %then %do;
+    %mp_abort(iftrue= (&mp_abort=1)
       ,mac=&sysmacroname
       ,msg=&msg
     )

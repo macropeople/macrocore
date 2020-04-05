@@ -36,7 +36,7 @@
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -47,7 +47,7 @@
     ,outds=work.viyagroups
   );
 /* initial validation checking */
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -65,7 +65,7 @@ proc http method='GET' out=&fname1
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )

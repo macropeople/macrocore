@@ -64,7 +64,7 @@
       %end;
     %end;
 
-    /* send response in JSON format */
+    /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
@@ -77,7 +77,7 @@
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=symget('_debug');
-      if debug=131 then put '>>weboutBEGIN<<';
+      if debug ge 131 then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;

@@ -35,7 +35,7 @@ viya:
     and then sent to _webout in one go at the end.
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
@@ -72,19 +72,19 @@ viya:
     ,adapter=sasjs
   );
 /* initial validation checking */
-%mf_abort(iftrue=(%mf_isblank(&path)=1)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%length(&path)=1)
+%mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mf_abort(iftrue=(%mf_isblank(&name)=1)
+%mp_abort(iftrue=(%mf_isblank(&name)=1)
   ,mac=&sysmacroname
   ,msg=%str(name value must be provided)
 )
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -107,7 +107,7 @@ proc http method='GET' out=&fname1
   headers "Authorization"="Bearer &&&access_token_var";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -136,7 +136,7 @@ proc http method='GET'
             'Accept-Language'='string';
 run;
 /*data _null_;infile &fname2;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )
@@ -155,7 +155,7 @@ run;
     if contenttype='jobDefinition' and upcase(name)="%upcase(&name)" then
       call symputx('exists',1,'l');
   run;
-  %mf_abort(iftrue=(&exists=1)
+  %mp_abort(iftrue=(&exists=1)
     ,mac=&sysmacroname
     ,msg=%str(Job &name already exists in &path)
   )
@@ -434,7 +434,7 @@ proc http method='POST'
             "Accept"="application/vnd.sas.job.definition+json";
 run;
 /*data _null_;infile &fname4;input;putlog _infile_;run;*/
-%mf_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
 )

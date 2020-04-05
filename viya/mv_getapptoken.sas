@@ -27,7 +27,7 @@
   @source https://github.com/macropeople/macrocore
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
@@ -40,7 +40,7 @@
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
 
-%mf_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
