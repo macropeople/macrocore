@@ -460,10 +460,9 @@
   @details Enables platform specific variables to be returned
 
       %put %mf_getplatform()
-      %put %mf_getplatform(weburl)
 
     returns:
-      SAS9  (or SASVIYA)
+      SASMETA  (or SASVIYA)
 
   @param switch the param for which to return a platform specific variable
 
