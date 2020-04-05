@@ -31,9 +31,7 @@
   %put NOTE: ///  mf_abort macro executing //;
   %if %length(&mac)>0 %then %put NOTE- called by &mac;
   %put NOTE - &msg;
-  %if not %symexist(h54sDebuggingMode) %then %do;
-    %let h54sDebuggingMode=0;
-  %end;
+
   /* Stored Process Server web app context */
   %if %symexist(_metaperson) or "&SYSPROCESSNAME"="Compute Server" %then %do;
     options obs=max replace nosyntaxcheck mprint;
@@ -86,7 +84,7 @@
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=symget('_debug');
-      if debug=131 then put '>>weboutBEGIN<<';
+      if debug ge 131 then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
