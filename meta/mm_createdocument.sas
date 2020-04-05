@@ -13,7 +13,7 @@
         ,name=MyNote)
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_verifymacvars.sas
 
 
@@ -60,7 +60,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_createdocument.sas
   ,msg=Tree &tree does not exist!

@@ -16,7 +16,7 @@
   @warning application components do not get deleted when removing the container folder!  be sure you have the administrative priviliges to remove this kind of metadata from the SMC plugin (or be ready to do to so programmatically).
 
   <h4> Dependencies </h4>
-  @li mf_abort.sas
+  @li mp_abort.sas
   @li mf_verifymacvars.sas
 
   @param tree= The metadata folder uri, or the metadata path, in which to
@@ -70,7 +70,7 @@ data _null_;
   call symputx('treeuri',uri,'l');
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type ne Tree)
   ,mac=mm_createapplication.sas
   ,msg=Tree &tree does not exist!
@@ -86,7 +86,7 @@ data _null_;
   putlog (_all_)(=);
 run;
 
-%mf_abort(
+%mp_abort(
   iftrue= (&type = SoftwareComponent)
   ,mac=mm_createapplication.sas
   ,msg=Application &name already exists in &tree!

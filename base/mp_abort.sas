@@ -64,7 +64,7 @@
       %end;
     %end;
 
-    /* send response in JSON format */
+    /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
       length msg $32767;
