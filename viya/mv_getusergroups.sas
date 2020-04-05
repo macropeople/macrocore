@@ -23,7 +23,7 @@
 
   Now we can run the macro!
 
-    %mv_getusers(outds=users)
+    %mv_getusergroups(&sysuserid,outds=users)
 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
@@ -42,7 +42,8 @@
 
 **/
 
-%macro mv_getusergroups(outds=work.mv_getusergroups
+%macro mv_getusergroups(user
+    ,outds=work.mv_getusergroups
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=authorization_code
   );
