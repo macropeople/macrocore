@@ -8688,6 +8688,7 @@ libname &libref1 clear;
   <h4> Dependencies </h4>
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
 
 **/
 
