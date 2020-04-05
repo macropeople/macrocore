@@ -161,13 +161,14 @@
   %if &_debug ge 131 %then %do;
     /* send back first 10 records of each work table for debugging */
     options obs=10;
-    data;run;%let tempds=&syslast;
+    data;run;%let tempds=%scan(&syslast,2,.);
     ods output Members=&tempds;
     proc datasets library=WORK memtype=data;
+    %local wtcnt;%let wtcnt=0;
     data _null_; set &tempds;
-      if name ne "&tempds" and not (name =:"DATA");
+      if not (name =:"DATA");
       i+1;
-      call symputx('wt'!!left(_n_),name);
+      call symputx('wt'!!left(i),name);
       call symputx('wtcnt',i);
     data _null_; file &fref; put ",""WORK"":{";
     %do i=1 %to &wtcnt;

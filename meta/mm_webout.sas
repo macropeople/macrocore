@@ -164,11 +164,10 @@
     %local wtcnt;%let wtcnt=0;
     data _null_;
       set &tempds;
-      if name ne "&tempds";
+      if not (name =:"DATA");
       i+1;
-      call symputx('wt'!!left(_n_),name,'l');
+      call symputx('wt'!!left(i),name,'l');
       call symputx('wtcnt',i,'l');
-      putlog name=;
     data _null_; file &fref; put ",""WORK"":{";
     %do i=1 %to &wtcnt;
       %let wt=&&wt&i;
