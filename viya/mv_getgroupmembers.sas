@@ -66,10 +66,15 @@ proc http method='GET' out=&fname1
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
-  ,mac=&sysmacroname
-  ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
-)
+%if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
+  %put NOTE:  Group &group not found!!;
+%end;
+%else %do;
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+    ,mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+%end;
 libname &libref1 JSON fileref=&fname1;
 
 data &outds;

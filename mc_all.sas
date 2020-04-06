@@ -1352,7 +1352,7 @@ Usage:
     /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
-      length msg $32767;
+      length msg $32767 debug 8;
       sasdatetime=datetime();
       msg=cats(symget('msg'),'\n\nLog Extract:\n',symget('logmsg'));
       /* escape the quotes */
@@ -1382,7 +1382,7 @@ Usage:
       put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
       put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
       put "}" @;
-      %if &_debug ge 131 %then %do;
+      %if debug ge 131 %then %do;
         put '>>weboutEND<<';
       %end;
     run;
@@ -9059,10 +9059,15 @@ proc http method='GET' out=&fname1
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
-  ,mac=&sysmacroname
-  ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
-)
+%if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
+  %put NOTE:  Group &group not found!!;
+%end;
+%else %do;
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+    ,mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+%end;
 libname &libref1 JSON fileref=&fname1;
 
 data &outds;
@@ -9360,10 +9365,15 @@ proc http method='GET' out=&fname1
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
-%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
-  ,mac=&sysmacroname
-  ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
-)
+%if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
+  %put NOTE:  User &user not found!!;
+%end;
+%else %do;
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+    ,mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+%end;
 libname &libref1 JSON fileref=&fname1;
 
 data &outds;

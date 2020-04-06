@@ -67,7 +67,7 @@
     /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
-      length msg $32767;
+      length msg $32767 debug 8;
       sasdatetime=datetime();
       msg=cats(symget('msg'),'\n\nLog Extract:\n',symget('logmsg'));
       /* escape the quotes */
@@ -97,7 +97,7 @@
       put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
       put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
       put "}" @;
-      %if &_debug ge 131 %then %do;
+      %if debug ge 131 %then %do;
         put '>>weboutEND<<';
       %end;
     run;
