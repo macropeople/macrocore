@@ -367,8 +367,8 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp);';
-  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref)';
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp,dslabel=);';
+  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref,dslabel=&dslabel)';
   put '%mend;';
   put '%webout(FETCH)';
 run;

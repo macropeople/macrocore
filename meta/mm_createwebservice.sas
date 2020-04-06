@@ -265,8 +265,8 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds);';
-  put '  %mm_webout(&action,ds=&ds)';
+  put '%macro webout(action,ds,dslabel=);';
+  put '  %mm_webout(&action,ds=&ds,dslabel=&dslabel)';
   put '%mend;';
   put '%webout(FETCH)';
 run;
