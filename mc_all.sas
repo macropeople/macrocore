@@ -9018,6 +9018,16 @@ libname &libref1 clear;
 
     %mv_getgroupmembers(All Users)
 
+  outputs:
+
+      ordinal_root num,
+      ordinal_items num,
+      version num,
+      id char(43),
+      name char(43),
+      providerId char(5),
+      implicit num
+
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
@@ -9051,8 +9061,6 @@ options noquotelenmax;
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-%let libref1=%mf_getuniquelibref();
-
 proc http method='GET' out=&fname1
   url="http://localhost/identities/groups/&group/members?limit=1000";
   headers "Authorization"="Bearer &&&access_token_var"
@@ -9061,22 +9069,26 @@ run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
 %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
   %put NOTE:  Group &group not found!!;
+  data &outds;
+    length id name $43;
+    call missing(of _all_);
+  run;
 %end;
 %else %do;
   %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
     ,mac=&sysmacroname
     ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
   )
+  %let libref1=%mf_getuniquelibref();
+  libname &libref1 JSON fileref=&fname1;
+  data &outds;
+    set &libref1..items;
+  run;
+  libname &libref1 clear;
 %end;
-libname &libref1 JSON fileref=&fname1;
-
-data &outds;
-  set &libref1..items;
-run;
 
 /* clear refs */
 filename &fname1 clear;
-libname &libref1 clear;
 
 %mend;/**
   @file mv_getgroups.sas
