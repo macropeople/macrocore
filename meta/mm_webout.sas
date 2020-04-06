@@ -26,12 +26,13 @@
   @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
   @param dslabel= value to use instead of the real name for sending to JSON
+  @param fmt= set to N to send back unformatted values
 
   @version 9.3
   @author Allan Bowe
 
 **/
-%macro mm_webout(action,ds,dslabel=,fref=_webout);
+%macro mm_webout(action,ds,dslabel=,fref=_webout,fmt=Y);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
 %local i tempds;
 
@@ -81,7 +82,8 @@
   %if &sysver=9.4 %then %do;
     data;run;%let tempds=&syslast;
     proc sql;drop table &tempds;
-    data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
+    data &tempds /view=&tempds;set &ds; 
+    %if &fmt=N %then format _numeric_ best32.;;
     proc json out=&fref
         %if &action=ARR %then nokeys ;
         %if &_debug ge 131  %then pretty ;

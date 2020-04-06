@@ -25,12 +25,14 @@
   @param _webout= fileref for returning the json
   @param fref= temp fref
   @param dslabel= value to use instead of the real name for sending to JSON
+  @param fmt= change to N to strip formats from output
+
 
   @version Viya 3.3
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=);
+%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
 %local i tempds;
 %let action=%upcase(&action);
@@ -149,7 +151,8 @@
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
   data;run;%let tempds=&syslast;
   proc sql;drop table &tempds;
-  data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
+  data &tempds /view=&tempds;set &ds; 
+  %if &fmt=N %then format _numeric_ best32.;;
   proc json out=&fref
       %if &action=ARR %then nokeys ;
       %if &_debug ge 131  %then pretty ;
@@ -201,7 +204,6 @@
     put ',"_PROGRAM" : ' _PROGRAM ;
     put ",""SYSCC"" : ""&syscc"" ";
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
-    put ",""SYSJOBID"" : ""&sysjobid"" ";
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";

@@ -4763,7 +4763,7 @@ data _null_;
   file sasjs lrecl=3000 ;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
-  put '%macro mm_webout(action,ds,dslabel=,fref=_webout); ';
+  put '%macro mm_webout(action,ds,dslabel=,fref=_webout,fmt=Y); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
   put '%local i tempds; ';
   put ' ';
@@ -4813,7 +4813,8 @@ data _null_;
   put '  %if &sysver=9.4 %then %do; ';
   put '    data;run;%let tempds=&syslast; ';
   put '    proc sql;drop table &tempds; ';
-  put '    data &tempds /view=&tempds;set &ds; format _numeric_ best32.; ';
+  put '    data &tempds /view=&tempds;set &ds; ';
+  put '    %if &fmt=N %then format _numeric_ best32.;; ';
   put '    proc json out=&fref ';
   put '        %if &action=ARR %then nokeys ; ';
   put '        %if &_debug ge 131  %then pretty ; ';
@@ -4943,8 +4944,8 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds,dslabel=);';
-  put '  %mm_webout(&action,ds=&ds,dslabel=&dslabel)';
+  put '%macro webout(action,ds,dslabel=,fmt=);';
+  put '  %mm_webout(&action,ds=&ds,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
   put '%webout(FETCH)';
 run;
@@ -7563,12 +7564,13 @@ run;
   @param action Either FETCH, OPEN, ARR, OBJ or CLOSE
   @param ds The dataset to send back to the frontend
   @param dslabel= value to use instead of the real name for sending to JSON
+  @param fmt= set to N to send back unformatted values
 
   @version 9.3
   @author Allan Bowe
 
 **/
-%macro mm_webout(action,ds,dslabel=,fref=_webout);
+%macro mm_webout(action,ds,dslabel=,fref=_webout,fmt=Y);
 %global _webin_file_count _webin_fileref1 _webin_name1 _program _debug;
 %local i tempds;
 
@@ -7618,7 +7620,8 @@ run;
   %if &sysver=9.4 %then %do;
     data;run;%let tempds=&syslast;
     proc sql;drop table &tempds;
-    data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
+    data &tempds /view=&tempds;set &ds; 
+    %if &fmt=N %then format _numeric_ best32.;;
     proc json out=&fref
         %if &action=ARR %then nokeys ;
         %if &_debug ge 131  %then pretty ;
@@ -8105,7 +8108,7 @@ data _null_;
   file sasjs;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
-  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=); ';
+  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
   put '%local i tempds; ';
   put '%let action=%upcase(&action); ';
@@ -8224,7 +8227,8 @@ data _null_;
   put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
   put '  data;run;%let tempds=&syslast; ';
   put '  proc sql;drop table &tempds; ';
-  put '  data &tempds /view=&tempds;set &ds; format _numeric_ best32.; ';
+  put '  data &tempds /view=&tempds;set &ds; ';
+  put '  %if &fmt=N %then format _numeric_ best32.;; ';
   put '  proc json out=&fref ';
   put '      %if &action=ARR %then nokeys ; ';
   put '      %if &_debug ge 131  %then pretty ; ';
@@ -8276,7 +8280,6 @@ data _null_;
   put '    put '',"_PROGRAM" : '' _PROGRAM ; ';
   put '    put ",""SYSCC"" : ""&syscc"" "; ';
   put '    put ",""SYSERRORTEXT"" : ""&syserrortext"" "; ';
-  put '    put ",""SYSJOBID"" : ""&sysjobid"" "; ';
   put '    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" "; ';
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
@@ -8287,8 +8290,9 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp,dslabel=);';
-  put '  %mv_webout(&action,ds=&ds,_webout=&_webout,fref=&fref,dslabel=&dslabel)';
+  put '%macro webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=);';
+  put '  %mv_webout(&action,ds=&ds,_webout=&_webout';
+  put '    ,fref=&fref,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
   put '%webout(FETCH)';
 run;
@@ -9504,12 +9508,14 @@ libname &libref1 clear;
   @param _webout= fileref for returning the json
   @param fref= temp fref
   @param dslabel= value to use instead of the real name for sending to JSON
+  @param fmt= change to N to strip formats from output
+
 
   @version Viya 3.3
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=);
+%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
 %local i tempds;
 %let action=%upcase(&action);
@@ -9628,7 +9634,8 @@ libname &libref1 clear;
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
   data;run;%let tempds=&syslast;
   proc sql;drop table &tempds;
-  data &tempds /view=&tempds;set &ds; format _numeric_ best32.;
+  data &tempds /view=&tempds;set &ds; 
+  %if &fmt=N %then format _numeric_ best32.;;
   proc json out=&fref
       %if &action=ARR %then nokeys ;
       %if &_debug ge 131  %then pretty ;
@@ -9680,7 +9687,6 @@ libname &libref1 clear;
     put ',"_PROGRAM" : ' _PROGRAM ;
     put ",""SYSCC"" : ""&syscc"" ";
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
-    put ",""SYSJOBID"" : ""&sysjobid"" ";
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
