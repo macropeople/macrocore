@@ -318,11 +318,12 @@ data _null_;
   if rc=0 then call symputx('url',url,'l');
 run;
 
-%put NOTE: &sysmacroname: STP &name successfully created in &path;
-%put NOTE-;
-%put NOTE- Check it out here:;
-%put NOTE-; %put NOTE-;
-%put NOTE- &url?_PROGRAM=&path/&name;
-%put NOTE-; %put NOTE-;
+%put ;%put ;%put ;%put ;%put ;%put ;
+%put &sysmacroname: STP &name successfully created in &path;
+%put ;%put ;%put ;
+%put Check it out here:;
+%put ;%put ;%put ;
+%put &url?_PROGRAM=&path/&name;
+%put ;%put ;%put ;%put ;%put ;%put ;
 
 %mend;
