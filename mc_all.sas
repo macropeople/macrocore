@@ -7114,22 +7114,31 @@ filename __shake clear;
   @brief Returns all folders / subfolder content for a particular root
   @details Shows all members and SubTrees for a particular root.
 
+  Model:
+
+      metauri char(64),
+      name char(256) format=$256. informat=$256. label='name',
+      path char(1024),
+      publictype char(32),
+      MetadataUpdated char(32),
+      MetadataCreated char(32)
+
   Usage:
 
-      * load macros;
+      %* load macros;
       filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
-      * export everything;
+      %* export everything;
       %mm_tree(root= ,outds=iwantthisdataset)
 
-      * export everything in a specific folder;
+      %* export everything in a specific folder;
       %mm_tree(root=%str(/my/folder) ,outds=stuff)
 
-      * export only folders;
+      %* export only folders;
       %mm_tree(root=%str(/my/folder) ,types=Folder ,outds=stuf)
 
-      * with specific types;
+      %* with specific types;
       %mm_tree(root=%str(/my/folder)
         ,types= 
             DeployedJob 
@@ -7217,7 +7226,7 @@ data &outds;
   
   if path=:"&root";
 
-  %if &types=ALL or (&types ne ALL and &types ne Folder) %then %do;
+  %if "&types"="ALL" or ("&types" ne "ALL" and "&types" ne "Folder") %then %do;
     n=1;
     do while (metadata_getnasn(pathuri,"Members",n,metauri)>0);
       n+1;
@@ -7226,7 +7235,7 @@ data &outds;
       rc=metadata_getattr(metauri,"MetadataUpdated", MetadataUpdated);
       rc=metadata_getattr(metauri,"MetadataCreated", MetadataCreated);
       rc=metadata_getattr(metauri,"PublicType", PublicType);
-    %if &types ne ALL %then %do;
+    %if "&types" ne "ALL" %then %do;
       if publictype in (%mf_getquotedstr(&types)) then output;
     %end;
     %else output; ;
