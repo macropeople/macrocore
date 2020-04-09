@@ -2,17 +2,44 @@
   @file mm_tree.sas
   @brief Returns all folders / subfolder content for a particular root
   @details Shows all members and SubTrees for a particular root.
-  Leave empty to return ALL content.
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      * load macros;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %mm_tree(root=, outds=iwantthisdataset)
-    
+      * export everything;
+      %mm_tree(root= ,outds=iwantthisdataset)
+
+      * export everything in a specific folder;
+      %mm_tree(root=%str(/my/folder) ,outds=stuff)
+
+      * export only folders;
+      %mm_tree(root=%str(/my/folder) ,types=Folder ,outds=stuf)
+
+      * with specific types;
+      %mm_tree(root=%str(/my/folder)
+        ,types= 
+            DeployedJob 
+            ExternalFile 
+            Folder 
+            Folder.SecuredData 
+            GeneratedTransform 
+            InformationMap.Relational 
+            Job 
+            Library 
+            Prompt 
+            StoredProcess
+            Table
+        ,outds=morestuff)
+
+  <h4> Dependencies </h4>
+  @li mf_getquotedstr.sas
+
   @param root= the parent folder under which to return all contents
   @param outds= the dataset to create that contains the list of directories
+  @param types= Space-seperated, unquoted list of types for filtering the output.  
 
   @version 9.4
   @author Allan Bowe
@@ -20,6 +47,7 @@
 **/
 %macro mm_tree(
      root=
+    ,types=ALL
     ,outds=work.mm_tree
 )/*/STORE SOURCE*/;
 
@@ -78,17 +106,22 @@ data &outds;
   
   if path=:"&root";
 
-  n=1;
-  do while (metadata_getnasn(pathuri,"Members",n,metauri)>0);
-    n+1;
-    call missing(name,publictype,MetadataUpdated,MetadataCreated);
-    rc=metadata_getattr(metauri,"Name", name);
-    rc=metadata_getattr(metauri,"MetadataUpdated", MetadataUpdated);
-    rc=metadata_getattr(metauri,"MetadataCreated", MetadataCreated);
-    rc=metadata_getattr(metauri,"PublicType", PublicType);
-    output;
-  end;
-  
+  %if &types=ALL or (&types ne ALL and &types ne Folder) %then %do;
+    n=1;
+    do while (metadata_getnasn(pathuri,"Members",n,metauri)>0);
+      n+1;
+      call missing(name,publictype,MetadataUpdated,MetadataCreated);
+      rc=metadata_getattr(metauri,"Name", name);
+      rc=metadata_getattr(metauri,"MetadataUpdated", MetadataUpdated);
+      rc=metadata_getattr(metauri,"MetadataCreated", MetadataCreated);
+      rc=metadata_getattr(metauri,"PublicType", PublicType);
+    %if &types ne ALL %then %do;
+      if publictype in (%mf_getquotedstr(&types)) then output;
+    %end;
+    %else output; ;
+    end;
+  %end;
+
   rc=metadata_resolve(pathuri,pname,tmpuri);
   metauri=cats('OMSOBJ:',pname,'\',pathuri);
   rc=metadata_getattr(metauri,"Name", name);
@@ -96,7 +129,7 @@ data &outds;
   rc=metadata_getattr(pathuri,"MetadataCreated", MetadataCreated);
   rc=metadata_getattr(pathuri,"PublicType", PublicType);
   path=substr(path,1,length(path)-length(name));
-  output;
+  if publictype ne '' then output;
 run;
 
 proc sort;

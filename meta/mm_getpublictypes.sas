@@ -1,12 +1,14 @@
 /**
   @file mm_getpublictypes.sas
   @brief Creates a dataset with all deployable public types
-  @details Usage:
+  @details More info: https://support.sas.com/documentation/cdl/en/bisag/65422/HTML/default/viewer.htm#n1nkrdzsq5iunln18bk2236istkb.htm
+  
+  Usage:
 
-    * dataset will contain one column - publictype ($64);
-    %mm_getpublictypes(outds=types)
+        * dataset will contain one column - publictype ($64);
+        %mm_getpublictypes(outds=types)
 
-  @returns outds  dataset containing all types
+  @returns outds= dataset containing all types
 
   @version 9.3
   @author Allan Bowe
