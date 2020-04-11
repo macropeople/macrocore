@@ -65,7 +65,7 @@ header="""
     'included' in SAS with just 2 lines of code:
 
       filename mc url
-        "https://raw.githubusercontent.com/macropeople/macrocore/master/compileall.sas";
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
     The `build.py` file in the https://github.com/macropeople/macrocore repo
