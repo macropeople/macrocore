@@ -27,6 +27,9 @@
       %* export only folders;
       %mm_tree(root=%str(/my/folder) ,types=Folder ,outds=stuf)
 
+      %* show only exportable content;
+      %mm_tree(root=%str(/) ,types=EXPORTABLE ,outds=exportable)
+
       %* with specific types;
       %mm_tree(root=%str(/my/folder)
         ,types= 
@@ -45,10 +48,15 @@
 
   <h4> Dependencies </h4>
   @li mf_getquotedstr.sas
+  @li mm_getpublictypes.sas
 
   @param root= the parent folder under which to return all contents
   @param outds= the dataset to create that contains the list of directories
-  @param types= Space-seperated, unquoted list of types for filtering the output.  
+  @param types= Space-seperated, unquoted list of types for filtering the 
+    output.  Special types:  
+
+    * ALl - return all types (the default)
+    * EXPORTABLE - return only the content types that can be exported in an SPK
 
   @version 9.4
   @author Allan Bowe
@@ -59,8 +67,17 @@
     ,types=ALL
     ,outds=work.mm_tree
 )/*/STORE SOURCE*/;
+options noquotlenmax;
 
 %if &root= %then %let root=/;
+
+%if %str(&types)=EXPORTABLE %then %do;
+  data;run;%local tempds; %let tempds=&syslast;
+  %mm_getpublictypes(outds=&tempds)
+  proc sql noprint;
+  select publictype into: types separated by ' ' from &tempds;
+  drop table &tempds;
+%end;
 
 * use a temporary fileref to hold the response;
 filename response temp;
@@ -137,7 +154,7 @@ data &outds;
   rc=metadata_getattr(pathuri,"MetadataUpdated", MetadataUpdated);
   rc=metadata_getattr(pathuri,"MetadataCreated", MetadataCreated);
   rc=metadata_getattr(pathuri,"PublicType", PublicType);
-  path=substr(path,1,length(path)-length(name));
+  path=substr(path,1,length(path)-length(name)-1);
   if publictype ne '' then output;
 run;
 
