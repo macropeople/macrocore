@@ -7267,6 +7267,7 @@ run;
   <h4> Dependencies </h4>
   @li mf_getquotedstr.sas
   @li mm_getpublictypes.sas
+  @li mf_isblank.sas
 
   @param root= the parent folder under which to return all contents
   @param outds= the dataset to create that contains the list of directories
@@ -7287,7 +7288,7 @@ run;
 )/*/STORE SOURCE*/;
 options noquotelenmax;
 
-%if &root= %then %let root=/;
+%if %mf_isblank(&root) %then %let root=/;
 
 %if %str(&types)=EXPORTABLE %then %do;
   data;run;%local tempds; %let tempds=&syslast;
