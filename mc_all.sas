@@ -7,7 +7,7 @@
     'included' in SAS with just 2 lines of code:
 
       filename mc url
-        "https://raw.githubusercontent.com/macropeople/macrocore/master/compileall.sas";
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
     The `build.py` file in the https://github.com/macropeople/macrocore repo
@@ -7110,6 +7110,106 @@ filename __out clear;
 filename __shake clear;
 
 %mend;/**
+  @file mm_spkexport.sas
+  @brief Creates an batch spk export command
+  @details Creates a script that will export everything in a metadata folder to 
+    a specified location.
+    If you have XCMD enabled, then you can use mmx_spkexport (which performs
+    the actual export)
+    
+    Note - the batch tools require a username and password.  For security,
+    these are expected to have been provided in a protected directory.
+
+Usage:
+
+    %* import the macros (or make them available some other way);
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+    %* create sample text file as input to the macro;
+    filename tmp temp;
+    data _null_;
+      file tmp;
+      put '%let mmxuser=sasdemo;';
+      put '%let mmxpass=Mars321';
+    run;
+
+    filename myref "%sysfunc(pathname(work))/mmxexport.sh";
+    %mm_spkexport(metaloc=%str(/30.Projects/3001.Internal/300115.DataController/dc1)
+        ,secureref=tmp
+        ,outref=myref
+    )
+
+  <h4> Dependencies </h4>
+  @li mf_loc.sas
+  @li mm_tree.sas
+  @li mf_getuniquefileref.sas
+  @li mf_isblank.sas
+
+  @param metaloc= the metadata folder to export
+  @param secureref= fileref containing the username / password (should point to
+    a file in a secure location).  Leave blank to substitute $bash type vars.
+  @param outref= fileref to which to write the command
+  @param cmdoutloc= the directory to which the command will write the SPK 
+    (default=WORK)
+  @param cmdoutname= the name of the spk / log files to create (will be 
+    identical just with .spk or .log extension)
+
+  @version 9.4
+  @author Allan Bowe
+
+**/
+
+%macro mm_spkexport(metaloc=
+  ,secureref=
+  ,outref=
+  ,cmdoutloc=%sysfunc(pathname(work))
+  ,cmdoutname=mmxport
+);
+
+%if &sysscp=WIN %then %do;
+  %put %str(WARN)ING: the script has been written assuming a unix system;
+  %put %str(WARN)ING- it will run anyway as should be easy to modify;
+%end;
+
+/* set creds */
+%local mmxuser mmxpath;
+%let mmxuser=$mmxuser;
+%let mmxpath=$mmxpath;
+%if %mf_isblank(secureref)=0 %then %do;
+  %inc &secureref/nosource;
+%end;
+
+/* setup metadata connection options */
+%local host port platform_object_path connx_string;
+%let host=%sysfunc(getoption(metaserver));
+%let port=%sysfunc(getoption(metaport));
+%let platform_object_path=%mf_loc(POF)/tools;
+
+%let connx_string=%str(-host &host -port &port -user '&mmxuser' -password '&mmxpass');
+
+%mm_tree(root=%str(&metaloc) ,types=EXPORTABLE ,outds=exportable)
+
+data _null_;
+  set exportable end=last;
+  file &outref lrecl=32767;
+  length str $32767;
+  if _n_=1 then do;
+    put "cd ""&platform_object_path"" \";
+    put "; ./ExportPackage &connx_string -disableX11 \";
+    put " -package ""&cmdoutloc/&cmdoutname..spk"" \";
+  end;
+  str=' -objects '!!cats('"',path,'/',name,"(",publictype,')" \');
+  put str;
+  if last then put " -log ""&cmdoutloc/&cmdoutname..log"" 2>&1 ";
+run;
+
+%mp_abort(iftrue= (&syscc ne 0)
+  ,mac=&sysmacroname
+  ,msg=%str(syscc=&syscc)
+)
+
+%mend;/**
   @file mm_tree.sas
   @brief Returns all folders / subfolder content for a particular root
   @details Shows all members and SubTrees for a particular root.
@@ -7138,6 +7238,9 @@ filename __shake clear;
       %* export only folders;
       %mm_tree(root=%str(/my/folder) ,types=Folder ,outds=stuf)
 
+      %* show only exportable content;
+      %mm_tree(root=%str(/) ,types=EXPORTABLE ,outds=exportable)
+
       %* with specific types;
       %mm_tree(root=%str(/my/folder)
         ,types= 
@@ -7156,10 +7259,15 @@ filename __shake clear;
 
   <h4> Dependencies </h4>
   @li mf_getquotedstr.sas
+  @li mm_getpublictypes.sas
 
   @param root= the parent folder under which to return all contents
   @param outds= the dataset to create that contains the list of directories
-  @param types= Space-seperated, unquoted list of types for filtering the output.  
+  @param types= Space-seperated, unquoted list of types for filtering the 
+    output.  Special types:  
+
+    * ALl - return all types (the default)
+    * EXPORTABLE - return only the content types that can be exported in an SPK
 
   @version 9.4
   @author Allan Bowe
@@ -7170,8 +7278,17 @@ filename __shake clear;
     ,types=ALL
     ,outds=work.mm_tree
 )/*/STORE SOURCE*/;
+options noquotlenmax;
 
 %if &root= %then %let root=/;
+
+%if %str(&types)=EXPORTABLE %then %do;
+  data;run;%local tempds; %let tempds=&syslast;
+  %mm_getpublictypes(outds=&tempds)
+  proc sql noprint;
+  select publictype into: types separated by ' ' from &tempds;
+  drop table &tempds;
+%end;
 
 * use a temporary fileref to hold the response;
 filename response temp;
@@ -7248,7 +7365,7 @@ data &outds;
   rc=metadata_getattr(pathuri,"MetadataUpdated", MetadataUpdated);
   rc=metadata_getattr(pathuri,"MetadataCreated", MetadataCreated);
   rc=metadata_getattr(pathuri,"PublicType", PublicType);
-  path=substr(path,1,length(path)-length(name));
+  path=substr(path,1,length(path)-length(name)-1);
   if publictype ne '' then output;
 run;
 
@@ -7956,6 +8073,95 @@ data _null_;
   input;
   putlog _infile_;
 run;
+
+%mend;/**
+  @file mmx_spkexport.sas
+  @brief Exports everything in a particular metadata folder
+  @details Will export everything in a metadata folder to a specified location.
+    Note - the batch tools require a username and password.  For security,
+    these are expected to have been provided in a protected directory.
+
+Usage:
+
+    %* import the macros (or make them available some other way);
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+    %* create sample text file as input to the macro;
+    filename tmp temp;
+    data _null_;
+      file tmp;
+      put '%let mmxuser=sasdemo;';
+      put '%let mmxpass=Mars321';
+    run;
+
+    filename outref "%sysfunc(pathname(work))";
+    %mmx_spkexport(metaloc=%str(/30.Projects/3001.Internal/300115.DataController/dc1)
+        ,secureref=tmp
+        ,outspkpath=%str(/tmp)
+    )
+
+  <h4> Dependencies </h4>
+  @li mf_loc.sas
+  @li mm_tree.sas
+  @li mf_getuniquefileref.sas
+
+  @param metaloc= the metadata folder to export
+  @param secureref= fileref containing the username / password (should point to
+    a file in a secure location)
+  @param outspkname= name of the spk to be created (default is mmxport). 
+  @param outspkpath= directory in which to create the SPK.  Default is WORK.
+
+  @version 9.4
+  @author Allan Bowe
+
+**/
+
+%macro mmx_spkexport(metaloc=
+  ,secureref=
+  ,outspkname=mmxport
+  ,outspkpath=%sysfunc(pathname(work))
+);
+
+%local host port platform_object_path connx_string;
+%let host=%sysfunc(getoption(metaserver));
+%let port=%sysfunc(getoption(metaport));
+%let platform_object_path=%mf_loc(POF)/tools;
+
+/* get creds */
+%inc &secureref/nosource;
+
+%let connx_string=%str(-host &host -port &port -user '&mmxuser' -password '&mmxpass');
+
+%mm_tree(root=%str(&metaloc) ,types=EXPORTABLE ,outds=exportable)
+
+%local fref1;
+%let fref1=%mf_getuniquefileref();
+data ;
+  set exportable end=last;
+  file &fref1 lrecl=32767;
+  length str $32767;
+  if _n_=1 then do;
+    put 'data _null_;';
+    put 'infile "cd ""&platform_object_path"" %trim(';
+    put ') cd ""&platform_object_path"" %trim(';
+    put '); ./ExportPackage &connx_string -disableX11 %trim(';
+    put ') -package ""&outspkpath/&outspkname..spk"" %trim(';
+  end;
+  str=') -objects '!!cats('""',path,'/',name,"(",publictype,')"" %trim(');
+  put str;
+  if last then do;
+    put ') -log ""&outspkpath/&outspkname..log"" 2>&1" pipe lrecl=10000;';
+    put 'input;putlog _infile_;run;';
+  end;
+run;
+
+%mp_abort(iftrue= (&syscc ne 0)
+  ,mac=&sysmacroname
+  ,msg=%str(syscc=&syscc)
+)
+
+%inc &fref1;
 
 %mend;/**
   @file mv_createfolder.sas
