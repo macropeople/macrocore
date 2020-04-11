@@ -5,7 +5,7 @@
     a specified location.
     If you have XCMD enabled, then you can use mmx_spkexport (which performs
     the actual export)
-    
+
     Note - the batch tools require a username and password.  For security,
     these are expected to have been provided in a protected directory.
 
@@ -20,11 +20,11 @@ Usage:
     data _null_;
       file tmp;
       put '%let mmxuser=sasdemo;';
-      put '%let mmxpass=Mars321';
+      put '%let mmxpass=Mars321;';
     run;
 
     filename myref "%sysfunc(pathname(work))/mmxexport.sh";
-    %mm_spkexport(metaloc=%str(/30.Projects/3001.Internal/300115.DataController/dc1)
+    %mm_spkexport(metaloc=%str(/my/meta/loc)
         ,secureref=tmp
         ,outref=myref
     )

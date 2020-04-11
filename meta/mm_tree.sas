@@ -67,7 +67,7 @@
     ,types=ALL
     ,outds=work.mm_tree
 )/*/STORE SOURCE*/;
-options noquotlenmax;
+options noquotelenmax;
 
 %if &root= %then %let root=/;
 
