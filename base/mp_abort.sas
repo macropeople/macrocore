@@ -67,7 +67,7 @@
     /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
-      length msg $32767 debug 8;
+      length msg $32767 debug $8;
       sasdatetime=datetime();
       msg=cats(symget('msg'),'\n\nLog Extract:\n',symget('logmsg'));
       /* escape the quotes */
@@ -76,13 +76,15 @@
       msg=compress(msg,,'kw');
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
-      if symexist('_debug') then debug=symget('_debug');
-      if debug ge 131 then put '>>weboutBEGIN<<';
+      if symexist('_debug') then debug=quote(trim(symget('_debug'));
+      else debug='""';
+      if debug ge "131" then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
       put ' ,"MAC": "' "&mac" '"}]';
       put ",""SYSUSERID"" : ""&sysuserid"" ";
+      put ' "_DEBUG":' debug ;
       if symexist('_metauser') then do;
         _METAUSER=quote(trim(symget('_METAUSER')));
         put ",""_METAUSER"": " _METAUSER;
@@ -97,9 +99,9 @@
       put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
       put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
       put "}" @;
-      %if debug ge 131 %then %do;
+      if debug ge "131" then do;
         put '>>weboutEND<<';
-      %end;
+      end;
     run;
     %let syscc=0;
     %if %symexist(SYS_JES_JOB_URI) %then %do;
