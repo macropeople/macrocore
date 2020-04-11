@@ -270,7 +270,6 @@ data _null_;
   put '%macro webout(action,ds,dslabel=,fmt=);';
   put '  %mm_webout(&action,ds=&ds,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
-  put '%webout(FETCH)';
 run;
 
 /* add precode and code */

@@ -372,7 +372,6 @@ data _null_;
   put '  %mv_webout(&action,ds=&ds,_webout=&_webout';
   put '    ,fref=&fref,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
-  put '%webout(FETCH)';
 run;
 
 /* insert the code, escaping double quotes and carriage returns */
