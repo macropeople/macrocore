@@ -76,7 +76,7 @@
       msg=compress(msg,,'kw');
       /* quote without quoting the quotes (which are escaped instead) */
       msg=cats('"',msg,'"');
-      if symexist('_debug') then debug=quote(trim(symget('_debug'));
+      if symexist('_debug') then debug=quote(trim(symget('_debug')));
       else debug='""';
       if debug ge "131" then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
