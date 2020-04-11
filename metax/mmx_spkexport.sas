@@ -50,7 +50,7 @@ Usage:
 %local host port platform_object_path connx_string;
 %let host=%sysfunc(getoption(metaserver));
 %let port=%sysfunc(getoption(metaport));
-%let platform_object_path=%mf_loc(POF)/tools;
+%let platform_object_path=%mf_loc(POF);
 
 /* get creds */
 %inc &secureref/nosource;
