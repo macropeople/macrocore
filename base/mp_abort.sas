@@ -84,7 +84,7 @@
       put ' "MSG":' msg ;
       put ' ,"MAC": "' "&mac" '"}]';
       put ",""SYSUSERID"" : ""&sysuserid"" ";
-      put ' "_DEBUG":' debug ;
+      put ',"_DEBUG":' debug ;
       if symexist('_metauser') then do;
         _METAUSER=quote(trim(symget('_METAUSER')));
         put ",""_METAUSER"": " _METAUSER;
