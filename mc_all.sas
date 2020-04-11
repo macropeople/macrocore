@@ -4995,7 +4995,6 @@ data _null_;
   put '%macro webout(action,ds,dslabel=,fmt=);';
   put '  %mm_webout(&action,ds=&ds,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
-  put '%webout(FETCH)';
 run;
 
 /* add precode and code */
@@ -7198,6 +7197,8 @@ Usage:
 
 %mm_tree(root=%str(&metaloc) ,types=EXPORTABLE ,outds=exportable)
 
+%if %mf_isblank(&outref)=0 %then %let outref=%mf_getuniquefileref();
+
 data _null_;
   set exportable end=last;
   file &outref lrecl=32767;
@@ -8680,7 +8681,6 @@ data _null_;
   put '  %mv_webout(&action,ds=&ds,_webout=&_webout';
   put '    ,fref=&fref,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
-  put '%webout(FETCH)';
 run;
 
 /* insert the code, escaping double quotes and carriage returns */

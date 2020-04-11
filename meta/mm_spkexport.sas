@@ -80,6 +80,8 @@ Usage:
 
 %mm_tree(root=%str(&metaloc) ,types=EXPORTABLE ,outds=exportable)
 
+%if %mf_isblank(&outref)=0 %then %let outref=%mf_getuniquefileref();
+
 data _null_;
   set exportable end=last;
   file &outref lrecl=32767;
