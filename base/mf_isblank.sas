@@ -3,9 +3,15 @@
   @brief Checks whether a macro variable is empty (blank)
   @details Simply performs:
 
-    %sysevalf(%superq(param)=,boolean)
+      %sysevalf(%superq(param)=,boolean)
 
-  @param param NAME of the macro variable to be checked (not value)
+  Usage:
+     
+     %put mf_isblank(&var);
+
+  inspiration:  https://support.sas.com/resources/papers/proceedings09/022-2009.pdf
+
+  @param param VALUE to be checked 
 
   @return output returns 1 (if blank) else 0
 
