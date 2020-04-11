@@ -194,6 +194,7 @@
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
+    put ",""_DEBUG"" : ""&_debug"" ";
     _METAUSER=quote(trim(symget('_METAUSER')));
     put ",""_METAUSER"": " _METAUSER;
     _METAPERSON=quote(trim(symget('_METAPERSON')));

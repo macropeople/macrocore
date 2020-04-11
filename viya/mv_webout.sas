@@ -201,6 +201,7 @@
     SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
     put ',"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ;
     put ",""SYSJOBID"" : ""&sysjobid"" ";
+    put ",""_DEBUG"" : ""&_debug"" ";
     put ',"_PROGRAM" : ' _PROGRAM ;
     put ",""SYSCC"" : ""&syscc"" ";
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
