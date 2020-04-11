@@ -1050,9 +1050,15 @@ Usage:
   @brief Checks whether a macro variable is empty (blank)
   @details Simply performs:
 
-    %sysevalf(%superq(param)=,boolean)
+      %sysevalf(%superq(param)=,boolean)
 
-  @param param NAME of the macro variable to be checked (not value)
+  Usage:
+     
+     %put mf_isblank(&var);
+
+  inspiration:  https://support.sas.com/resources/papers/proceedings09/022-2009.pdf
+
+  @param param VALUE to be checked 
 
   @return output returns 1 (if blank) else 0
 
@@ -7137,7 +7143,7 @@ Usage:
     filename myref "%sysfunc(pathname(work))/mmxexport.sh";
     %mm_spkexport(metaloc=%str(/my/meta/loc)
         ,secureref=tmp
-        ,outref=myref
+        ,cmdoutloc=%str(/tmp)
     )
 
   <h4> Dependencies </h4>
@@ -7145,6 +7151,7 @@ Usage:
   @li mm_tree.sas
   @li mf_getuniquefileref.sas
   @li mf_isblank.sas
+  @li mp_abort.sas
 
   @param metaloc= the metadata folder to export
   @param secureref= fileref containing the username / password (should point to
@@ -7175,8 +7182,8 @@ Usage:
 /* set creds */
 %local mmxuser mmxpath;
 %let mmxuser=$mmxuser;
-%let mmxpath=$mmxpath;
-%if %mf_isblank(secureref)=0 %then %do;
+%let mmxpass=$mmxpass;
+%if %mf_isblank(&secureref)=0 %then %do;
   %inc &secureref/nosource;
 %end;
 
@@ -8105,6 +8112,7 @@ Usage:
   @li mf_loc.sas
   @li mm_tree.sas
   @li mf_getuniquefileref.sas
+  @li mp_abort.sas
 
   @param metaloc= the metadata folder to export
   @param secureref= fileref containing the username / password (should point to

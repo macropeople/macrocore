@@ -29,6 +29,7 @@ Usage:
   @li mf_loc.sas
   @li mm_tree.sas
   @li mf_getuniquefileref.sas
+  @li mp_abort.sas
 
   @param metaloc= the metadata folder to export
   @param secureref= fileref containing the username / password (should point to
