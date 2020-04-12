@@ -63,7 +63,7 @@ data _null_;
 run;
 
 %if &tsuri=stopifempty %then %do;
-  %put WARNING:  &tree&name.(StoredProcess) not found!;
+  %put %str(WARN)ING:  &tree&name.(StoredProcess) not found!;
   %return;
 %end;
 
@@ -123,7 +123,7 @@ data _null_;
         when ('&#x0a;') rec='0A'x;
         when ('&#x0d;') rec='0D'x;
         when ('&#36;' ) rec='$'  ;
-        otherwise putlog "WARNING: missing value for " entity=;
+        otherwise putlog "%str(WARN)ING: missing value for " entity=;
       end;
       rc =fput(fileid, substr(rec,1,1));
       rc =fwrite(fileid);

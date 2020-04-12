@@ -20,7 +20,7 @@
   Only files with the .ddl suffix are executed.  The parent folder name is used
   as the libref.
   Files should NOT contain the `proc sql` statement - this is to prevent
-  statements being executed if there is an error condition.
+  statements being executed if there is an err condition.
 
   Usage:
 

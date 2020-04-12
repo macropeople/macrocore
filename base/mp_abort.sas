@@ -28,7 +28,7 @@
   or (%symexist(SYSPROCESSNAME) and "&SYSPROCESSNAME"="Compute Server" )
   %then %do;
     options obs=max replace nosyntaxcheck mprint;
-    /* extract log error / warning, if exist */
+    /* extract log errs / warns, if exist */
     %local logloc logline;
     %global logmsg; /* capture global messages */
     %if %symexist(SYSPRINTTOLOG) %then %let logloc=&SYSPRINTTOLOG;
@@ -41,12 +41,12 @@
         input; putlog _infile_;
         i=1;
         retain logonce 0;
-        if (_infile_=:'WARNING' or _infile_=:'ERROR') and logonce=0 then do;
+        if (_infile_=:"%str(WARN)ING" or _infile_=:"%str(ERR)OR") and logonce=0 then do;
           call symputx('logline',_n_);
           logonce+1;
         end;
       run;
-      /* capture log including lines BEFORE the error */
+      /* capture log including lines BEFORE the err */
       %if &logline>0 %then %do;
         data _null_;
           infile &logloc lrecl=5000;

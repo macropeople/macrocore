@@ -67,14 +67,14 @@
     call missing(of _all_);
     rc=metadata_getnobj("omsobj:Person?@Name='&user'",1,uri);
     if rc<=0 then do;
-      putlog "WARNING: rc=" rc "&user not found "
-          ", or there was an error reading the repository.";
+      putlog "%str(WARN)ING: rc=" rc "&user not found "
+          ", or there was an issue reading the repository.";
       stop;
     end;
     a=1;
     grpassn=metadata_getnasn(uri,"IdentityGroups",a,groupuri);
     if grpassn in (-3,-4) then do;
-      putlog "WARNING: No metadata groups found for &user";
+      putlog "%str(WARN)ING: No metadata groups found for &user";
       output;
     end;
     else do while (grpassn > 0);

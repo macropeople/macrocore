@@ -34,8 +34,8 @@ data _null_;
   call missing(of _all_);
   rc=metadata_getnobj("omsobj:Person?@Name='&user'",1,uri);
   if rc<=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &user not found "!!
-        ", or there was an error reading the repository.";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &user not found "!!
+        ", or there was an err reading the repository.";
     call symputx('check',msg);
     putlog msg;
     stop;
@@ -44,8 +44,8 @@ data _null_;
 
   rc=metadata_getnobj("omsobj:IdentityGroup?@Name='&group'",1,uri);
   if rc<=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &group not found "!!
-        ", or there was an error reading the repository.";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &group not found "!!
+        ", or there was an err reading the repository.";
     call symputx('check',msg);
     putlog msg;
     stop;
@@ -54,7 +54,7 @@ data _null_;
 
   rc=metadata_getnobj("omsobj:Person?Person[@Name='&user'][IdentityGroups/*[@Name='&group']]",1,uri);
   if rc=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &user already in &group";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &user already in &group";
     call symputx('check',msg);
     stop;
   end;

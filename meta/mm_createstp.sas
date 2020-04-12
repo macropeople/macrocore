@@ -273,9 +273,9 @@ run;
     rc23= METADATA_SETATTR(stpuri, 'UsageVersion', '1000000');
     rc24= METADATA_SETATTR(stpuri, 'Desc', "&stpdesc");
 
-    /* tidy up if error */
+    /* tidy up if err */
     if sum(of rc15-rc24) ne 0 then do;
-      putlog 'WARNING: Issue creating STP.';
+      putlog "%str(WARN)ING: Issue creating STP.";
       if stpuri ne . then do;
         putlog '  Removing orphans: ' prompturi fileuri texturi stpuri;
         rc = METADATA_DELOBJ(prompturi);
