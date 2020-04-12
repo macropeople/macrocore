@@ -178,8 +178,8 @@
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;

@@ -2345,7 +2345,7 @@ create table &outds (rename=(
     proc sql;drop view &tempds;
   %end;
   %else %if &engine=DATASTEP %then %do;
-    %local cols i;
+    %local cols i tempds;
     %let cols=0;
     %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do;
       %put &sysmacroname:  &ds NOT FOuND!!!;
@@ -5001,7 +5001,7 @@ data _null_;
   put '    proc sql;drop view &tempds; ';
   put '  %end; ';
   put '  %else %if &engine=DATASTEP %then %do; ';
-  put '    %local cols i; ';
+  put '    %local cols i tempds; ';
   put '    %let cols=0; ';
   put '    %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do; ';
   put '      %put &sysmacroname:  &ds NOT FOuND!!!; ';
@@ -5163,8 +5163,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -8149,8 +8149,8 @@ run;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -8653,7 +8653,7 @@ data _null_;
   put '    proc sql;drop view &tempds; ';
   put '  %end; ';
   put '  %else %if &engine=DATASTEP %then %do; ';
-  put '    %local cols i; ';
+  put '    %local cols i tempds; ';
   put '    %let cols=0; ';
   put '    %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do; ';
   put '      %put &sysmacroname:  &ds NOT FOuND!!!; ';
@@ -8878,8 +8878,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -10290,8 +10290,8 @@ libname &libref1 clear;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
