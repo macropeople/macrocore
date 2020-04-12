@@ -76,10 +76,10 @@
     %local cols i tempds;
     %let cols=0;
     %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do;
-      %put &sysmacroname:  &ds NOT FOuND!!!;
+      %put &sysmacroname:  &ds NOT FOUND!!!;
       %return;
     %end;
-    data _null_;file &fref; put "["; call symputx('cols',0,'l');
+    data _null_;file &fref mod; put "["; call symputx('cols',0,'l');
     proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
       out=_data_;
       by varnum;
@@ -115,13 +115,13 @@
                     prxchange('s/'!!'0D'x!!'/\r/',-1,
                     prxchange('s/'!!'09'x!!'/\t/',-1,
                     prxchange('s/\\/\\\\/',-1,&&name&i)
-          )))))!!'"';
+        )))))!!'"';
       %end;
     %end;
     run; 
     /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
     filename _sjs temp lrecl=131068 ;
-    data _null_; file _sjs ;
+    data _null_; file _sjs lrecl=131068 ;
       set &tempds;
       if _n_>1 then put "," @; put
       %if &action=ARR %then "[" ; %else "{" ;
@@ -136,11 +136,11 @@
     /* now write the long strings to _webout 1 char at a time */
     data _null_;
       infile _sjs RECFM=N;
-      file &fref RECFM=N;
+      file &fref RECFM=N mod;
       input string $CHAR1. @;
       put string $CHAR1. @;
 
-    data _null_; file &fref;
+    data _null_; file &fref mod;
       put "]";
     run;
   %end;
