@@ -167,7 +167,8 @@
     %do i=1 %to &wtcnt;
       %let wt=&&wt&i;
       proc contents noprint data=&wt
-        out=&tempds (keep=name type length format:);
+        out=_data_ (keep=name type length format:);
+      run;%let tempds=%scan(&syslast,2,.);
       data _null_; file &fref;
         dsid=open("WORK.&wt",'is');
         nlobs=attrn(dsid,'NLOBS');
@@ -178,7 +179,7 @@
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
       %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
-      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
