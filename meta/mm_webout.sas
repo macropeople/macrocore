@@ -75,86 +75,16 @@
 %end;
 
 %else %if &action=ARR or &action=OBJ %then %do;
-  options validvarname=upcase;
-  data _null_;file &fref mod;
-    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
-
   %if &sysver=9.4 %then %do;
-    data;run;%let tempds=&syslast;
-    proc sql;drop table &tempds;
-    data &tempds /view=&tempds;set &ds; 
-    %if &fmt=N %then format _numeric_ best32.;;
-    proc json out=&fref
-        %if &action=ARR %then nokeys ;
-        %if &_debug ge 131  %then pretty ;
-      ;export &tempds / nosastags;
-    run;
-    proc sql;drop view &tempds;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=PROCJSON,dbg=&_debug
+    )
   %end;
   %else %do;
-    /* time to get our hands dirty */
-    data _null_;file &fref; put "[";
-
-    proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
-      out=_data_;
-      by varnum;
-
-    data _null_; set _last_ end=last;
-      call symputx(cats('name',_n_),name,'l');
-      call symputx(cats('type',_n_),type,'l');
-      call symputx(cats('len',_n_),length,'l');
-      if last then call symputx('cols',_n_,'l');
-
-    proc format; /* credit yabwon for special null removal */
-      value bart ._ - .z = null
-      other = [best.];
-
-    data;run; %let tempds=&syslast; /* temp table for spesh char management */
-    proc sql; drop table &tempds;
-    data &tempds/view=&tempds;
-      attrib _all_ label='';
-      %do i=1 %to &cols;
-        %if &&type&i=char %then %do;
-          length &&name&i $32767;
-        %end;
-      %end;
-      set &ds;
-      format _numeric_ bart.;
-    %do i=1 %to &cols;
-      %if &&type&i=char %then %do;
-        &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
-                    prxchange('s/'!!'0A'x!!'/\n/',-1,
-                    prxchange('s/'!!'0D'x!!'/\r/',-1,
-                    prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
-          ))))!!'"';
-      %end;
-    %end;
-
-    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
-    filename _sjs temp lrecl=131068 ;
-    data _null_; file _sjs ;
-      set &tempds;
-      if _n_>1 then put "," @; put
-      %if &action=ARR %then "[" ; %else "{" ;
-      %do i=1 %to &cols;
-        %if &i>1 %then  "," ;
-        %if &action=OBJ %then """&&name&i"":" ;
-        &&name&i +(0)
-      %end;
-      %if &action=ARR %then "]" ; %else "}" ; ;
-
-    /* now write the long strings to _webout 1 char at a time */
-    data _null_;
-      infile _sjs RECFM=N;
-      file &fref RECFM=N;
-      input string $CHAR1. @;
-      put string $CHAR1. @;
-
-    data _null_; file &fref;
-      put "]";
-    run;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=DATASTEP,dbg=&_debug
+    )
   %end;
-
 %end;
 %else %if &action=CLOSE %then %do;
   %if &_debug ge 131 %then %do;
@@ -184,8 +114,8 @@
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mm_webout(OBJ,&wt,dslabel=first10rows)
-      %mm_webout(ARR,&tempds,dslabel=colattrs)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;

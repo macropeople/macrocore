@@ -146,19 +146,9 @@
   run;
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
-  options validvarname=upcase;
-  data _null_;file &fref mod;
-    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
-  data;run;%let tempds=&syslast;
-  proc sql;drop table &tempds;
-  data &tempds /view=&tempds;set &ds; 
-  %if &fmt=N %then format _numeric_ best32.;;
-  proc json out=&fref
-      %if &action=ARR %then nokeys ;
-      %if &_debug ge 131  %then pretty ;
-    ;export &tempds / nosastags fmtnumeric;
-  run;
-  proc sql;drop view &tempds;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=PROCJSON,dbg=&_debug
+    )
 %end;
 %else %if &action=CLOSE %then %do;
   %if &_debug ge 131 %then %do;
@@ -187,8 +177,8 @@
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mv_webout(OBJ,&wt,dslabel=first10rows)
-      %mv_webout(ARR,&tempds,dslabel=colattrs)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;

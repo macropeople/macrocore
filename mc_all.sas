@@ -15,6 +15,7 @@
 
   @author Allan Bowe
 **/
+options noquotelenmax;
 /**
   @file
   @brief abort gracefully according to context
@@ -2269,6 +2270,158 @@ create table &outds (rename=(
     out=&outds(rename=(_name_=name COL1=ACTMAXLEN));
   run;
 
+%mend;/**
+  @file mp_jsonout.sas
+  @brief Writes JSON in SASjs format to a fileref
+  @details PROC JSON is faster but will produce errors like the ones below if
+  special chars are encountered.
+
+      An object or array close is not valid at this point in the JSON text.
+
+  If this happens, try running with ENGINE=DATASTEP.
+
+  Usage:
+
+        filename tmp temp;
+        data class; set sashelp.class;run;
+        
+        %mp_jsonout(OBJ,class,fref=tmp)
+
+        data _null_;
+        infile tmp;
+        input;list;
+        run;
+
+  If you are building web apps with SAS then you are strongly encouraged to use
+  the mX_createwebservice macros in combination with [sasjs](https://github.com/macropeople/sasjs).
+  For more information see https://sasjs.io
+
+  @param action Valid values:
+    * OPEN - opens the JSON
+    * OBJ - sends a table with each row as an object
+    * ARR - sends a table with each row in an array
+    * CLOSE - closes the JSON
+
+  @param ds the dataset to send.  Must be a work table.
+  @param outref= the fileref to which to send the JSON
+  @param dslabel= the name to give the table in the exported JSON
+  @param fmt= Whether to keep or strip formats from the table
+  @param engine= Which engine to use to send the JSON, options are:
+  * PROCJSON (default)
+  * DATASTEP 
+
+  @param dbg= Typically used with an _debug (numeric) option
+
+  @version 9.2
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+**/
+
+%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0
+)/*/STORE SOURCE*/;
+
+%if &action=OPEN %then %do;
+  data _null_;file &fref;
+    put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
+  run;
+%end;
+%else %if (&action=ARR or &action=OBJ) %then %do;
+  options validvarname=upcase;
+  data _null_;file &fref mod;
+    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
+
+  %if &engine=PROCJSON %then %do;
+    data;run;%let tempds=&syslast;
+    proc sql;drop table &tempds;
+    data &tempds /view=&tempds;set &ds; 
+    %if &fmt=N %then format _numeric_ best32.;;
+    proc json out=&fref
+        %if &action=ARR %then nokeys ;
+        %if &dbg ge 131  %then pretty ;
+        ;export &tempds / nosastags fmtnumeric;
+    run;
+    proc sql;drop view &tempds;
+  %end;
+  %else %if &engine=DATASTEP %then %do;
+    %local cols i;
+    %let cols=0;
+    %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do;
+      %put &sysmacroname:  &ds NOT FOuND!!!;
+      %return;
+    %end;
+    data _null_;file &fref; put "["; call symputx('cols',0,'l');
+    proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
+      out=_data_;
+      by varnum;
+
+    data _null_; 
+      set _last_ end=last;
+      call symputx(cats('name',_n_),name,'l');
+      call symputx(cats('type',_n_),type,'l');
+      call symputx(cats('len',_n_),length,'l');
+      if last then call symputx('cols',_n_,'l');
+    run;
+
+    proc format; /* credit yabwon for special null removal */
+      value bart ._ - .z = null
+      other = [best.];
+
+    data;run; %let tempds=&syslast; /* temp table for spesh char management */
+    proc sql; drop table &tempds;
+    data &tempds/view=&tempds;
+      attrib _all_ label='';
+      %do i=1 %to &cols;
+        %if &&type&i=char %then %do;
+          length &&name&i $32767;
+          format &&name&i $32767.;
+        %end;
+      %end;
+      set &ds;
+      format _numeric_ bart.;
+    %do i=1 %to &cols;
+      %if &&type&i=char %then %do;
+        &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
+                    prxchange('s/'!!'0A'x!!'/\n/',-1,
+                    prxchange('s/'!!'0D'x!!'/\r/',-1,
+                    prxchange('s/'!!'09'x!!'/\t/',-1,
+                    prxchange('s/\\/\\\\/',-1,&&name&i)
+          )))))!!'"';
+      %end;
+    %end;
+    run; 
+    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
+    filename _sjs temp lrecl=131068 ;
+    data _null_; file _sjs ;
+      set &tempds;
+      if _n_>1 then put "," @; put
+      %if &action=ARR %then "[" ; %else "{" ;
+      %do i=1 %to &cols;
+        %if &i>1 %then  "," ;
+        %if &action=OBJ %then """&&name&i"":" ;
+        &&name&i +(1)
+      %end;
+      %if &action=ARR %then "]" ; %else "}" ; ;
+    proc sql;
+    drop view &tempds;
+    /* now write the long strings to _webout 1 char at a time */
+    data _null_;
+      infile _sjs RECFM=N;
+      file &fref RECFM=N;
+      input string $CHAR1. @;
+      put string $CHAR1. @;
+
+    data _null_; file &fref;
+      put "]";
+    run;
+  %end;
+%end;
+
+%else %if &action=CLOSE %then %do;
+  data _null_;file &fref;
+    put "}";
+  run;
+%end;
 %mend;/**
   @file
   @brief Convert all library members to CARDS files
@@ -4820,6 +4973,112 @@ data _null_;
   file sasjs lrecl=3000 ;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
+  put ' ';
+  put '%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
+  put ')/*/STORE SOURCE*/; ';
+  put ' ';
+  put '%if &action=OPEN %then %do; ';
+  put '  data _null_;file &fref; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
+  put '  run; ';
+  put '%end; ';
+  put '%else %if (&action=ARR or &action=OBJ) %then %do; ';
+  put '  options validvarname=upcase; ';
+  put '  data _null_;file &fref mod; ';
+  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
+  put ' ';
+  put '  %if &engine=PROCJSON %then %do; ';
+  put '    data;run;%let tempds=&syslast; ';
+  put '    proc sql;drop table &tempds; ';
+  put '    data &tempds /view=&tempds;set &ds; ';
+  put '    %if &fmt=N %then format _numeric_ best32.;; ';
+  put '    proc json out=&fref ';
+  put '        %if &action=ARR %then nokeys ; ';
+  put '        %if &dbg ge 131  %then pretty ; ';
+  put '        ;export &tempds / nosastags fmtnumeric; ';
+  put '    run; ';
+  put '    proc sql;drop view &tempds; ';
+  put '  %end; ';
+  put '  %else %if &engine=DATASTEP %then %do; ';
+  put '    %local cols i; ';
+  put '    %let cols=0; ';
+  put '    %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do; ';
+  put '      %put &sysmacroname:  &ds NOT FOuND!!!; ';
+  put '      %return; ';
+  put '    %end; ';
+  put '    data _null_;file &fref; put "["; call symputx(''cols'',0,''l''); ';
+  put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
+  put '      out=_data_; ';
+  put '      by varnum; ';
+  put ' ';
+  put '    data _null_; ';
+  put '      set _last_ end=last; ';
+  put '      call symputx(cats(''name'',_n_),name,''l''); ';
+  put '      call symputx(cats(''type'',_n_),type,''l''); ';
+  put '      call symputx(cats(''len'',_n_),length,''l''); ';
+  put '      if last then call symputx(''cols'',_n_,''l''); ';
+  put '    run; ';
+  put ' ';
+  put '    proc format; /* credit yabwon for special null removal */ ';
+  put '      value bart ._ - .z = null ';
+  put '      other = [best.]; ';
+  put ' ';
+  put '    data;run; %let tempds=&syslast; /* temp table for spesh char management */ ';
+  put '    proc sql; drop table &tempds; ';
+  put '    data &tempds/view=&tempds; ';
+  put '      attrib _all_ label=''''; ';
+  put '      %do i=1 %to &cols; ';
+  put '        %if &&type&i=char %then %do; ';
+  put '          length &&name&i $32767; ';
+  put '          format &&name&i $32767.; ';
+  put '        %end; ';
+  put '      %end; ';
+  put '      set &ds; ';
+  put '      format _numeric_ bart.; ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &&type&i=char %then %do; ';
+  put '        &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
+  put '                    prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
+  put '                    prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
+  put '                    prxchange(''s/''!!''09''x!!''/\t/'',-1, ';
+  put '                    prxchange(''s/\\/\\\\/'',-1,&&name&i) ';
+  put '          )))))!!''"''; ';
+  put '      %end; ';
+  put '    %end; ';
+  put '    run; ';
+  put '    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */ ';
+  put '    filename _sjs temp lrecl=131068 ; ';
+  put '    data _null_; file _sjs ; ';
+  put '      set &tempds; ';
+  put '      if _n_>1 then put "," @; put ';
+  put '      %if &action=ARR %then "[" ; %else "{" ; ';
+  put '      %do i=1 %to &cols; ';
+  put '        %if &i>1 %then  "," ; ';
+  put '        %if &action=OBJ %then """&&name&i"":" ; ';
+  put '        &&name&i +(1) ';
+  put '      %end; ';
+  put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put '    proc sql; ';
+  put '    drop view &tempds; ';
+  put '    /* now write the long strings to _webout 1 char at a time */ ';
+  put '    data _null_; ';
+  put '      infile _sjs RECFM=N; ';
+  put '      file &fref RECFM=N; ';
+  put '      input string $CHAR1. @; ';
+  put '      put string $CHAR1. @; ';
+  put ' ';
+  put '    data _null_; file &fref; ';
+  put '      put "]"; ';
+  put '    run; ';
+  put '  %end; ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=CLOSE %then %do; ';
+  put '  data _null_;file &fref; ';
+  put '    put "}"; ';
+  put '  run; ';
+  put '%end; ';
+  put '%mend; ';
   put '%macro mm_webout(action,ds,dslabel=,fref=_webout,fmt=Y); ';
   put '%global _webin_file_count _webin_fileref1 _webin_name1 _program _debug; ';
   put '%local i tempds; ';
@@ -4863,86 +5122,16 @@ data _null_;
   put '%end; ';
   put ' ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
-  put '  options validvarname=upcase; ';
-  put '  data _null_;file &fref mod; ';
-  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
-  put ' ';
   put '  %if &sysver=9.4 %then %do; ';
-  put '    data;run;%let tempds=&syslast; ';
-  put '    proc sql;drop table &tempds; ';
-  put '    data &tempds /view=&tempds;set &ds; ';
-  put '    %if &fmt=N %then format _numeric_ best32.;; ';
-  put '    proc json out=&fref ';
-  put '        %if &action=ARR %then nokeys ; ';
-  put '        %if &_debug ge 131  %then pretty ; ';
-  put '      ;export &tempds / nosastags; ';
-  put '    run; ';
-  put '    proc sql;drop view &tempds; ';
+  put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
+  put '      ,engine=PROCJSON,dbg=&_debug ';
+  put '    ) ';
   put '  %end; ';
   put '  %else %do; ';
-  put '    /* time to get our hands dirty */ ';
-  put '    data _null_;file &fref; put "["; ';
-  put ' ';
-  put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
-  put '      out=_data_; ';
-  put '      by varnum; ';
-  put ' ';
-  put '    data _null_; set _last_ end=last; ';
-  put '      call symputx(cats(''name'',_n_),name,''l''); ';
-  put '      call symputx(cats(''type'',_n_),type,''l''); ';
-  put '      call symputx(cats(''len'',_n_),length,''l''); ';
-  put '      if last then call symputx(''cols'',_n_,''l''); ';
-  put ' ';
-  put '    proc format; /* credit yabwon for special null removal */ ';
-  put '      value bart ._ - .z = null ';
-  put '      other = [best.]; ';
-  put ' ';
-  put '    data;run; %let tempds=&syslast; /* temp table for spesh char management */ ';
-  put '    proc sql; drop table &tempds; ';
-  put '    data &tempds/view=&tempds; ';
-  put '      attrib _all_ label=''''; ';
-  put '      %do i=1 %to &cols; ';
-  put '        %if &&type&i=char %then %do; ';
-  put '          length &&name&i $32767; ';
-  put '        %end; ';
-  put '      %end; ';
-  put '      set &ds; ';
-  put '      format _numeric_ bart.; ';
-  put '    %do i=1 %to &cols; ';
-  put '      %if &&type&i=char %then %do; ';
-  put '        &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
-  put '                    prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
-  put '                    prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
-  put '                    prxchange(''s/''!!''09''x!!''/\t/'',-1,&&name&i) ';
-  put '          ))))!!''"''; ';
-  put '      %end; ';
-  put '    %end; ';
-  put ' ';
-  put '    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */ ';
-  put '    filename _sjs temp lrecl=131068 ; ';
-  put '    data _null_; file _sjs ; ';
-  put '      set &tempds; ';
-  put '      if _n_>1 then put "," @; put ';
-  put '      %if &action=ARR %then "[" ; %else "{" ; ';
-  put '      %do i=1 %to &cols; ';
-  put '        %if &i>1 %then  "," ; ';
-  put '        %if &action=OBJ %then """&&name&i"":" ; ';
-  put '        &&name&i +(0) ';
-  put '      %end; ';
-  put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
-  put ' ';
-  put '    /* now write the long strings to _webout 1 char at a time */ ';
-  put '    data _null_; ';
-  put '      infile _sjs RECFM=N; ';
-  put '      file &fref RECFM=N; ';
-  put '      input string $CHAR1. @; ';
-  put '      put string $CHAR1. @; ';
-  put ' ';
-  put '    data _null_; file &fref; ';
-  put '      put "]"; ';
-  put '    run; ';
+  put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
+  put '      ,engine=DATASTEP,dbg=&_debug ';
+  put '    ) ';
   put '  %end; ';
-  put ' ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
@@ -4972,8 +5161,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mm_webout(OBJ,&wt,dslabel=first10rows) ';
-  put '      %mm_webout(ARR,&tempds,dslabel=colattrs) ';
+  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
+  put '      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -7918,86 +8107,16 @@ run;
 %end;
 
 %else %if &action=ARR or &action=OBJ %then %do;
-  options validvarname=upcase;
-  data _null_;file &fref mod;
-    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
-
   %if &sysver=9.4 %then %do;
-    data;run;%let tempds=&syslast;
-    proc sql;drop table &tempds;
-    data &tempds /view=&tempds;set &ds; 
-    %if &fmt=N %then format _numeric_ best32.;;
-    proc json out=&fref
-        %if &action=ARR %then nokeys ;
-        %if &_debug ge 131  %then pretty ;
-      ;export &tempds / nosastags;
-    run;
-    proc sql;drop view &tempds;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=PROCJSON,dbg=&_debug
+    )
   %end;
   %else %do;
-    /* time to get our hands dirty */
-    data _null_;file &fref; put "[";
-
-    proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
-      out=_data_;
-      by varnum;
-
-    data _null_; set _last_ end=last;
-      call symputx(cats('name',_n_),name,'l');
-      call symputx(cats('type',_n_),type,'l');
-      call symputx(cats('len',_n_),length,'l');
-      if last then call symputx('cols',_n_,'l');
-
-    proc format; /* credit yabwon for special null removal */
-      value bart ._ - .z = null
-      other = [best.];
-
-    data;run; %let tempds=&syslast; /* temp table for spesh char management */
-    proc sql; drop table &tempds;
-    data &tempds/view=&tempds;
-      attrib _all_ label='';
-      %do i=1 %to &cols;
-        %if &&type&i=char %then %do;
-          length &&name&i $32767;
-        %end;
-      %end;
-      set &ds;
-      format _numeric_ bart.;
-    %do i=1 %to &cols;
-      %if &&type&i=char %then %do;
-        &&name&i='"'!!trim(prxchange('s/"/\"/',-1,
-                    prxchange('s/'!!'0A'x!!'/\n/',-1,
-                    prxchange('s/'!!'0D'x!!'/\r/',-1,
-                    prxchange('s/'!!'09'x!!'/\t/',-1,&&name&i)
-          ))))!!'"';
-      %end;
-    %end;
-
-    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
-    filename _sjs temp lrecl=131068 ;
-    data _null_; file _sjs ;
-      set &tempds;
-      if _n_>1 then put "," @; put
-      %if &action=ARR %then "[" ; %else "{" ;
-      %do i=1 %to &cols;
-        %if &i>1 %then  "," ;
-        %if &action=OBJ %then """&&name&i"":" ;
-        &&name&i +(0)
-      %end;
-      %if &action=ARR %then "]" ; %else "}" ; ;
-
-    /* now write the long strings to _webout 1 char at a time */
-    data _null_;
-      infile _sjs RECFM=N;
-      file &fref RECFM=N;
-      input string $CHAR1. @;
-      put string $CHAR1. @;
-
-    data _null_; file &fref;
-      put "]";
-    run;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=DATASTEP,dbg=&_debug
+    )
   %end;
-
 %end;
 %else %if &action=CLOSE %then %do;
   %if &_debug ge 131 %then %do;
@@ -8027,8 +8146,8 @@ run;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mm_webout(OBJ,&wt,dslabel=first10rows)
-      %mm_webout(ARR,&tempds,dslabel=colattrs)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -8504,6 +8623,112 @@ data _null_;
   file sasjs;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
+  put ' ';
+  put '%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
+  put ')/*/STORE SOURCE*/; ';
+  put ' ';
+  put '%if &action=OPEN %then %do; ';
+  put '  data _null_;file &fref; ';
+  put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
+  put '  run; ';
+  put '%end; ';
+  put '%else %if (&action=ARR or &action=OBJ) %then %do; ';
+  put '  options validvarname=upcase; ';
+  put '  data _null_;file &fref mod; ';
+  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
+  put ' ';
+  put '  %if &engine=PROCJSON %then %do; ';
+  put '    data;run;%let tempds=&syslast; ';
+  put '    proc sql;drop table &tempds; ';
+  put '    data &tempds /view=&tempds;set &ds; ';
+  put '    %if &fmt=N %then format _numeric_ best32.;; ';
+  put '    proc json out=&fref ';
+  put '        %if &action=ARR %then nokeys ; ';
+  put '        %if &dbg ge 131  %then pretty ; ';
+  put '        ;export &tempds / nosastags fmtnumeric; ';
+  put '    run; ';
+  put '    proc sql;drop view &tempds; ';
+  put '  %end; ';
+  put '  %else %if &engine=DATASTEP %then %do; ';
+  put '    %local cols i; ';
+  put '    %let cols=0; ';
+  put '    %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do; ';
+  put '      %put &sysmacroname:  &ds NOT FOuND!!!; ';
+  put '      %return; ';
+  put '    %end; ';
+  put '    data _null_;file &fref; put "["; call symputx(''cols'',0,''l''); ';
+  put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
+  put '      out=_data_; ';
+  put '      by varnum; ';
+  put ' ';
+  put '    data _null_; ';
+  put '      set _last_ end=last; ';
+  put '      call symputx(cats(''name'',_n_),name,''l''); ';
+  put '      call symputx(cats(''type'',_n_),type,''l''); ';
+  put '      call symputx(cats(''len'',_n_),length,''l''); ';
+  put '      if last then call symputx(''cols'',_n_,''l''); ';
+  put '    run; ';
+  put ' ';
+  put '    proc format; /* credit yabwon for special null removal */ ';
+  put '      value bart ._ - .z = null ';
+  put '      other = [best.]; ';
+  put ' ';
+  put '    data;run; %let tempds=&syslast; /* temp table for spesh char management */ ';
+  put '    proc sql; drop table &tempds; ';
+  put '    data &tempds/view=&tempds; ';
+  put '      attrib _all_ label=''''; ';
+  put '      %do i=1 %to &cols; ';
+  put '        %if &&type&i=char %then %do; ';
+  put '          length &&name&i $32767; ';
+  put '          format &&name&i $32767.; ';
+  put '        %end; ';
+  put '      %end; ';
+  put '      set &ds; ';
+  put '      format _numeric_ bart.; ';
+  put '    %do i=1 %to &cols; ';
+  put '      %if &&type&i=char %then %do; ';
+  put '        &&name&i=''"''!!trim(prxchange(''s/"/\"/'',-1, ';
+  put '                    prxchange(''s/''!!''0A''x!!''/\n/'',-1, ';
+  put '                    prxchange(''s/''!!''0D''x!!''/\r/'',-1, ';
+  put '                    prxchange(''s/''!!''09''x!!''/\t/'',-1, ';
+  put '                    prxchange(''s/\\/\\\\/'',-1,&&name&i) ';
+  put '          )))))!!''"''; ';
+  put '      %end; ';
+  put '    %end; ';
+  put '    run; ';
+  put '    /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */ ';
+  put '    filename _sjs temp lrecl=131068 ; ';
+  put '    data _null_; file _sjs ; ';
+  put '      set &tempds; ';
+  put '      if _n_>1 then put "," @; put ';
+  put '      %if &action=ARR %then "[" ; %else "{" ; ';
+  put '      %do i=1 %to &cols; ';
+  put '        %if &i>1 %then  "," ; ';
+  put '        %if &action=OBJ %then """&&name&i"":" ; ';
+  put '        &&name&i +(1) ';
+  put '      %end; ';
+  put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
+  put '    proc sql; ';
+  put '    drop view &tempds; ';
+  put '    /* now write the long strings to _webout 1 char at a time */ ';
+  put '    data _null_; ';
+  put '      infile _sjs RECFM=N; ';
+  put '      file &fref RECFM=N; ';
+  put '      input string $CHAR1. @; ';
+  put '      put string $CHAR1. @; ';
+  put ' ';
+  put '    data _null_; file &fref; ';
+  put '      put "]"; ';
+  put '    run; ';
+  put '  %end; ';
+  put '%end; ';
+  put ' ';
+  put '%else %if &action=CLOSE %then %do; ';
+  put '  data _null_;file &fref; ';
+  put '    put "}"; ';
+  put '  run; ';
+  put '%end; ';
+  put '%mend; ';
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
   put '%local i tempds; ';
@@ -8618,19 +8843,9 @@ data _null_;
   put '  run; ';
   put '%end; ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
-  put '  options validvarname=upcase; ';
-  put '  data _null_;file &fref mod; ';
-  put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
-  put '  data;run;%let tempds=&syslast; ';
-  put '  proc sql;drop table &tempds; ';
-  put '  data &tempds /view=&tempds;set &ds; ';
-  put '  %if &fmt=N %then format _numeric_ best32.;; ';
-  put '  proc json out=&fref ';
-  put '      %if &action=ARR %then nokeys ; ';
-  put '      %if &_debug ge 131  %then pretty ; ';
-  put '    ;export &tempds / nosastags fmtnumeric; ';
-  put '  run; ';
-  put '  proc sql;drop view &tempds; ';
+  put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
+  put '      ,engine=PROCJSON,dbg=&_debug ';
+  put '    ) ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
   put '  %if &_debug ge 131 %then %do; ';
@@ -8659,8 +8874,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mv_webout(OBJ,&wt,dslabel=first10rows) ';
-  put '      %mv_webout(ARR,&tempds,dslabel=colattrs) ';
+  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
+  put '      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -10026,19 +10241,9 @@ libname &libref1 clear;
   run;
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
-  options validvarname=upcase;
-  data _null_;file &fref mod;
-    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
-  data;run;%let tempds=&syslast;
-  proc sql;drop table &tempds;
-  data &tempds /view=&tempds;set &ds; 
-  %if &fmt=N %then format _numeric_ best32.;;
-  proc json out=&fref
-      %if &action=ARR %then nokeys ;
-      %if &_debug ge 131  %then pretty ;
-    ;export &tempds / nosastags fmtnumeric;
-  run;
-  proc sql;drop view &tempds;
+    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
+      ,engine=PROCJSON,dbg=&_debug
+    )
 %end;
 %else %if &action=CLOSE %then %do;
   %if &_debug ge 131 %then %do;
@@ -10067,8 +10272,8 @@ libname &libref1 clear;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mv_webout(OBJ,&wt,dslabel=first10rows)
-      %mv_webout(ARR,&tempds,dslabel=colattrs)
+      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;

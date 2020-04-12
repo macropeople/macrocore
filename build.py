@@ -27,10 +27,11 @@ ml.close()
 # prepare web files
 files=['viya/mv_createwebservice.sas','meta/mm_createwebservice.sas']
 for file in files:
+    webout0=open('base/mp_jsonout.sas','r')
     if file=='viya/mv_createwebservice.sas':
-        webout=open('viya/mv_webout.sas',"r")
+        webout1=open('viya/mv_webout.sas',"r")
     else:
-        webout=open('meta/mm_webout.sas','r')
+        webout1=open('meta/mm_webout.sas','r')
     outfile=open(file + 'TEMP','w')
     infile=open(file,'r')
     delrow=0
@@ -38,22 +39,24 @@ for file in files:
         if line=='/* WEBOUT BEGIN */\n':
             delrow=1
             outfile.write('/* WEBOUT BEGIN */\n')
-            stripcomment=1
-            for w in webout:
-                if w=='**/\n': stripcomment=0
-                elif stripcomment==0:
-                    outfile.write("  put '" + w.rstrip().replace("'","''") + " ';\n")
+            weboutfiles=[webout0,webout1]
+            for weboutfile in weboutfiles:
+                stripcomment=1
+                for w in weboutfile:
+                    if w=='**/\n': stripcomment=0
+                    elif stripcomment==0:
+                        outfile.write("  put '" + w.rstrip().replace("'","''") + " ';\n")
         elif delrow==1 and line=='/* WEBOUT END */\n':
                 delrow=0
                 outfile.write('/* WEBOUT END */\n')
         elif delrow==0:
             outfile.write(line.rstrip() + "\n")
-    webout.close()
+    webout0.close()
+    webout1.close()
     outfile.close()
     infile.close()
     os.remove(file)
     os.rename(file + 'TEMP',file)
-
 
 # Concatenate all macros into a single file
 header="""
@@ -73,6 +76,7 @@ header="""
 
   @author Allan Bowe
 **/
+options noquotelenmax;
 """
 f = open('mc_all.sas', "w")             # r / r+ / rb / rb+ / w / wb
 f.write(header)
