@@ -73,7 +73,7 @@
     proc sql;drop view &tempds;
   %end;
   %else %if &engine=DATASTEP %then %do;
-    %local cols i;
+    %local cols i tempds;
     %let cols=0;
     %if %sysfunc(exist(&ds)) ne 1 & %sysfunc(exist(&ds,VIEW)) ne 1 %then %do;
       %put &sysmacroname:  &ds NOT FOuND!!!;
