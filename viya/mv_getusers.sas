@@ -5,26 +5,39 @@
 
   Using the macros here:
 
-    filename mc url
+      filename mc url
       "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+      %let client=someclient;
+      %let secret=MySecret;
+      %mv_getapptoken(client_id=&client,client_secret=&secret)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+      %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
+      %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
   Now we can run the macro!
 
-    %mv_getusers(outds=users)
+      %mv_getusers(outds=users)
 
+  Output (lengths are dynamic):
+
+      ordinal_root num,
+      ordinal_items num,
+      version num,
+      id char(20),
+      name char(23),
+      providerId char(4),
+      type char(4),
+      creationTimeStamp char(24),
+      modifiedTimeStamp char(24),
+      state char(6)
+ 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.

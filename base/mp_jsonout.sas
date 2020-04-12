@@ -1,10 +1,11 @@
 /**
   @file mp_jsonout.sas
   @brief Writes JSON in SASjs format to a fileref
-  @details PROC JSON is faster but will produce errors like the ones below if
+  @details PROC JSON is faster but will produce errs like the ones below if
   special chars are encountered.
 
-      An object or array close is not valid at this point in the JSON text.
+     >An object or array close is not valid at this point in the JSON text.
+     >Date value out of range
 
   If this happens, try running with ENGINE=DATASTEP.
 

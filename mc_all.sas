@@ -2273,10 +2273,11 @@ create table &outds (rename=(
 %mend;/**
   @file mp_jsonout.sas
   @brief Writes JSON in SASjs format to a fileref
-  @details PROC JSON is faster but will produce errors like the ones below if
+  @details PROC JSON is faster but will produce errs like the ones below if
   special chars are encountered.
 
-      An object or array close is not valid at this point in the JSON text.
+     >An object or array close is not valid at this point in the JSON text.
+     >Date value out of range
 
   If this happens, try running with ENGINE=DATASTEP.
 
@@ -5151,7 +5152,8 @@ data _null_;
   put '    %do i=1 %to &wtcnt; ';
   put '      %let wt=&&wt&i; ';
   put '      proc contents noprint data=&wt ';
-  put '        out=&tempds (keep=name type length format:); ';
+  put '        out=_data_ (keep=name type length format:); ';
+  put '      run;%let tempds=%scan(&syslast,2,.); ';
   put '      data _null_; file &fref; ';
   put '        dsid=open("WORK.&wt",''is''); ';
   put '        nlobs=attrn(dsid,''NLOBS''); ';
@@ -5162,7 +5164,7 @@ data _null_;
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
   put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
-  put '      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -8136,7 +8138,8 @@ run;
     %do i=1 %to &wtcnt;
       %let wt=&&wt&i;
       proc contents noprint data=&wt
-        out=&tempds (keep=name type length format:);
+        out=_data_ (keep=name type length format:);
+      run;%let tempds=%scan(&syslast,2,.);
       data _null_; file &fref;
         dsid=open("WORK.&wt",'is');
         nlobs=attrn(dsid,'NLOBS');
@@ -8147,7 +8150,7 @@ run;
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
       %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
-      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -8864,7 +8867,8 @@ data _null_;
   put '    %do i=1 %to &wtcnt; ';
   put '      %let wt=&&wt&i; ';
   put '      proc contents noprint data=&wt ';
-  put '        out=&tempds (keep=name type length format:); ';
+  put '        out=_data_ (keep=name type length format:); ';
+  put '      run;%let tempds=%scan(&syslast,2,.); ';
   put '      data _null_; file &fref; ';
   put '        dsid=open("WORK.&wt",''is''); ';
   put '        nlobs=attrn(dsid,''NLOBS''); ';
@@ -8875,7 +8879,7 @@ data _null_;
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
   put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
-  put '      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -10019,26 +10023,39 @@ libname &libref1 clear;
 
   Using the macros here:
 
-    filename mc url
+      filename mc url
       "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+      %let client=someclient;
+      %let secret=MySecret;
+      %mv_getapptoken(client_id=&client,client_secret=&secret)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+      %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
+      %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
   Now we can run the macro!
 
-    %mv_getusers(outds=users)
+      %mv_getusers(outds=users)
 
+  Output (lengths are dynamic):
+
+      ordinal_root num,
+      ordinal_items num,
+      version num,
+      id char(20),
+      name char(23),
+      providerId char(4),
+      type char(4),
+      creationTimeStamp char(24),
+      modifiedTimeStamp char(24),
+      state char(6)
+ 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
@@ -10262,7 +10279,8 @@ libname &libref1 clear;
     %do i=1 %to &wtcnt;
       %let wt=&&wt&i;
       proc contents noprint data=&wt
-        out=&tempds (keep=name type length format:);
+        out=_data_ (keep=name type length format:);
+      run;%let tempds=%scan(&syslast,2,.);
       data _null_; file &fref;
         dsid=open("WORK.&wt",'is');
         nlobs=attrn(dsid,'NLOBS');
@@ -10273,7 +10291,7 @@ libname &libref1 clear;
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
       %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
-      %mp_jsonout(ARR,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
