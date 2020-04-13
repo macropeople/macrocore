@@ -53,7 +53,7 @@ options noquotelenmax;
   /* Stored Process Server web app context */
   %if %symexist(_metaperson) or "&SYSPROCESSNAME"="Compute Server" %then %do;
     options obs=max replace nosyntaxcheck mprint;
-    /* extract log error / warning, if exist */
+    /* extract log err / warn, if exist */
     %local logloc logline;
     %global logmsg; /* capture global messages */
     %if %symexist(SYSPRINTTOLOG) %then %let logloc=&SYSPRINTTOLOG;
@@ -66,12 +66,12 @@ options noquotelenmax;
         input; putlog _infile_;
         i=1;
         retain logonce 0;
-        if (_infile_=:'WARNING' or _infile_=:'ERROR') and logonce=0 then do;
+        if (_infile_=:"%str(WARN)ING" or _infile_=:"%str(ERR)OR") and logonce=0 then do;
           call symputx('logline',_n_);
           logonce+1;
         end;
       run;
-      /* capture log including lines BEFORE the error */
+      /* capture log including lines BEFORE the err */
       %if &logline>0 %then %do;
         data _null_;
           infile &logloc lrecl=5000;
@@ -1231,7 +1231,7 @@ Usage:
   @param verifyvars space separated list of macro variable names
   @param makeupcase= set to YES to convert all variable VALUES to
     uppercase.
-  @param mAbort= Abort Type.  Default is SOFT (writes error to log).
+  @param mAbort= Abort Type.  Default is SOFT (writes err to log).
     Set to any other value to call mf_abort (which can be configured to abort in
     various fashions according to context).
 
@@ -1361,7 +1361,7 @@ Usage:
   or (%symexist(SYSPROCESSNAME) and "&SYSPROCESSNAME"="Compute Server" )
   %then %do;
     options obs=max replace nosyntaxcheck mprint;
-    /* extract log error / warning, if exist */
+    /* extract log errs / warns, if exist */
     %local logloc logline;
     %global logmsg; /* capture global messages */
     %if %symexist(SYSPRINTTOLOG) %then %let logloc=&SYSPRINTTOLOG;
@@ -1374,12 +1374,12 @@ Usage:
         input; putlog _infile_;
         i=1;
         retain logonce 0;
-        if (_infile_=:'WARNING' or _infile_=:'ERROR') and logonce=0 then do;
+        if (_infile_=:"%str(WARN)ING" or _infile_=:"%str(ERR)OR") and logonce=0 then do;
           call symputx('logline',_n_);
           logonce+1;
         end;
       run;
-      /* capture log including lines BEFORE the error */
+      /* capture log including lines BEFORE the err */
       %if &logline>0 %then %do;
         data _null_;
           infile &logloc lrecl=5000;
@@ -1411,7 +1411,7 @@ Usage:
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=quote(trim(symget('_debug')));
       else debug='""';
-      if debug ge "131" then put '>>weboutBEGIN<<';
+      if debug ge '"131"' then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
@@ -1432,9 +1432,7 @@ Usage:
       put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
       put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
       put "}" @;
-      if debug ge "131" then do;
-        put '>>weboutEND<<';
-      end;
+      if debug ge '"131"' then put '>>weboutEND<<';
     run;
     %let syscc=0;
     %if %symexist(SYS_JES_JOB_URI) %then %do;
@@ -2405,13 +2403,21 @@ create table &outds (rename=(
       %if &action=ARR %then "]" ; %else "}" ; ;
     proc sql;
     drop view &tempds;
-    /* now write the long strings to _webout 1 char at a time */
+    /* now write the long strings to _webout 1 byte at a time */
     data _null_;
-      infile _sjs RECFM=N;
-      file &fref RECFM=N mod;
-      input string $CHAR1. @;
-      put string $CHAR1. @;
-
+      length filein 8 fileid 8;
+      filein = fopen("_sjs",'I',1,'B');
+      fileid = fopen("&fref",'A',1,'B');
+      rec = '20'x;
+      do while(fread(filein)=0);
+        rc = fget(filein,rec,1);
+        rc = fput(fileid, rec);
+        rc =fwrite(fileid);
+      end;
+      rc = fclose(filein);
+      rc = fclose(fileid);
+    run;
+    filename _sjs clear;
     data _null_; file &fref mod;
       put "]";
     run;
@@ -2654,7 +2660,7 @@ run;
   Only files with the .ddl suffix are executed.  The parent folder name is used
   as the libref.
   Files should NOT contain the `proc sql` statement - this is to prevent
-  statements being executed if there is an error condition.
+  statements being executed if there is an err condition.
 
   Usage:
 
@@ -3140,8 +3146,8 @@ data _null_;
   call missing(of _all_);
   rc=metadata_getnobj("omsobj:Person?@Name='&user'",1,uri);
   if rc<=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &user not found "!!
-        ", or there was an error reading the repository.";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &user not found "!!
+        ", or there was an err reading the repository.";
     call symputx('check',msg);
     putlog msg;
     stop;
@@ -3150,8 +3156,8 @@ data _null_;
 
   rc=metadata_getnobj("omsobj:IdentityGroup?@Name='&group'",1,uri);
   if rc<=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &group not found "!!
-        ", or there was an error reading the repository.";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &group not found "!!
+        ", or there was an err reading the repository.";
     call symputx('check',msg);
     putlog msg;
     stop;
@@ -3160,7 +3166,7 @@ data _null_;
 
   rc=metadata_getnobj("omsobj:Person?Person[@Name='&user'][IdentityGroups/*[@Name='&group']]",1,uri);
   if rc=0 then do;
-    msg="WARNING: rc="!!cats(rc)!!" &user already in &group";
+    msg="%str(WARN)ING: rc="!!cats(rc)!!" &user already in &group";
     call symputx('check',msg);
     stop;
   end;
@@ -4774,9 +4780,9 @@ run;
     rc23= METADATA_SETATTR(stpuri, 'UsageVersion', '1000000');
     rc24= METADATA_SETATTR(stpuri, 'Desc', "&stpdesc");
 
-    /* tidy up if error */
+    /* tidy up if err */
     if sum(of rc15-rc24) ne 0 then do;
-      putlog 'WARNING: Issue creating STP.';
+      putlog "%str(WARN)ING: Issue creating STP.";
       if stpuri ne . then do;
         putlog '  Removing orphans: ' prompturi fileuri texturi stpuri;
         rc = METADATA_DELOBJ(prompturi);
@@ -5061,13 +5067,21 @@ data _null_;
   put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
   put '    proc sql; ';
   put '    drop view &tempds; ';
-  put '    /* now write the long strings to _webout 1 char at a time */ ';
+  put '    /* now write the long strings to _webout 1 byte at a time */ ';
   put '    data _null_; ';
-  put '      infile _sjs RECFM=N; ';
-  put '      file &fref RECFM=N mod; ';
-  put '      input string $CHAR1. @; ';
-  put '      put string $CHAR1. @; ';
-  put ' ';
+  put '      length filein 8 fileid 8; ';
+  put '      filein = fopen("_sjs",''I'',1,''B''); ';
+  put '      fileid = fopen("&fref",''A'',1,''B''); ';
+  put '      rec = ''20''x; ';
+  put '      do while(fread(filein)=0); ';
+  put '        rc = fget(filein,rec,1); ';
+  put '        rc = fput(fileid, rec); ';
+  put '        rc =fwrite(fileid); ';
+  put '      end; ';
+  put '      rc = fclose(filein); ';
+  put '      rc = fclose(fileid); ';
+  put '    run; ';
+  put '    filename _sjs clear; ';
   put '    data _null_; file &fref mod; ';
   put '      put "]"; ';
   put '    run; ';
@@ -6054,14 +6068,14 @@ run;
     call missing(of _all_);
     rc=metadata_getnobj("omsobj:Person?@Name='&user'",1,uri);
     if rc<=0 then do;
-      putlog "WARNING: rc=" rc "&user not found "
-          ", or there was an error reading the repository.";
+      putlog "%str(WARN)ING: rc=" rc "&user not found "
+          ", or there was an issue reading the repository.";
       stop;
     end;
     a=1;
     grpassn=metadata_getnasn(uri,"IdentityGroups",a,groupuri);
     if grpassn in (-3,-4) then do;
-      putlog "WARNING: No metadata groups found for &user";
+      putlog "%str(WARN)ING: No metadata groups found for &user";
       output;
     end;
     else do while (grpassn > 0);
@@ -6660,7 +6674,7 @@ data _null_;
 run;
 
 %if &tsuri=stopifempty %then %do;
-  %put WARNING:  &tree&name.(StoredProcess) not found!;
+  %put %str(WARN)ING:  &tree&name.(StoredProcess) not found!;
   %return;
 %end;
 
@@ -6720,7 +6734,7 @@ data _null_;
         when ('&#x0a;') rec='0A'x;
         when ('&#x0d;') rec='0D'x;
         when ('&#36;' ) rec='$'  ;
-        otherwise putlog "WARNING: missing value for " entity=;
+        otherwise putlog "%str(WARN)ING: missing value for " entity=;
       end;
       rc =fput(fileid, substr(rec,1,1));
       rc =fwrite(fileid);
@@ -7327,25 +7341,41 @@ filename __shake clear;
     Note - the batch tools require a username and password.  For security,
     these are expected to have been provided in a protected directory.
 
-Usage:
+  Usage:
 
-    %* import the macros (or make them available some other way);
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      %* import the macros (or make them available some other way);
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %* create sample text file as input to the macro;
-    filename tmp temp;
-    data _null_;
-      file tmp;
-      put '%let mmxuser=sasdemo;';
-      put '%let mmxpass=Mars321;';
-    run;
+      %* create sample text file as input to the macro;
+      filename tmp temp;
+      data _null_;
+        file tmp;
+        put '%let mmxuser="sasdemo";';
+        put '%let mmxpass="Mars321";';
+      run;
 
-    filename myref "%sysfunc(pathname(work))/mmxexport.sh";
-    %mm_spkexport(metaloc=%str(/my/meta/loc)
-        ,secureref=tmp
-        ,cmdoutloc=%str(/tmp)
-    )
+      filename myref "%sysfunc(pathname(work))/mmxexport.sh";
+      %mm_spkexport(metaloc=%str(/my/meta/loc)
+          ,outref=myref
+          ,secureref=tmp
+          ,cmdoutloc=%str(/tmp)
+      )
+
+  Alternatively, call without inputs to create a function style output
+
+      filename myref "/tmp/mmscript.sh";
+      %mm_spkexport(metaloc=%str(/my/meta/loc)
+           outref=myref
+          ,cmdoutloc=%str(/tmp)
+          ,cmdoutname=mmx
+      )
+
+  You can then navigate and execute as follows:
+
+      cd /tmp
+      ./mmscript.sh "myuser" "mypass"
+
 
   <h4> Dependencies </h4>
   @li mf_loc.sas
@@ -7382,8 +7412,8 @@ Usage:
 
 /* set creds */
 %local mmxuser mmxpath;
-%let mmxuser=$mmxuser;
-%let mmxpass=$mmxpass;
+%let mmxuser=$1;
+%let mmxpass=$2;
 %if %mf_isblank(&secureref)=0 %then %do;
   %inc &secureref/nosource;
 %end;
@@ -7394,11 +7424,11 @@ Usage:
 %let port=%sysfunc(getoption(metaport));
 %let platform_object_path=%mf_loc(POF);
 
-%let connx_string=%str(-host &host -port &port -user '&mmxuser' -password '&mmxpass');
+%let connx_string=%str(-host &host -port &port -user &mmxuser -password &mmxpass);
 
 %mm_tree(root=%str(&metaloc) ,types=EXPORTABLE ,outds=exportable)
 
-%if %mf_isblank(&outref)=0 %then %let outref=%mf_getuniquefileref();
+%if %mf_isblank(&outref)=1 %then %let outref=%mf_getuniquefileref();
 
 data _null_;
   set exportable end=last;
@@ -8713,13 +8743,21 @@ data _null_;
   put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
   put '    proc sql; ';
   put '    drop view &tempds; ';
-  put '    /* now write the long strings to _webout 1 char at a time */ ';
+  put '    /* now write the long strings to _webout 1 byte at a time */ ';
   put '    data _null_; ';
-  put '      infile _sjs RECFM=N; ';
-  put '      file &fref RECFM=N mod; ';
-  put '      input string $CHAR1. @; ';
-  put '      put string $CHAR1. @; ';
-  put ' ';
+  put '      length filein 8 fileid 8; ';
+  put '      filein = fopen("_sjs",''I'',1,''B''); ';
+  put '      fileid = fopen("&fref",''A'',1,''B''); ';
+  put '      rec = ''20''x; ';
+  put '      do while(fread(filein)=0); ';
+  put '        rc = fget(filein,rec,1); ';
+  put '        rc = fput(fileid, rec); ';
+  put '        rc =fwrite(fileid); ';
+  put '      end; ';
+  put '      rc = fclose(filein); ';
+  put '      rc = fclose(fileid); ';
+  put '    run; ';
+  put '    filename _sjs clear; ';
   put '    data _null_; file &fref mod; ';
   put '      put "]"; ';
   put '    run; ';
