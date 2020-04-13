@@ -133,13 +133,21 @@
       %if &action=ARR %then "]" ; %else "}" ; ;
     proc sql;
     drop view &tempds;
-    /* now write the long strings to _webout 1 char at a time */
+    /* now write the long strings to _webout 1 byte at a time */
     data _null_;
-      infile _sjs RECFM=N;
-      file &fref RECFM=N mod;
-      input string $CHAR1. @;
-      put string $CHAR1. @;
-
+      length filein 8 fileid 8;
+      filein = fopen("_sjs",'I',1,'B');
+      fileid = fopen("&fref",'A',1,'B');
+      rec = '20'x;
+      do while(fread(filein)=0);
+        rc = fget(filein,rec,1);
+        rc = fput(fileid, rec);
+        rc =fwrite(fileid);
+      end;
+      rc = fclose(filein);
+      rc = fclose(fileid);
+    run;
+    filename _sjs clear;
     data _null_; file &fref mod;
       put "]";
     run;
