@@ -78,7 +78,7 @@
       msg=cats('"',msg,'"');
       if symexist('_debug') then debug=quote(trim(symget('_debug')));
       else debug='""';
-      if debug ge "131" then put '>>weboutBEGIN<<';
+      if debug ge '"131"' then put '>>weboutBEGIN<<';
       put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
       put ',"sasjsAbort" : [{';
       put ' "MSG":' msg ;
@@ -99,9 +99,7 @@
       put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
       put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
       put "}" @;
-      if debug ge "131" then do;
-        put '>>weboutEND<<';
-      end;
+      if debug ge '"131"' then put '>>weboutEND<<';
     run;
     %let syscc=0;
     %if %symexist(SYS_JES_JOB_URI) %then %do;
