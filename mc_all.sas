@@ -5099,7 +5099,7 @@ data _null_;
   put '%local i tempds; ';
   put ' ';
   put '%if &action=FETCH %then %do; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %str(&_debug) ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put '  %let _webin_file_count=%eval(&_webin_file_count+0); ';
@@ -5118,7 +5118,7 @@ data _null_;
   put '    data &&_webin_name&i; ';
   put '      infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf encoding=''utf-8''; ';
   put '      input &input_statement; ';
-  put '      %if &_debug ge 131 %then %do; ';
+  put '      %if %str(&_debug) ge 131 %then %do; ';
   put '        if _n_<20 then putlog _infile_; ';
   put '      %end; ';
   put '    run; ';
@@ -5128,7 +5128,7 @@ data _null_;
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup json */ ';
   put '  data _null_;file &fref; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %str(&_debug) ge 131 %then %do; ';
   put '    put ''>>weboutBEGIN<<''; ';
   put '  %end; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
@@ -5139,17 +5139,17 @@ data _null_;
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '  %if &sysver=9.4 %then %do; ';
   put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
-  put '      ,engine=PROCJSON,dbg=&_debug ';
+  put '      ,engine=PROCJSON,dbg=%str(&_debug) ';
   put '    ) ';
   put '  %end; ';
   put '  %else %do; ';
   put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
-  put '      ,engine=DATASTEP,dbg=&_debug ';
+  put '      ,engine=DATASTEP,dbg=%str(&_debug) ';
   put '    ) ';
   put '  %end; ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %str(&_debug) ge 131 %then %do; ';
   put '    /* if debug mode, send back first 10 records of each work table also */ ';
   put '    options obs=10; ';
   put '    data;run;%let tempds=%scan(&syslast,2,.); ';
@@ -5199,7 +5199,7 @@ data _null_;
   put '    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" "; ';
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}" @; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %str(&_debug) ge 131 %then %do; ';
   put '    put ''>>weboutEND<<''; ';
   put '  %end; ';
   put '  run; ';
@@ -8101,7 +8101,7 @@ run;
 %local i tempds;
 
 %if &action=FETCH %then %do;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
   %let _webin_file_count=%eval(&_webin_file_count+0);
@@ -8120,7 +8120,7 @@ run;
     data &&_webin_name&i;
       infile &&_webin_fileref&i firstobs=2 dsd termstr=crlf encoding='utf-8';
       input &input_statement;
-      %if &_debug ge 131 %then %do;
+      %if %str(&_debug) ge 131 %then %do;
         if _n_<20 then putlog _infile_;
       %end;
     run;
@@ -8130,7 +8130,7 @@ run;
 %else %if &action=OPEN %then %do;
   /* setup json */
   data _null_;file &fref;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     put '>>weboutBEGIN<<';
   %end;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
@@ -8141,17 +8141,17 @@ run;
 %else %if &action=ARR or &action=OBJ %then %do;
   %if &sysver=9.4 %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      ,engine=PROCJSON,dbg=&_debug
+      ,engine=PROCJSON,dbg=%str(&_debug)
     )
   %end;
   %else %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      ,engine=DATASTEP,dbg=&_debug
+      ,engine=DATASTEP,dbg=%str(&_debug)
     )
   %end;
 %end;
 %else %if &action=CLOSE %then %do;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     /* if debug mode, send back first 10 records of each work table also */
     options obs=10;
     data;run;%let tempds=%scan(&syslast,2,.);
@@ -8201,7 +8201,7 @@ run;
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}" @;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     put '>>weboutEND<<';
   %end;
   run;
@@ -8776,7 +8776,7 @@ data _null_;
   put '%let action=%upcase(&action); ';
   put ' ';
   put '%if &action=FETCH %then %do; ';
-  put '  %if %upcase(&_omittextlog)=FALSE or &_debug ge 131 %then %do; ';
+  put '  %if %upcase(&_omittextlog)=FALSE or %str(&_debug) ge 131 %then %do; ';
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
@@ -8852,7 +8852,7 @@ data _null_;
   put '      infile indata termstr=crlf ; ';
   put '      input; ';
   put '      if _n_=1 then call symputx(''input_statement'',_infile_); ';
-  put '      %if &_debug ge 131 %then %do; ';
+  put '      %if %str(&_debug) ge 131 %then %do; ';
   put '        if _n_<20 then putlog _infile_; ';
   put '        else stop; ';
   put '      %end; ';
@@ -8885,11 +8885,11 @@ data _null_;
   put '%end; ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
-  put '      fref=&fref,engine=PROCJSON,dbg=&_debug ';
+  put '      fref=&fref,engine=PROCJSON,dbg=%str(&_debug) ';
   put '    ) ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
-  put '  %if &_debug ge 131 %then %do; ';
+  put '  %if %str(&_debug) ge 131 %then %do; ';
   put '    /* send back first 10 records of each work table for debugging */ ';
   put '    options obs=10; ';
   put '    data;run;%let tempds=%scan(&syslast,2,.); ';
@@ -10188,7 +10188,7 @@ libname &libref1 clear;
 %let action=%upcase(&action);
 
 %if &action=FETCH %then %do;
-  %if %upcase(&_omittextlog)=FALSE or &_debug ge 131 %then %do;
+  %if %upcase(&_omittextlog)=FALSE or %str(&_debug) ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
 
@@ -10264,7 +10264,7 @@ libname &libref1 clear;
       infile indata termstr=crlf ;
       input;
       if _n_=1 then call symputx('input_statement',_infile_);
-      %if &_debug ge 131 %then %do;
+      %if %str(&_debug) ge 131 %then %do;
         if _n_<20 then putlog _infile_;
         else stop;
       %end;
@@ -10297,11 +10297,11 @@ libname &libref1 clear;
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      fref=&fref,engine=PROCJSON,dbg=&_debug
+      fref=&fref,engine=PROCJSON,dbg=%str(&_debug)
     )
 %end;
 %else %if &action=CLOSE %then %do;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     /* send back first 10 records of each work table for debugging */
     options obs=10;
     data;run;%let tempds=%scan(&syslast,2,.);

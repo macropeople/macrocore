@@ -38,7 +38,7 @@
 %let action=%upcase(&action);
 
 %if &action=FETCH %then %do;
-  %if %upcase(&_omittextlog)=FALSE or &_debug ge 131 %then %do;
+  %if %upcase(&_omittextlog)=FALSE or %str(&_debug) ge 131 %then %do;
     options mprint notes mprintnest;
   %end;
 
@@ -114,7 +114,7 @@
       infile indata termstr=crlf ;
       input;
       if _n_=1 then call symputx('input_statement',_infile_);
-      %if &_debug ge 131 %then %do;
+      %if %str(&_debug) ge 131 %then %do;
         if _n_<20 then putlog _infile_;
         else stop;
       %end;
@@ -147,11 +147,11 @@
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      fref=&fref,engine=PROCJSON,dbg=&_debug
+      fref=&fref,engine=PROCJSON,dbg=%str(&_debug)
     )
 %end;
 %else %if &action=CLOSE %then %do;
-  %if &_debug ge 131 %then %do;
+  %if %str(&_debug) ge 131 %then %do;
     /* send back first 10 records of each work table for debugging */
     options obs=10;
     data;run;%let tempds=%scan(&syslast,2,.);
