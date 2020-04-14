@@ -128,7 +128,7 @@
       %do i=1 %to &cols;
         %if &i>1 %then  "," ;
         %if &action=OBJ %then """&&name&i"":" ;
-        &&name&i +(1)
+        &&name&i 
       %end;
       %if &action=ARR %then "]" ; %else "}" ; ;
     proc sql;

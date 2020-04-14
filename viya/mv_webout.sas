@@ -147,7 +147,7 @@
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      ,engine=PROCJSON,dbg=&_debug
+      fref=&fref,engine=PROCJSON,dbg=&_debug
     )
 %end;
 %else %if &action=CLOSE %then %do;

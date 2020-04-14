@@ -2398,7 +2398,7 @@ create table &outds (rename=(
       %do i=1 %to &cols;
         %if &i>1 %then  "," ;
         %if &action=OBJ %then """&&name&i"":" ;
-        &&name&i +(1)
+        &&name&i 
       %end;
       %if &action=ARR %then "]" ; %else "}" ; ;
     proc sql;
@@ -5062,7 +5062,7 @@ data _null_;
   put '      %do i=1 %to &cols; ';
   put '        %if &i>1 %then  "," ; ';
   put '        %if &action=OBJ %then """&&name&i"":" ; ';
-  put '        &&name&i +(1) ';
+  put '        &&name&i ';
   put '      %end; ';
   put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
   put '    proc sql; ';
@@ -8738,7 +8738,7 @@ data _null_;
   put '      %do i=1 %to &cols; ';
   put '        %if &i>1 %then  "," ; ';
   put '        %if &action=OBJ %then """&&name&i"":" ; ';
-  put '        &&name&i +(1) ';
+  put '        &&name&i ';
   put '      %end; ';
   put '      %if &action=ARR %then "]" ; %else "}" ; ; ';
   put '    proc sql; ';
@@ -8885,7 +8885,7 @@ data _null_;
   put '%end; ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
-  put '      ,engine=PROCJSON,dbg=&_debug ';
+  put '      fref=&fref,engine=PROCJSON,dbg=&_debug ';
   put '    ) ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
@@ -10297,7 +10297,7 @@ libname &libref1 clear;
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      ,engine=PROCJSON,dbg=&_debug
+      fref=&fref,engine=PROCJSON,dbg=&_debug
     )
 %end;
 %else %if &action=CLOSE %then %do;
