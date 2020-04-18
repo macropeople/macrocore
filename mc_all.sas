@@ -1611,7 +1611,7 @@ Usage:
 
   @warning In a Unix environment, the existence of a named pipe will cause this 
   macro to hang.  Therefore this tool should be used with caution in a SAS 9 web
-  application, as it can use up all available multibridge sessions of the requests
+  application, as it can use up all available multibridge sessions if requests
   are resubmitted.
   If anyone finds a way to positively identify a named pipe using SAS (without 
   X CMD) do please raise an issue!
@@ -1619,8 +1619,8 @@ Usage:
 
   @param path= for which to return contents
   @param outds= the output dataset to create
-  @param getattrs= uses doptname and foptname to return all attributes for each
-  file / folder.  
+  @param getattrs= YES/NO (default=NO).  Uses doptname and foptname to return 
+  all attributes for each file / folder.  
 
 
   @returns outds contains the following variables:
@@ -1702,7 +1702,7 @@ run;
       fid=fopen(fref);
       if fid le 0 then do;
         msg=sysmsg();
-        putlog "Could not open file:" filepath fid= msg=;
+        putlog "Could not open file:" filepath fid= ;
         sasname='_MCNOTVALID_';
         output;
       end;
@@ -1719,7 +1719,7 @@ run;
       fid=dopen(fref);
       if fid le 0 then do;
         msg=sysmsg();
-        putlog "Could not open folder:" filepath fid= msg=;
+        putlog "Could not open folder:" filepath fid= ;
         sasname='_MCNOTVALID_';
         output;
       end;
@@ -1735,7 +1735,7 @@ run;
   run;
   proc sort;
     by filepath sasname;
-  proc transpose data=&outds out=&outds(drop=_name_ _MCNOTVALID_);
+  proc transpose data=&outds out=&outds(drop=_:);
     id sasname;
     var infoval;
     by filepath file_or_folder filename ext ;
