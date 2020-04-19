@@ -3,7 +3,8 @@
   @brief Returns <code>&sysuserid</code> in Workspace session, <code>
     &_secureusername</code> in Stored Process session.
   @details In a workspace session, a user is generally represented by <code>
-    &sysuserid</code>.  In a Stored Process session, <code>&sysuserid</code>
+    &sysuserid</code> or <code>SYS_COMPUTE_SESSION_OWNER</code> if it exists.  
+    In a Stored Process session, <code>&sysuserid</code>
     resolves to a system account (default=sassrv) and instead there are several
     metadata username variables to choose from (_metauser, _metaperson
     ,_username, _secureusername).  The OS account is represented by
@@ -29,7 +30,8 @@
   %if &type=OS %then %let metavar=_secureusername;
   %else %let metavar=_metaperson;
 
-  %if %symexist(&metavar) %then %do;
+  %if %symexist(SYS_COMPUTE_SESSION_OWNER) %then %let user=&SYS_COMPUTE_SESSION_OWNER;
+  %else %if %symexist(&metavar) %then %do;
     %if %length(&&&metavar)=0 %then %let user=&sysuserid;
     /* sometimes SAS will add @domain extension - remove for consistency */
     %else %let user=%scan(&&&metavar,1,@);
