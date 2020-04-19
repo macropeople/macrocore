@@ -3,22 +3,24 @@
   @brief Returns platform specific variables
   @details Enables platform specific variables to be returned
 
-      %put %mf_getplatform()
+      %put %mf_getplatform();
 
     returns:
       SASMETA  (or SASVIYA)
 
   @param switch the param for which to return a platform specific variable
 
+  <h4> Dependencies </h4>
+  @li mf_mval.sas
+
   @version 9.4 / 3.4
   @author Allan Bowe
 **/
 
-%macro mf_getplatform(
-     switch=NONE
+%macro mf_getplatform(switch
 )/*/STORE SOURCE*/;
-%let switch=%upcase(&switch);
-%if &switch=NONE %then %do;
+%local a b c;
+%if &switch.NONE=NONE %then %do;
   %if %symexist(sysprocessmode) %then %do;
     %if "&sysprocessmode"="SAS Object Server" %then %do;
         SASVIYA
@@ -40,5 +42,17 @@
     SAS
     %return;
   %end;
+%end;
+%else %if &switch=SASSTUDIO %then %do;
+  /* return the version of SAS Studio else 0 */
+  %if %mf_mval(_CLIENTAPP)=%str(SAS Studio) %then %do;
+    %let a=%mf_mval(_CLIENTVERSION);
+    %let b=%scan(&a,1,.);
+    %if %eval(&b >2) %then %do;
+      &b
+    %end;
+    %else 0;
+  %end;
+  %else 0;
 %end;
 %mend;
