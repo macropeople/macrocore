@@ -501,22 +501,24 @@ options noquotelenmax;
   @brief Returns platform specific variables
   @details Enables platform specific variables to be returned
 
-      %put %mf_getplatform()
+      %put %mf_getplatform();
 
     returns:
       SASMETA  (or SASVIYA)
 
   @param switch the param for which to return a platform specific variable
 
+  <h4> Dependencies </h4>
+  @li mf_mval.sas
+
   @version 9.4 / 3.4
   @author Allan Bowe
 **/
 
-%macro mf_getplatform(
-     switch=NONE
+%macro mf_getplatform(switch
 )/*/STORE SOURCE*/;
-%let switch=%upcase(&switch);
-%if &switch=NONE %then %do;
+%local a b c;
+%if &switch.NONE=NONE %then %do;
   %if %symexist(sysprocessmode) %then %do;
     %if "&sysprocessmode"="SAS Object Server" %then %do;
         SASVIYA
@@ -538,6 +540,18 @@ options noquotelenmax;
     SAS
     %return;
   %end;
+%end;
+%else %if &switch=SASSTUDIO %then %do;
+  /* return the version of SAS Studio else 0 */
+  %if %mf_mval(_CLIENTAPP)=%str(SAS Studio) %then %do;
+    %let a=%mf_mval(_CLIENTVERSION);
+    %let b=%scan(&a,1,.);
+    %if %eval(&b >2) %then %do;
+      &b
+    %end;
+    %else 0;
+  %end;
+  %else 0;
 %end;
 %mend;/**
   @file
@@ -663,7 +677,8 @@ options noquotelenmax;
   @brief Returns <code>&sysuserid</code> in Workspace session, <code>
     &_secureusername</code> in Stored Process session.
   @details In a workspace session, a user is generally represented by <code>
-    &sysuserid</code>.  In a Stored Process session, <code>&sysuserid</code>
+    &sysuserid</code> or <code>SYS_COMPUTE_SESSION_OWNER</code> if it exists.  
+    In a Stored Process session, <code>&sysuserid</code>
     resolves to a system account (default=sassrv) and instead there are several
     metadata username variables to choose from (_metauser, _metaperson
     ,_username, _secureusername).  The OS account is represented by
@@ -689,7 +704,8 @@ options noquotelenmax;
   %if &type=OS %then %let metavar=_secureusername;
   %else %let metavar=_metaperson;
 
-  %if %symexist(&metavar) %then %do;
+  %if %symexist(SYS_COMPUTE_SESSION_OWNER) %then %let user=&SYS_COMPUTE_SESSION_OWNER;
+  %else %if %symexist(&metavar) %then %do;
     %if %length(&&&metavar)=0 %then %let user=&sysuserid;
     /* sometimes SAS will add @domain extension - remove for consistency */
     %else %let user=%scan(&&&metavar,1,@);
@@ -1166,6 +1182,24 @@ Usage:
     %end;
   %end;
   /* exit quietly if directory did exist.*/
+%mend;
+/**
+  @file mf_mval.sas
+  @brief Returns a macro variable value if the variable exists
+  @details Use this macro to avoid repetitive use of `%if %symexist(MACVAR) %then`
+  type logic.  
+  Usage:
+
+      %if %mf_mval(maynotexist)=itdid %then %do;
+
+  @version 9.2
+  @author Allan Bowe
+**/
+
+%macro mf_mval(var);
+  %if %symexist(&var) %then %do;
+    %superq(&var)
+  %end;
 %mend;
 /**
   @file
@@ -5275,6 +5309,7 @@ data _null_;
   put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
   put '    put ",""SYSUSERID"" : ""&sysuserid"" "; ';
+  put '    put ",""MF_GETUSER"" : ""%mf_getuser()"" "; ';
   put '    put ",""_DEBUG"" : ""&_debug"" "; ';
   put '    _METAUSER=quote(trim(symget(''_METAUSER''))); ';
   put '    put ",""_METAUSER"": " _METAUSER; ';
@@ -5293,6 +5328,24 @@ data _null_;
   put '  %end; ';
   put '  run; ';
   put '%end; ';
+  put ' ';
+  put '%mend; ';
+  put ' ';
+  put '%macro mf_getuser(type=META ';
+  put ')/*/STORE SOURCE*/; ';
+  put '  %local user metavar; ';
+  put '  %if &type=OS %then %let metavar=_secureusername; ';
+  put '  %else %let metavar=_metaperson; ';
+  put ' ';
+  put '  %if %symexist(SYS_COMPUTE_SESSION_OWNER) %then %let user=&SYS_COMPUTE_SESSION_OWNER; ';
+  put '  %else %if %symexist(&metavar) %then %do; ';
+  put '    %if %length(&&&metavar)=0 %then %let user=&sysuserid; ';
+  put '    /* sometimes SAS will add @domain extension - remove for consistency */ ';
+  put '    %else %let user=%scan(&&&metavar,1,@); ';
+  put '  %end; ';
+  put '  %else %let user=&sysuserid; ';
+  put ' ';
+  put '  %quote(&user) ';
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
@@ -8278,6 +8331,7 @@ run;
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
+    put ",""MF_GETUSER"" : ""%mf_getuser()"" ";
     put ",""_DEBUG"" : ""&_debug"" ";
     _METAUSER=quote(trim(symget('_METAUSER')));
     put ",""_METAUSER"": " _METAUSER;
@@ -8862,6 +8916,8 @@ data _null_;
   put '%mend; ';
   put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
+  put '%if "&_debug"="fields,log,time" %then %let _debug=131; ';
+  put ' ';
   put '%local i tempds; ';
   put '%let action=%upcase(&action); ';
   put ' ';
@@ -9017,6 +9073,7 @@ data _null_;
   put '  data _null_;file &fref mod; ';
   put '    _PROGRAM=quote(trim(resolve(symget(''_PROGRAM'')))); ';
   put '    put ",""SYSUSERID"" : ""&sysuserid"" "; ';
+  put '    put ",""MF_GETUSER"" : ""%mf_getuser()"" "; ';
   put '    SYS_JES_JOB_URI=quote(trim(resolve(symget(''SYS_JES_JOB_URI'')))); ';
   put '    put '',"SYS_JES_JOB_URI" : '' SYS_JES_JOB_URI ; ';
   put '    put ",""SYSJOBID"" : ""&sysjobid"" "; ';
@@ -9032,6 +9089,24 @@ data _null_;
   put '  data _null_; rc=fcopy("&fref","&_webout");run; ';
   put ' ';
   put '%end; ';
+  put ' ';
+  put '%mend; ';
+  put ' ';
+  put '%macro mf_getuser(type=META ';
+  put ')/*/STORE SOURCE*/; ';
+  put '  %local user metavar; ';
+  put '  %if &type=OS %then %let metavar=_secureusername; ';
+  put '  %else %let metavar=_metaperson; ';
+  put ' ';
+  put '  %if %symexist(SYS_COMPUTE_SESSION_OWNER) %then %let user=&SYS_COMPUTE_SESSION_OWNER; ';
+  put '  %else %if %symexist(&metavar) %then %do; ';
+  put '    %if %length(&&&metavar)=0 %then %let user=&sysuserid; ';
+  put '    /* sometimes SAS will add @domain extension - remove for consistency */ ';
+  put '    %else %let user=%scan(&&&metavar,1,@); ';
+  put '  %end; ';
+  put '  %else %let user=&sysuserid; ';
+  put ' ';
+  put '  %quote(&user) ';
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
@@ -10186,8 +10261,13 @@ libname &libref1 clear;
       state char(6)
  
   @param access_token_var= The global macro variable to contain the access token
-  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
+  @param grant_type= valid values:
+   * password
+   * authorization_code
+   * detect - will check if access_token exists, if not will use sas_services if 
+    a SASStudioV session else authorization_code.  Default option.
+   * sas_services - will use oauth_bearer=sas_services
+
   @param outds= The library.dataset to be created that contains the list of groups
 
 
@@ -10199,15 +10279,28 @@ libname &libref1 clear;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
 
 **/
 
 %macro mv_getusers(outds=work.mv_getusers
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
+%if &grant_type=detect %then %do;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+  %end;
+  %else %let grant_type=password;
+%end;
+%put &=grant_type;
+
 /* initial validation checking */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -10220,9 +10313,17 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1
+%if &grant_type=sas_services %then %do;
+  oauth_bearer=sas_services
+%end;
   url="http://localhost/identities/users?limit=2000";
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var"
           "Accept"="application/json";
+%end;
+%else %do;
+  headers "Accept"="application/json";
+%end;
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
@@ -10268,6 +10369,9 @@ libname &libref1 clear;
   @param dslabel= value to use instead of the real name for sending to JSON
   @param fmt= change to N to strip formats from output
 
+  <h4> Dependencies </h4>
+  @li mp_jsonout.sas
+  @li mf_getuser.sas
 
   @version Viya 3.3
   @author Allan Bowe
@@ -10275,6 +10379,8 @@ libname &libref1 clear;
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
+%if "&_debug"="fields,log,time" %then %let _debug=131;
+
 %local i tempds;
 %let action=%upcase(&action);
 
@@ -10430,6 +10536,7 @@ libname &libref1 clear;
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
+    put ",""MF_GETUSER"" : ""%mf_getuser()"" ";
     SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
     put ',"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ;
     put ",""SYSJOBID"" : ""&sysjobid"" ";

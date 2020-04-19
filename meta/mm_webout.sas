@@ -125,6 +125,7 @@
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
+    put ",""MF_GETUSER"" : ""%mf_getuser()"" ";
     put ",""_DEBUG"" : ""&_debug"" ";
     _METAUSER=quote(trim(symget('_METAUSER')));
     put ",""_METAUSER"": " _METAUSER;

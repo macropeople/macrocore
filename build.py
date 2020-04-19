@@ -32,6 +32,7 @@ for file in files:
         webout1=open('viya/mv_webout.sas',"r")
     else:
         webout1=open('meta/mm_webout.sas','r')
+    webout2=open('base/mf_getuser.sas','r')
     outfile=open(file + 'TEMP','w')
     infile=open(file,'r')
     delrow=0
@@ -39,7 +40,7 @@ for file in files:
         if line=='/* WEBOUT BEGIN */\n':
             delrow=1
             outfile.write('/* WEBOUT BEGIN */\n')
-            weboutfiles=[webout0,webout1]
+            weboutfiles=[webout0,webout1,webout2]
             for weboutfile in weboutfiles:
                 stripcomment=1
                 for w in weboutfile:

@@ -27,6 +27,9 @@
   @param dslabel= value to use instead of the real name for sending to JSON
   @param fmt= change to N to strip formats from output
 
+  <h4> Dependencies </h4>
+  @li mp_jsonout.sas
+  @li mf_getuser.sas
 
   @version Viya 3.3
   @author Allan Bowe
@@ -34,6 +37,8 @@
 **/
 %macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
+%if "&_debug"="fields,log,time" %then %let _debug=131;
+
 %local i tempds;
 %let action=%upcase(&action);
 
@@ -189,6 +194,7 @@
   data _null_;file &fref mod;
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
+    put ",""MF_GETUSER"" : ""%mf_getuser()"" ";
     SYS_JES_JOB_URI=quote(trim(resolve(symget('SYS_JES_JOB_URI'))));
     put ',"SYS_JES_JOB_URI" : ' SYS_JES_JOB_URI ;
     put ",""SYSJOBID"" : ""&sysjobid"" ";
