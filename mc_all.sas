@@ -8914,7 +8914,7 @@ data _null_;
   put '  run; ';
   put '%end; ';
   put '%mend; ';
-  put '%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y); ';
+  put '%macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
   put '%if "&_debug"="fields,log,time" %then %let _debug=131; ';
   put ' ';
@@ -9016,7 +9016,7 @@ data _null_;
   put ' ';
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup webout */ ';
-  put '  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
+  put '  filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
   put '    name="_webout.json" lrecl=999999 mod; ';
   put ' ';
   put '  /* setup temp ref */ ';
@@ -9086,7 +9086,9 @@ data _null_;
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
   put ' ';
-  put '  data _null_; rc=fcopy("&fref","&_webout");run; ';
+  put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
+  put '    data _null_; rc=fcopy("&fref","&_webout");run; ';
+  put '  %end; ';
   put ' ';
   put '%end; ';
   put ' ';
@@ -9110,9 +9112,8 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
-  put '%macro webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=);';
-  put '  %mv_webout(&action,ds=&ds,_webout=&_webout';
-  put '    ,fref=&fref,dslabel=&dslabel,fmt=&fmt)';
+  put '%macro webout(action,ds,dslabel=,fmt=);';
+  put '  %mv_webout(&action,ds=&ds,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
 run;
 
@@ -10377,7 +10378,7 @@ libname &libref1 clear;
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
+%macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
 %if "&_debug"="fields,log,time" %then %let _debug=131;
 
@@ -10479,7 +10480,7 @@ libname &libref1 clear;
 
 %else %if &action=OPEN %then %do;
   /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+  filename _webout filesrvc parenturi="&SYS_JES_JOB_URI"
     name="_webout.json" lrecl=999999 mod;
 
   /* setup temp ref */
@@ -10549,7 +10550,9 @@ libname &libref1 clear;
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
 
-  data _null_; rc=fcopy("&fref","&_webout");run;
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    data _null_; rc=fcopy("&fref","&_webout");run;
+  %end;
 
 %end;
 

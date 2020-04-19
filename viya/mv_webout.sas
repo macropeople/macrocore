@@ -35,7 +35,7 @@
   @author Allan Bowe
 
 **/
-%macro mv_webout(action,ds,_webout=_webout,fref=_temp,dslabel=,fmt=Y);
+%macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
 %if "&_debug"="fields,log,time" %then %let _debug=131;
 
@@ -137,7 +137,7 @@
 
 %else %if &action=OPEN %then %do;
   /* setup webout */
-  filename &_webout filesrvc parenturi="&SYS_JES_JOB_URI"
+  filename _webout filesrvc parenturi="&SYS_JES_JOB_URI"
     name="_webout.json" lrecl=999999 mod;
 
   /* setup temp ref */
@@ -207,7 +207,9 @@
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";
 
-  data _null_; rc=fcopy("&fref","&_webout");run;
+  %if %upcase(&fref) ne _WEBOUT %then %do;
+    data _null_; rc=fcopy("&fref","&_webout");run;
+  %end;
 
 %end;
 
