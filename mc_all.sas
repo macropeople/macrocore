@@ -2406,7 +2406,7 @@ create table &outds (rename=(
         filename tmp temp;
         data class; set sashelp.class;run;
         
-        %mp_jsonout(OBJ,class,fref=tmp)
+        %mp_jsonout(OBJ,class,jref=tmp)
 
         data _null_;
         infile tmp;
@@ -2424,7 +2424,7 @@ create table &outds (rename=(
     * CLOSE - closes the JSON
 
   @param ds the dataset to send.  Must be a work table.
-  @param outref= the fileref to which to send the JSON
+  @param jref= the fileref to which to send the JSON
   @param dslabel= the name to give the table in the exported JSON
   @param fmt= Whether to keep or strip formats from the table
   @param engine= Which engine to use to send the JSON, options are:
@@ -2439,17 +2439,17 @@ create table &outds (rename=(
 
 **/
 
-%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0
+%macro mp_jsonout(action,ds,jref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0
 )/*/STORE SOURCE*/;
-
+%put output location=&jref;
 %if &action=OPEN %then %do;
-  data _null_;file &fref;
+  data _null_;file &jref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
 %end;
 %else %if (&action=ARR or &action=OBJ) %then %do;
   options validvarname=upcase;
-  data _null_;file &fref mod;
+  data _null_;file &jref mod;
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   %if &engine=PROCJSON %then %do;
@@ -2457,7 +2457,7 @@ create table &outds (rename=(
     proc sql;drop table &tempds;
     data &tempds /view=&tempds;set &ds; 
     %if &fmt=N %then format _numeric_ best32.;;
-    proc json out=&fref
+    proc json out=&jref
         %if &action=ARR %then nokeys ;
         %if &dbg ge 131  %then pretty ;
         ;export &tempds / nosastags fmtnumeric;
@@ -2471,7 +2471,7 @@ create table &outds (rename=(
       %put &sysmacroname:  &ds NOT FOUND!!!;
       %return;
     %end;
-    data _null_;file &fref mod; put "["; call symputx('cols',0,'l');
+    data _null_;file &jref mod; put "["; call symputx('cols',0,'l');
     proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
       out=_data_;
       by varnum;
@@ -2529,7 +2529,7 @@ create table &outds (rename=(
     data _null_;
       length filein 8 fileid 8;
       filein = fopen("_sjs",'I',1,'B');
-      fileid = fopen("&fref",'A',1,'B');
+      fileid = fopen("&jref",'A',1,'B');
       rec = '20'x;
       do while(fread(filein)=0);
         rc = fget(filein,rec,1);
@@ -2540,14 +2540,14 @@ create table &outds (rename=(
       rc = fclose(fileid);
     run;
     filename _sjs clear;
-    data _null_; file &fref mod;
+    data _null_; file &jref mod;
       put "]";
     run;
   %end;
 %end;
 
 %else %if &action=CLOSE %then %do;
-  data _null_;file &fref;
+  data _null_;file &jref;
     put "}";
   run;
 %end;
@@ -5103,17 +5103,17 @@ data _null_;
   put "/* Created on %sysfunc(datetime(),datetime19.) by %mf_getuser() */";
 /* WEBOUT BEGIN */
   put ' ';
-  put '%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
+  put '%macro mp_jsonout(action,ds,jref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
   put ')/*/STORE SOURCE*/; ';
-  put ' ';
+  put '%put output location=&jref; ';
   put '%if &action=OPEN %then %do; ';
-  put '  data _null_;file &fref; ';
+  put '  data _null_;file &jref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
   put '  run; ';
   put '%end; ';
   put '%else %if (&action=ARR or &action=OBJ) %then %do; ';
   put '  options validvarname=upcase; ';
-  put '  data _null_;file &fref mod; ';
+  put '  data _null_;file &jref mod; ';
   put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
   put ' ';
   put '  %if &engine=PROCJSON %then %do; ';
@@ -5121,7 +5121,7 @@ data _null_;
   put '    proc sql;drop table &tempds; ';
   put '    data &tempds /view=&tempds;set &ds; ';
   put '    %if &fmt=N %then format _numeric_ best32.;; ';
-  put '    proc json out=&fref ';
+  put '    proc json out=&jref ';
   put '        %if &action=ARR %then nokeys ; ';
   put '        %if &dbg ge 131  %then pretty ; ';
   put '        ;export &tempds / nosastags fmtnumeric; ';
@@ -5135,7 +5135,7 @@ data _null_;
   put '      %put &sysmacroname:  &ds NOT FOUND!!!; ';
   put '      %return; ';
   put '    %end; ';
-  put '    data _null_;file &fref mod; put "["; call symputx(''cols'',0,''l''); ';
+  put '    data _null_;file &jref mod; put "["; call symputx(''cols'',0,''l''); ';
   put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
   put '      out=_data_; ';
   put '      by varnum; ';
@@ -5193,7 +5193,7 @@ data _null_;
   put '    data _null_; ';
   put '      length filein 8 fileid 8; ';
   put '      filein = fopen("_sjs",''I'',1,''B''); ';
-  put '      fileid = fopen("&fref",''A'',1,''B''); ';
+  put '      fileid = fopen("&jref",''A'',1,''B''); ';
   put '      rec = ''20''x; ';
   put '      do while(fread(filein)=0); ';
   put '        rc = fget(filein,rec,1); ';
@@ -5204,14 +5204,14 @@ data _null_;
   put '      rc = fclose(fileid); ';
   put '    run; ';
   put '    filename _sjs clear; ';
-  put '    data _null_; file &fref mod; ';
+  put '    data _null_; file &jref mod; ';
   put '      put "]"; ';
   put '    run; ';
   put '  %end; ';
   put '%end; ';
   put ' ';
   put '%else %if &action=CLOSE %then %do; ';
-  put '  data _null_;file &fref; ';
+  put '  data _null_;file &jref; ';
   put '    put "}"; ';
   put '  run; ';
   put '%end; ';
@@ -5299,8 +5299,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
-  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -8321,8 +8321,8 @@ run;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -8801,17 +8801,17 @@ data _null_;
   put "/* Created on %sysfunc(datetime(),datetime19.) by &sysuserid */";
 /* WEBOUT BEGIN */
   put ' ';
-  put '%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
+  put '%macro mp_jsonout(action,ds,jref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0 ';
   put ')/*/STORE SOURCE*/; ';
-  put ' ';
+  put '%put output location=&jref; ';
   put '%if &action=OPEN %then %do; ';
-  put '  data _null_;file &fref; ';
+  put '  data _null_;file &jref; ';
   put '    put ''{"START_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''"''; ';
   put '  run; ';
   put '%end; ';
   put '%else %if (&action=ARR or &action=OBJ) %then %do; ';
   put '  options validvarname=upcase; ';
-  put '  data _null_;file &fref mod; ';
+  put '  data _null_;file &jref mod; ';
   put '    put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":"; ';
   put ' ';
   put '  %if &engine=PROCJSON %then %do; ';
@@ -8819,7 +8819,7 @@ data _null_;
   put '    proc sql;drop table &tempds; ';
   put '    data &tempds /view=&tempds;set &ds; ';
   put '    %if &fmt=N %then format _numeric_ best32.;; ';
-  put '    proc json out=&fref ';
+  put '    proc json out=&jref ';
   put '        %if &action=ARR %then nokeys ; ';
   put '        %if &dbg ge 131  %then pretty ; ';
   put '        ;export &tempds / nosastags fmtnumeric; ';
@@ -8833,7 +8833,7 @@ data _null_;
   put '      %put &sysmacroname:  &ds NOT FOUND!!!; ';
   put '      %return; ';
   put '    %end; ';
-  put '    data _null_;file &fref mod; put "["; call symputx(''cols'',0,''l''); ';
+  put '    data _null_;file &jref mod; put "["; call symputx(''cols'',0,''l''); ';
   put '    proc sort data=sashelp.vcolumn(where=(libname=''WORK'' & memname="%upcase(&ds)")) ';
   put '      out=_data_; ';
   put '      by varnum; ';
@@ -8891,7 +8891,7 @@ data _null_;
   put '    data _null_; ';
   put '      length filein 8 fileid 8; ';
   put '      filein = fopen("_sjs",''I'',1,''B''); ';
-  put '      fileid = fopen("&fref",''A'',1,''B''); ';
+  put '      fileid = fopen("&jref",''A'',1,''B''); ';
   put '      rec = ''20''x; ';
   put '      do while(fread(filein)=0); ';
   put '        rc = fget(filein,rec,1); ';
@@ -8902,21 +8902,21 @@ data _null_;
   put '      rc = fclose(fileid); ';
   put '    run; ';
   put '    filename _sjs clear; ';
-  put '    data _null_; file &fref mod; ';
+  put '    data _null_; file &jref mod; ';
   put '      put "]"; ';
   put '    run; ';
   put '  %end; ';
   put '%end; ';
   put ' ';
   put '%else %if &action=CLOSE %then %do; ';
-  put '  data _null_;file &fref; ';
+  put '  data _null_;file &jref; ';
   put '    put "}"; ';
   put '  run; ';
   put '%end; ';
   put '%mend; ';
   put '%macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y); ';
   put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
-  put '%if "&_debug"="fields,log,time" %then %let _debug=131; ';
+  put '%if %index("&_debug",log) %then %let _debug=131; ';
   put ' ';
   put '%local i tempds; ';
   put '%let action=%upcase(&action); ';
@@ -9031,7 +9031,7 @@ data _null_;
   put '%end; ';
   put '%else %if &action=ARR or &action=OBJ %then %do; ';
   put '    %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt ';
-  put '      fref=&fref,engine=PROCJSON,dbg=%str(&_debug) ';
+  put '      ,jref=&fref,engine=PROCJSON,dbg=%str(&_debug) ';
   put '    ) ';
   put '%end; ';
   put '%else %if &action=CLOSE %then %do; ';
@@ -9062,8 +9062,8 @@ data _null_;
   put '        put " ""&wt"" : {"; ';
   put '        put ''"nlobs":'' nlobs; ';
   put '        put '',"nvars":'' nvars; ';
-  put '      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP) ';
-  put '      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP) ';
+  put '      %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP) ';
   put '      data _null_; file &fref;put "}"; ';
   put '    %end; ';
   put '    data _null_; file &fref;put "}";run; ';
@@ -9087,7 +9087,7 @@ data _null_;
   put '    put "}"; ';
   put ' ';
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
-  put '    data _null_; rc=fcopy("&fref","&_webout");run; ';
+  put '    data _null_; rc=fcopy("&fref","_webout");run; ';
   put '  %end; ';
   put ' ';
   put '%end; ';
@@ -10380,7 +10380,7 @@ libname &libref1 clear;
 **/
 %macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
-%if "&_debug"="fields,log,time" %then %let _debug=131;
+%if %index("&_debug",log) %then %let _debug=131; 
 
 %local i tempds;
 %let action=%upcase(&action);
@@ -10495,7 +10495,7 @@ libname &libref1 clear;
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      fref=&fref,engine=PROCJSON,dbg=%str(&_debug)
+      ,jref=&fref,engine=PROCJSON,dbg=%str(&_debug)
     )
 %end;
 %else %if &action=CLOSE %then %do;
@@ -10526,8 +10526,8 @@ libname &libref1 clear;
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -10551,7 +10551,7 @@ libname &libref1 clear;
     put "}";
 
   %if %upcase(&fref) ne _WEBOUT %then %do;
-    data _null_; rc=fcopy("&fref","&_webout");run;
+    data _null_; rc=fcopy("&fref","_webout");run;
   %end;
 
 %end;

@@ -37,7 +37,7 @@
 **/
 %macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
 %global _webin_file_count _webout_fileuri _debug _omittextlog ;
-%if "&_debug"="fields,log,time" %then %let _debug=131;
+%if %index("&_debug",log) %then %let _debug=131; 
 
 %local i tempds;
 %let action=%upcase(&action);
@@ -152,7 +152,7 @@
 %end;
 %else %if &action=ARR or &action=OBJ %then %do;
     %mp_jsonout(&action,&ds,dslabel=&dslabel,fmt=&fmt
-      fref=&fref,engine=PROCJSON,dbg=%str(&_debug)
+      ,jref=&fref,engine=PROCJSON,dbg=%str(&_debug)
     )
 %end;
 %else %if &action=CLOSE %then %do;
@@ -183,8 +183,8 @@
         put " ""&wt"" : {";
         put '"nlobs":' nlobs;
         put ',"nvars":' nvars;
-      %mp_jsonout(OBJ,&tempds,fref=&fref,dslabel=colattrs,engine=DATASTEP)
-      %mp_jsonout(OBJ,&wt,fref=&fref,dslabel=first10rows,engine=DATASTEP)
+      %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP)
+      %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP)
       data _null_; file &fref;put "}";
     %end;
     data _null_; file &fref;put "}";run;
@@ -208,7 +208,7 @@
     put "}";
 
   %if %upcase(&fref) ne _WEBOUT %then %do;
-    data _null_; rc=fcopy("&fref","&_webout");run;
+    data _null_; rc=fcopy("&fref","_webout");run;
   %end;
 
 %end;

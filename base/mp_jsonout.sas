@@ -14,7 +14,7 @@
         filename tmp temp;
         data class; set sashelp.class;run;
         
-        %mp_jsonout(OBJ,class,fref=tmp)
+        %mp_jsonout(OBJ,class,jref=tmp)
 
         data _null_;
         infile tmp;
@@ -32,7 +32,7 @@
     * CLOSE - closes the JSON
 
   @param ds the dataset to send.  Must be a work table.
-  @param outref= the fileref to which to send the JSON
+  @param jref= the fileref to which to send the JSON
   @param dslabel= the name to give the table in the exported JSON
   @param fmt= Whether to keep or strip formats from the table
   @param engine= Which engine to use to send the JSON, options are:
@@ -47,17 +47,17 @@
 
 **/
 
-%macro mp_jsonout(action,ds,fref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0
+%macro mp_jsonout(action,ds,jref=_webout,dslabel=,fmt=Y,engine=PROCJSON,dbg=0
 )/*/STORE SOURCE*/;
-
+%put output location=&jref;
 %if &action=OPEN %then %do;
-  data _null_;file &fref;
+  data _null_;file &jref;
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
 %end;
 %else %if (&action=ARR or &action=OBJ) %then %do;
   options validvarname=upcase;
-  data _null_;file &fref mod;
+  data _null_;file &jref mod;
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   %if &engine=PROCJSON %then %do;
@@ -65,7 +65,7 @@
     proc sql;drop table &tempds;
     data &tempds /view=&tempds;set &ds; 
     %if &fmt=N %then format _numeric_ best32.;;
-    proc json out=&fref
+    proc json out=&jref
         %if &action=ARR %then nokeys ;
         %if &dbg ge 131  %then pretty ;
         ;export &tempds / nosastags fmtnumeric;
@@ -79,7 +79,7 @@
       %put &sysmacroname:  &ds NOT FOUND!!!;
       %return;
     %end;
-    data _null_;file &fref mod; put "["; call symputx('cols',0,'l');
+    data _null_;file &jref mod; put "["; call symputx('cols',0,'l');
     proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
       out=_data_;
       by varnum;
@@ -137,7 +137,7 @@
     data _null_;
       length filein 8 fileid 8;
       filein = fopen("_sjs",'I',1,'B');
-      fileid = fopen("&fref",'A',1,'B');
+      fileid = fopen("&jref",'A',1,'B');
       rec = '20'x;
       do while(fread(filein)=0);
         rc = fget(filein,rec,1);
@@ -148,14 +148,14 @@
       rc = fclose(fileid);
     run;
     filename _sjs clear;
-    data _null_; file &fref mod;
+    data _null_; file &jref mod;
       put "]";
     run;
   %end;
 %end;
 
 %else %if &action=CLOSE %then %do;
-  data _null_;file &fref;
+  data _null_;file &jref;
     put "}";
   run;
 %end;
