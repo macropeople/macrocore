@@ -126,10 +126,10 @@ data datalines_2;
     ('PROCESSED_DTTM','VALID_FROM_DTTM','VALID_TO_DTTM')));
   if type='num' then dataline=
     cats('ifc(int(',name,')=',name,'
-      ,put(',name,',best32.)
-      ,substrn(put(',name,',bestd32.),1
-      ,findc(put(',name,',bestd32.),"0","TBK")))');
-  else dataline=cats('strip(',name,')') ;
+      ,put(',name,',best32.-l)
+      ,substrn(put(',name,',bestd32.-l),1
+      ,findc(put(',name,',bestd32.-l),"0","TBK")))');
+  else dataline=name;
 run;
 
 proc sql noprint;
@@ -219,7 +219,7 @@ data _null_;
 /* remove all formats for write purposes - some have long underlying decimals */
   format _numeric_ best30.29;
   length __dataline $32767;
-  __dataline=catq('cqsm',&datalines);
+  __dataline=catq('cqtmb',&datalines);
   put __dataline;
   if __lastobs then do;
     put ';;;;';
