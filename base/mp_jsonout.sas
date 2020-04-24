@@ -51,13 +51,13 @@
 )/*/STORE SOURCE*/;
 %put output location=&jref;
 %if &action=OPEN %then %do;
-  data _null_;file &jref;
+  data _null_;file &jref encoding='utf-8';
     put '{"START_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '"';
   run;
 %end;
 %else %if (&action=ARR or &action=OBJ) %then %do;
   options validvarname=upcase;
-  data _null_;file &jref mod;
+  data _null_;file &jref mod encoding='utf-8';
     put ", ""%lowcase(%sysfunc(coalescec(&dslabel,&ds)))"":";
 
   %if &engine=PROCJSON %then %do;
@@ -79,7 +79,8 @@
       %put &sysmacroname:  &ds NOT FOUND!!!;
       %return;
     %end;
-    data _null_;file &jref mod; put "["; call symputx('cols',0,'l');
+    data _null_;file &jref mod ; 
+      put "["; call symputx('cols',0,'l');
     proc sort data=sashelp.vcolumn(where=(libname='WORK' & memname="%upcase(&ds)"))
       out=_data_;
       by varnum;
@@ -120,8 +121,8 @@
     %end;
     run; 
     /* write to temp loc to avoid _webout truncation - https://support.sas.com/kb/49/325.html */
-    filename _sjs temp lrecl=131068 ;
-    data _null_; file _sjs lrecl=131068 ;
+    filename _sjs temp lrecl=131068 encoding='utf-8';
+    data _null_; file _sjs lrecl=131068 encoding='utf-8' mod;
       set &tempds;
       if _n_>1 then put "," @; put
       %if &action=ARR %then "[" ; %else "{" ;
@@ -148,14 +149,14 @@
       rc = fclose(fileid);
     run;
     filename _sjs clear;
-    data _null_; file &jref mod;
+    data _null_; file &jref mod encoding='utf-8';
       put "]";
     run;
   %end;
 %end;
 
 %else %if &action=CLOSE %then %do;
-  data _null_;file &jref;
+  data _null_;file &jref encoding='utf-8';
     put "}";
   run;
 %end;

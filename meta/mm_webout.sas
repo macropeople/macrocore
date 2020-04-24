@@ -64,8 +64,14 @@
 %end;
 
 %else %if &action=OPEN %then %do;
+  /* fix encoding */
+  OPTIONS NOBOMFILE;
+  data _null_;
+    rc = stpsrv_header('Content-type',"text/html; encoding=utf-8");
+  run;
+
   /* setup json */
-  data _null_;file &fref;
+  data _null_;file &fref encoding='utf-8';
   %if %str(&_debug) ge 131 %then %do;
     put '>>weboutBEGIN<<';
   %end;
@@ -100,13 +106,14 @@
       i+1;
       call symputx('wt'!!left(i),name,'l');
       call symputx('wtcnt',i,'l');
-    data _null_; file &fref; put ",""WORK"":{";
+    data _null_; file &fref encoding='utf-8'; 
+      put ",""WORK"":{";
     %do i=1 %to &wtcnt;
       %let wt=&&wt&i;
       proc contents noprint data=&wt
         out=_data_ (keep=name type length format:);
       run;%let tempds=%scan(&syslast,2,.);
-      data _null_; file &fref;
+      data _null_; file &fref encoding='utf-8';
         dsid=open("WORK.&wt",'is');
         nlobs=attrn(dsid,'NLOBS');
         nvars=attrn(dsid,'NVARS');
@@ -117,12 +124,15 @@
         put ',"nvars":' nvars;
       %mp_jsonout(OBJ,&tempds,jref=&fref,dslabel=colattrs,engine=DATASTEP)
       %mp_jsonout(OBJ,&wt,jref=&fref,dslabel=first10rows,engine=DATASTEP)
-      data _null_; file &fref;put "}";
+      data _null_; file &fref encoding='utf-8';
+        put "}";
     %end;
-    data _null_; file &fref;put "}";run;
+    data _null_; file &fref encoding='utf-8';
+      put "}";
+    run;
   %end;
   /* close off json */
-  data _null_;file &fref mod;
+  data _null_;file &fref mod encoding='utf-8';
     _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
     put ",""SYSUSERID"" : ""&sysuserid"" ";
     put ",""MF_GETUSER"" : ""%mf_getuser()"" ";
