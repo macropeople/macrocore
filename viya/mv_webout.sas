@@ -137,6 +137,7 @@
 
 %else %if &action=OPEN %then %do;
   /* setup webout */
+  OPTIONS NOBOMFILE;
   filename _webout filesrvc parenturi="&SYS_JES_JOB_URI"
     name="_webout.json" lrecl=999999 mod;
 

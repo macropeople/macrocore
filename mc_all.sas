@@ -9134,6 +9134,7 @@ data _null_;
   put ' ';
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup webout */ ';
+  put '  OPTIONS NOBOMFILE; ';
   put '  filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" ';
   put '    name="_webout.json" lrecl=999999 mod; ';
   put ' ';
@@ -10598,6 +10599,7 @@ libname &libref1 clear;
 
 %else %if &action=OPEN %then %do;
   /* setup webout */
+  OPTIONS NOBOMFILE;
   filename _webout filesrvc parenturi="&SYS_JES_JOB_URI"
     name="_webout.json" lrecl=999999 mod;
 
