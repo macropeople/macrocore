@@ -116,9 +116,8 @@ run;
 %put NOTE- ;
 %put NOTE- &refresh_token_var=&&&refresh_token_var;
 %put NOTE- ;
-/*
+
 libname &libref clear;
 filename &fref1 clear;
-filename &fref2 clear;
-*/
+
 %mend;
