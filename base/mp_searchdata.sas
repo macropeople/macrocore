@@ -16,6 +16,15 @@
 
   Outputs zero or more tables to an MPSEARCH library with specific records.
 
+  @param lib=  the libref to search (should be already assigned)
+  @param ds= the dataset to search (leave blank to search entire library)
+  @param string= the string value to search
+  @param numval= the numeric value to search (must be exact)
+  @param outloc= the directory in which to create the output datasets with matching
+    rows.  Will default to a subfolder in the WORK library.
+  @param outobs= set to a positive integer to restrict the number of observations
+  @param filter_text= add a (valid) filter clause to further filter the results
+
   <h4> Dependencies </h4>
   @li mf_getvarlist.sas
   @li mf_getvartype.sas
@@ -27,10 +36,12 @@
 **/
 
 %macro mp_searchdata(lib=sashelp
-  ,ds= /* this macro will be upgraded to work for single datasets also */
+  ,ds= 
   ,string= /* the query will use a contains (?) operator */
   ,numval= /* numeric must match exactly */
   ,outloc=%sysfunc(pathname(work))/mpsearch
+  ,outobs=-1
+  ,filter_text=%str(1=1)
 )/*/STORE SOURCE*/;
 
 %local table_list table table_num table colnum col start_tm vars type coltype;
@@ -46,9 +57,18 @@ libname mpsearch "&outloc";
 /* get the list of tables in the library */
 proc sql noprint;
 select distinct memname into: table_list separated by ' '
-  from dictionary.tables where upcase(libname)="%upcase(&lib)";
+  from dictionary.tables 
+  where upcase(libname)="%upcase(&lib)"
+%if &ds ne %then %do;
+  and upcase(memname)=%upcase("&ds")
+%end;
+  ;
 /* check that we have something to check */
-proc sql;
+proc sql 
+%if &outobs>-1 %then %do;
+  outobs=&outobs
+%end;
+;
 %if %length(&table_list)=0 %then %put library &lib contains no tables!;
 /* loop through each table */
 %else %do table_num=1 %to %sysfunc(countw(&table_list,%str( )));
@@ -60,11 +80,11 @@ proc sql;
   %else %do;
     /* build sql statement */
     create table mpsearch.&table as select * from &lib..&table
-      where 0
-   /* loop through columns */
+      where %unquote(&filter_text) and 
+    (0
+    /* loop through columns */
     %do colnum=1 %to %sysfunc(countw(&vars,%str( )));
       %let col=%scan(&vars,&colnum,%str( ));
-      %put &col;
       %let coltype=%mf_getvartype(&lib..&table,&col);
       %if &type=C and &coltype=C %then %do;
         /* if a char column, see if it contains the string */
@@ -75,7 +95,7 @@ proc sql;
         or (&col = &numval)
       %end;
     %end;
-    ;
+    );
     %if %mf_nobs(mpsearch.&table)=0 %then %do;
       drop table mpsearch.&table;
     %end;

@@ -4,7 +4,7 @@
   @details Will set headers using appropriate functions (SAS 9 vs Viya) and send
   content as a binary stream.
 
-    Usage:
+  Usage:
 
       filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
