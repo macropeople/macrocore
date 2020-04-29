@@ -2693,6 +2693,7 @@ select distinct lowcase(memname)
     ,parentvar=
     ,childvar=
     ,iter= /* reserved for internal / recursive use by the macro itself */
+    ,maxiter=500 /* avoid infinite loop */
     ,mDebug=0);
 
 %if &iter= %then %do;
@@ -2707,6 +2708,8 @@ select distinct lowcase(memname)
   %end;
   %let iter=1;
 %end;
+%else %if &iter>&maxiter %then %return;
+
 proc sql;
 create table _data_ as
   select &iter as level
