@@ -346,7 +346,7 @@ run;
 %end;
 %else %if &engine=ORACLE %then %do;
   %put NOTE: Obtaining &engine library details;
-  data _null;
+  data _null_;
     length assocuri1 assocuri2 assocuri3 authdomain path schema $256;
     call missing (of _all_);
 
@@ -369,6 +369,35 @@ run;
   %put NOTE- libname &libref ORACLE path=&path schema=&schema authdomain=&authdomain;
   %put NOTE-;
   libname &libref ORACLE path=&path schema=&schema authdomain=&authdomain;
+%end;
+%else %if &engine=SQLSVR %then %do;
+  %put NOTE: Obtaining &engine library details;
+  data _null;
+    length assocuri1 assocuri2 assocuri3 authdomain path schema userid passwd $256;
+    call missing (of _all_);
+ 
+    rc=metadata_getnasn("&liburi",'DefaultLogin',1,assocuri1);
+    rc=metadata_getattr(assocuri1,"UserID",userid);
+    rc=metadata_getattr(assocuri1,"Password",passwd);
+    call symputx('user',userid,'l');
+    call symputx('pass',passwd,'l');
+ 
+    /* path */
+    rc=metadata_getnasn("&liburi",'LibraryConnection',1,assocuri2);
+    rc=metadata_getprop(assocuri2,'Connection.SQL.Property.Datasrc.Name.xmlKey.txt',path);
+    call symputx('path',path,'l');
+ 
+    /* schema */
+    rc=metadata_getnasn("&liburi",'UsingPackages',1,assocuri3);
+    rc=metadata_getattr(assocuri3,'SchemaName',schema);
+    call symputx('schema',schema,'l');
+  run;
+
+  %put NOTE: Executing the following:/; %put NOTE-;
+  %put NOTE- libname &libref SQLSVR datasrc=&path schema=&schema user="&user" pass="XXX";
+  %put NOTE-;
+
+  libname &libref SQLSVR datasrc=&path schema=&schema user="&user" pass="&pass" ;
 %end;
 %else %if &engine= %then %do;
   %put NOTE: Libref &libref is not registered in metadata;
