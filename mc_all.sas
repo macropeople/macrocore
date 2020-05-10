@@ -674,6 +674,27 @@ options noquotelenmax;
   %end;
   %put unable to find available libref in range &prefix.0-&maxtries;
 %mend;/**
+  @file mf_getuniquename.sas
+  @brief Returns a shortened (32 char) GUID as a valid SAS name
+  @details Use as follows:
+
+      %let myds=%mf_getuniquename();
+      %put &=myds;
+
+  which returns:
+
+> MCc59c750610321d4c8bf75faadbcd22
+
+  @param prefix= set a prefix for the new name
+
+  @version 9.3
+  @author Allan Bowe
+**/
+
+
+%macro mf_getuniquename(prefix=MC);
+  &prefix.%substr(%sysfunc(compress(%sysfunc(uuidgen()),-)),1,32-%length(&prefix))
+%mend;/**
   @file
   @brief Returns <code>&sysuserid</code> in Workspace session, <code>
     &_secureusername</code> in Stored Process session.
@@ -9181,9 +9202,7 @@ data _null_;
   put '      input &input_statement; ';
   put '    run; ';
   put '  %end; ';
-  put ' ';
   put '%end; ';
-  put ' ';
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup webout */ ';
   put '  OPTIONS NOBOMFILE; ';
@@ -10645,9 +10664,7 @@ libname &libref1 clear;
       input &input_statement;
     run;
   %end;
-
 %end;
-
 %else %if &action=OPEN %then %do;
   /* setup webout */
   OPTIONS NOBOMFILE;
