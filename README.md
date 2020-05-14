@@ -91,7 +91,7 @@ All macros must be commented in the doxygen format, to enable the [online docume
 *  The closing `%mend;` should not contain the macro name.
 *  All macros should be defined with brackets, even if no variables are needed - ie `%macro x();` not `%macro x;`
 *  Mandatory parameters should be positional, all optional parameters should be keyword (var=) style.
-*  All dataset references to be 2 level (eg `work.blah`, not `blah`).
+*  All dataset references must be 2 level (eg `work.blah`, not `blah`).  This is to avoid contention when options [DATASTMTCHK](https://support.sas.com/documentation/cdl/en/lrdict/64316/HTML/default/viewer.htm#a000279064.htm)=ALLKEYWORDS is in effect.
 *  Avoid naming collisions!  All macro variables should be local scope.  Use system generated work tables where possible - eg `data ; set sashelp.class; run;  data &output;  set &syslast; run;`
 
 # General Notes
