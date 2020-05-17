@@ -1,8 +1,8 @@
 /**
   @file mv_deleteviyafolder.sas
-  @brief Creates a viya folder if that foloder does not already exist
-  @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  @brief Creates a viya folder if that folder does not already exist
+  @details If not running in Studo 5 +, will expect an oauth token in a global 
+  macro variable (default ACCESS_TOKEN).
 
     options mprint;
     %mv_createfolder(path=/Public/test/blah)
@@ -29,9 +29,25 @@
 
 %macro mv_deleteviyafolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
-
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -40,19 +56,17 @@
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
 
 options noquotelenmax;
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
-  headers "Authorization"="Bearer &&&access_token_var";
+  %if &grant_type=authorization_code %then %do;
+    headers "Authorization"="Bearer &&&access_token_var";
+  %end;
 run;
 %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
   %put &sysmacroname: Folder &path NOT FOUND - nothing to delete!;
@@ -80,9 +94,11 @@ run;
 /* before we can delete the folder, we need to delete the children */
 %local fname1a;
 %let fname1a=%mf_getuniquefileref();
-proc http method='GET' out=&fname1a
+proc http method='GET' out=&fname1a &oauth_bearer
   url=%unquote(%superq(mref));
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %put &=SYS_PROCHTTP_STATUS_CODE;
 %local libref1a;
@@ -101,10 +117,12 @@ run;
 %put &sysmacroname: perform the delete operation ;
 %local fname2;
 %let fname2=%mf_getuniquefileref();
-proc http method='DELETE'
-    out=&fname2
+proc http method='DELETE' out=&fname2 &oauth_bearer
     url=%unquote(%superq(href));
-    headers "Authorization"="Bearer &&&access_token_var"
+    headers 
+  %if &grant_type=authorization_code %then %do;
+            "Authorization"="Bearer &&&access_token_var"
+  %end;   
             'Accept'='*/*'; /**/
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;

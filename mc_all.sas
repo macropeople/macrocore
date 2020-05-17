@@ -1536,7 +1536,7 @@ Usage:
       filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
       %let rc=%sysfunc(fcopy(_web,_webout));
     %end;
-    %else %do;
+    %else %if %symexist(_metaport) %then %do;
       data _null_;
         if symexist('sysprocessmode')
          then if symget("sysprocessmode")="SAS Stored Process Server"
@@ -9081,8 +9081,25 @@ run;
 
 %macro mv_createfolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
@@ -9091,11 +9108,6 @@ run;
 %mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
-)
-
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
 options noquotelenmax;
@@ -9115,9 +9127,11 @@ options noquotelenmax;
   %let fname1=%mf_getuniquefileref();
 
   %put &sysmacroname checking to see if &newpath exists;
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url="http://localhost/folders/folders/@item?path=&newpath";
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   data _null_;infile &fname1;input;putlog _infile_;run;
   %local libref1;
@@ -9155,8 +9169,12 @@ options noquotelenmax;
     proc http method='POST'
         in=&json
         out=&fname2
+        &oauth_bearer
         url=%unquote(%superq(href));
-        headers "Authorization"="Bearer &&&access_token_var"
+        headers 
+      %if &grant_type=authorization_code %then %do;
+                "Authorization"="Bearer &&&access_token_var"
+      %end;
                 'Content-Type'='application/vnd.sas.content.folder+json'
                 'Accept'='application/vnd.sas.content.folder+json';
     run;
@@ -9252,11 +9270,29 @@ viya:
     ,precode=
     ,code=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,replace=NO
     ,adapter=sasjs
   );
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+
 /* initial validation checking */
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -9268,10 +9304,6 @@ viya:
 %mp_abort(iftrue=(%mf_isblank(&name)=1)
   ,mac=&sysmacroname
   ,msg=%str(name value must be provided)
-)
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
 options noquotelenmax;
@@ -9287,9 +9319,11 @@ options noquotelenmax;
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
@@ -9315,8 +9349,12 @@ run;
 %let fname2=%mf_getuniquefileref();
 proc http method='GET'
     out=&fname2
+    &oauth_bearer
     url=%unquote(%superq(membercheck));
-    headers "Authorization"="Bearer &&&access_token_var"
+    headers
+  %if &grant_type=authorization_code %then %do;
+            "Authorization"="Bearer &&&access_token_var"
+  %end;
             'Accept'='application/vnd.sas.collection+json'
             'Accept-Language'='string';
 run;
@@ -9591,7 +9629,7 @@ data _null_;
   put ' ';
   put '  /* setup temp ref */ ';
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
-  put '    filename &fref temp lrecl=999999 mod; ';
+  put '    filename &fref temp lrecl=999999 permission=''A::u::rwx,A::g::rw-,A::o::---'' mod; ';
   put '  %end; ';
   put ' ';
   put '  /* setup json */ ';
@@ -9742,9 +9780,12 @@ run;
 proc http method='POST'
     in=&fname3
     out=&fname4
+    &oauth_bearer
     url="/jobDefinitions/definitions?parentFolderUri=&parentFolderUri";
     headers 'Content-Type'='application/vnd.sas.job.definition+json'
+  %if &grant_type=authorization_code %then %do;
             "Authorization"="Bearer &&&access_token_var"
+  %end;
             "Accept"="application/vnd.sas.job.definition+json";
 run;
 /*data _null_;infile &fname4;input;putlog _infile_;run;*/
@@ -9773,28 +9814,23 @@ data _null_;
   call symputx('url',url);
 run;
 
-%put ;%put ;%put ;%put ;%put ;%put ;
-%put &sysmacroname: Job &name successfully created in &path;
-%put ;%put ;%put ;
-%put Check it out here:;
-%put ;%put ;%put ;
+%put NOTE:;%put NOTE-;%put NOTE-;%put NOTE-;
+%put NOTE- &sysmacroname: Job &name successfully created in &path;
+%put NOTE-;%put NOTE-;%put NOTE-;
+%put NOTE- Check it out here:;
+%put NOTE-;%put NOTE-;%put NOTE-;
 %put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put ;%put ;%put ;%put ;%put ;%put ;
+%put NOTE-;%put NOTE-;%put NOTE-;%put NOTE-;
 
 %mend;
 /**
   @file mv_deletejes.sas
   @brief Creates a job execution service if it does not already exist
-  @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  @details If not executed in Studio 5+  will expect oauth token in a global 
+  macro variable (default ACCESS_TOKEN).
 
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %let client=new%sysfunc(ranuni(0));
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
     %mv_createwebservice(path=/Public/test, name=blah)
     %mv_deletejes(path=/Public/test, name=blah)
@@ -9804,7 +9840,7 @@ run;
   @param name= The name of the Job Execution Service to be deleted
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
+    The default is "detect" (which will run in Studio 5+ without a token).
 
 
   @version VIYA V.03.04
@@ -9822,9 +9858,25 @@ run;
 %macro mv_deletejes(path=
     ,name=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
-
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -9837,19 +9889,17 @@ run;
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
 
 options noquotelenmax;
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
   %put &sysmacroname: Folder &path NOT FOUND - nothing to delete!;
@@ -9874,9 +9924,11 @@ run;
 /* get the children */
 %local fname1a;
 %let fname1a=%mf_getuniquefileref();
-proc http method='GET' out=&fname1a
+proc http method='GET' out=&fname1a &oauth_bearer
   url=%unquote(%superq(mref));
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %put &=SYS_PROCHTTP_STATUS_CODE;
 %local libref1a;
@@ -9896,8 +9948,12 @@ run;
   %put NOTE:;%put NOTE- &sysmacroname: &path/&name NOT FOUND;%put NOTE- ;
   %return;
 %end;
-proc http method="DELETE" url="&uri";
-  headers "Authorization"="Bearer &&&access_token_var" "Accept"="*/*";/**/
+proc http method="DELETE" url="&uri" &oauth_bearer;
+  headers 
+%if &grant_type=authorization_code %then %do;
+      "Authorization"="Bearer &&&access_token_var"
+%end;
+      "Accept"="*/*";/**/
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
   data _null_; infile &fname2; input; putlog _infile_;run;
@@ -9915,9 +9971,9 @@ libname &libref1a clear;
 
 %mend;/**
   @file mv_deleteviyafolder.sas
-  @brief Creates a viya folder if that foloder does not already exist
-  @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  @brief Creates a viya folder if that folder does not already exist
+  @details If not running in Studo 5 +, will expect an oauth token in a global 
+  macro variable (default ACCESS_TOKEN).
 
     options mprint;
     %mv_createfolder(path=/Public/test/blah)
@@ -9944,9 +10000,25 @@ libname &libref1a clear;
 
 %macro mv_deleteviyafolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
-
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -9955,19 +10027,17 @@ libname &libref1a clear;
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
 
 options noquotelenmax;
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
-  headers "Authorization"="Bearer &&&access_token_var";
+  %if &grant_type=authorization_code %then %do;
+    headers "Authorization"="Bearer &&&access_token_var";
+  %end;
 run;
 %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
   %put &sysmacroname: Folder &path NOT FOUND - nothing to delete!;
@@ -9995,9 +10065,11 @@ run;
 /* before we can delete the folder, we need to delete the children */
 %local fname1a;
 %let fname1a=%mf_getuniquefileref();
-proc http method='GET' out=&fname1a
+proc http method='GET' out=&fname1a &oauth_bearer
   url=%unquote(%superq(mref));
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %put &=SYS_PROCHTTP_STATUS_CODE;
 %local libref1a;
@@ -10016,10 +10088,12 @@ run;
 %put &sysmacroname: perform the delete operation ;
 %local fname2;
 %let fname2=%mf_getuniquefileref();
-proc http method='DELETE'
-    out=&fname2
+proc http method='DELETE' out=&fname2 &oauth_bearer
     url=%unquote(%superq(href));
-    headers "Authorization"="Bearer &&&access_token_var"
+    headers 
+  %if &grant_type=authorization_code %then %do;
+            "Authorization"="Bearer &&&access_token_var"
+  %end;   
             'Accept'='*/*'; /**/
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
@@ -10324,16 +10398,29 @@ libname &libref clear;
 
 %macro mv_getfoldermembers(root=/
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,outds=mv_getfolders
   );
-
-%if %mf_isblank(&root)=1 %then %let root=/;
-
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
+
+%if %mf_isblank(&root)=1 %then %let root=/;
+
 options noquotelenmax;
 
 /* request the client details */
@@ -10343,9 +10430,11 @@ options noquotelenmax;
 
 %if "&root"="/" %then %do;
   /* if root just list root folders */
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url='http://localhost/folders/rootFolders';
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   libname &libref1 JSON fileref=&fname1;
   data &outds;
@@ -10354,9 +10443,11 @@ options noquotelenmax;
 %end;
 %else %do;
   /* first get parent folder id */
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url="http://localhost/folders/folders/@item?path=&root";
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   data _null_;infile &fname1;input;putlog _infile_;run;
   libname &libref1 JSON fileref=&fname1;
@@ -10368,9 +10459,11 @@ options noquotelenmax;
   %local fname2 libref2;
   %let fname2=%mf_getuniquefileref();
   %let libref2=%mf_getuniquelibref();
-  proc http method='GET' out=&fname2
+  proc http method='GET' out=&fname2 &oauth_bearer
       url=%unquote(%superq(href));
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   libname &libref2 JSON fileref=&fname2;
   data &outds;
@@ -10441,11 +10534,23 @@ libname &libref1 clear;
 
 %macro mv_getgroupmembers(group
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,outds=work.viyagroupmembers
   );
-/* initial validation checking */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -10455,9 +10560,12 @@ options noquotelenmax;
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/groups/&group/members?limit=1000";
-  headers "Authorization"="Bearer &&&access_token_var"
+  headers 
+  %if &grant_type=authorization_code %then %do;
+          "Authorization"="Bearer &&&access_token_var"
+  %end;
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
@@ -10529,11 +10637,23 @@ filename &fname1 clear;
 **/
 
 %macro mv_getgroups(access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,outds=work.viyagroups
   );
-/* initial validation checking */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -10545,9 +10665,12 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/groups";
-  headers "Authorization"="Bearer &&&access_token_var"
+  headers 
+  %if &grant_type=authorization_code %then %do;
+          "Authorization"="Bearer &&&access_token_var"
+  %end;
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
@@ -10750,14 +10873,25 @@ filename &fref2 clear;
 %macro mv_getusergroups(user
     ,outds=work.mv_getusergroups
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
-/* initial validation checking */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
-
 options noquotelenmax;
 
 /* fetching folder details for provided path */
@@ -10765,9 +10899,12 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/users/&user/memberships?limit=2000";
-  headers "Authorization"="Bearer &&&access_token_var"
+  headers 
+%if &grant_type=authorization_code %then %do;
+         "Authorization"="Bearer &&&access_token_var"
+%end;
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
@@ -10857,17 +10994,17 @@ libname &libref1 clear;
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=detect
   );
+%local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
     %let grant_type=sas_services;
     %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
   %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
   %else %let grant_type=password;
 %end;
-%put &=grant_type;
-
-/* initial validation checking */
+%put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
     and &grant_type ne sas_services
   )
@@ -10882,10 +11019,7 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
-proc http method='GET' out=&fname1
-%if &grant_type=sas_services %then %do;
-  oauth_bearer=sas_services
-%end;
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/users?limit=2000";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var"
@@ -11053,7 +11187,7 @@ libname &libref1 clear;
 
   /* setup temp ref */
   %if %upcase(&fref) ne _WEBOUT %then %do;
-    filename &fref temp lrecl=999999 mod;
+    filename &fref temp lrecl=999999 permission='A::u::rwx,A::g::rw-,A::o::---' mod;
   %end;
 
   /* setup json */

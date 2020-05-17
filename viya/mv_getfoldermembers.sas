@@ -28,16 +28,29 @@
 
 %macro mv_getfoldermembers(root=/
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,outds=mv_getfolders
   );
-
-%if %mf_isblank(&root)=1 %then %let root=/;
-
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
+
+%if %mf_isblank(&root)=1 %then %let root=/;
+
 options noquotelenmax;
 
 /* request the client details */
@@ -47,9 +60,11 @@ options noquotelenmax;
 
 %if "&root"="/" %then %do;
   /* if root just list root folders */
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url='http://localhost/folders/rootFolders';
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   libname &libref1 JSON fileref=&fname1;
   data &outds;
@@ -58,9 +73,11 @@ options noquotelenmax;
 %end;
 %else %do;
   /* first get parent folder id */
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url="http://localhost/folders/folders/@item?path=&root";
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   data _null_;infile &fname1;input;putlog _infile_;run;
   libname &libref1 JSON fileref=&fname1;
@@ -72,9 +89,11 @@ options noquotelenmax;
   %local fname2 libref2;
   %let fname2=%mf_getuniquefileref();
   %let libref2=%mf_getuniquelibref();
-  proc http method='GET' out=&fname2
+  proc http method='GET' out=&fname2 &oauth_bearer
       url=%unquote(%superq(href));
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   libname &libref2 JSON fileref=&fname2;
   data &outds;

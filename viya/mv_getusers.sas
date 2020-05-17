@@ -65,17 +65,17 @@
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=detect
   );
+%local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
     %let grant_type=sas_services;
     %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
   %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
   %else %let grant_type=password;
 %end;
-%put &=grant_type;
-
-/* initial validation checking */
+%put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
     and &grant_type ne sas_services
   )
@@ -90,10 +90,7 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
-proc http method='GET' out=&fname1
-%if &grant_type=sas_services %then %do;
-  oauth_bearer=sas_services
-%end;
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/users?limit=2000";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var"

@@ -18,6 +18,7 @@ viya:
     %* Step 3 - Now we can create some code and add it to a web service;
     filename ft15f001 temp;
     parmcards4;
+        %webout(FETCH) %* fetch any tables sent from frontend;
         %* do some sas, any inputs are now already WORK tables;
         data example1 example2;
           set sashelp.class;
@@ -67,11 +68,29 @@ viya:
     ,precode=
     ,code=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,replace=NO
     ,adapter=sasjs
   );
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+
 /* initial validation checking */
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -83,10 +102,6 @@ viya:
 %mp_abort(iftrue=(%mf_isblank(&name)=1)
   ,mac=&sysmacroname
   ,msg=%str(name value must be provided)
-)
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
 options noquotelenmax;
@@ -102,9 +117,11 @@ options noquotelenmax;
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
@@ -130,8 +147,12 @@ run;
 %let fname2=%mf_getuniquefileref();
 proc http method='GET'
     out=&fname2
+    &oauth_bearer
     url=%unquote(%superq(membercheck));
-    headers "Authorization"="Bearer &&&access_token_var"
+    headers
+  %if &grant_type=authorization_code %then %do;
+            "Authorization"="Bearer &&&access_token_var"
+  %end;
             'Accept'='application/vnd.sas.collection+json'
             'Accept-Language'='string';
 run;
@@ -397,9 +418,7 @@ data _null_;
   put '      input &input_statement; ';
   put '    run; ';
   put '  %end; ';
-  put ' ';
   put '%end; ';
-  put ' ';
   put '%else %if &action=OPEN %then %do; ';
   put '  /* setup webout */ ';
   put '  OPTIONS NOBOMFILE; ';
@@ -408,7 +427,7 @@ data _null_;
   put ' ';
   put '  /* setup temp ref */ ';
   put '  %if %upcase(&fref) ne _WEBOUT %then %do; ';
-  put '    filename &fref temp lrecl=999999 mod; ';
+  put '    filename &fref temp lrecl=999999 permission=''A::u::rwx,A::g::rw-,A::o::---'' mod; ';
   put '  %end; ';
   put ' ';
   put '  /* setup json */ ';
@@ -559,9 +578,12 @@ run;
 proc http method='POST'
     in=&fname3
     out=&fname4
+    &oauth_bearer
     url="/jobDefinitions/definitions?parentFolderUri=&parentFolderUri";
     headers 'Content-Type'='application/vnd.sas.job.definition+json'
+  %if &grant_type=authorization_code %then %do;
             "Authorization"="Bearer &&&access_token_var"
+  %end;
             "Accept"="application/vnd.sas.job.definition+json";
 run;
 /*data _null_;infile &fname4;input;putlog _infile_;run;*/
@@ -590,12 +612,12 @@ data _null_;
   call symputx('url',url);
 run;
 
-%put ;%put ;%put ;%put ;%put ;%put ;
-%put &sysmacroname: Job &name successfully created in &path;
-%put ;%put ;%put ;
-%put Check it out here:;
-%put ;%put ;%put ;
+%put NOTE:;%put NOTE-;%put NOTE-;%put NOTE-;
+%put NOTE- &sysmacroname: Job &name successfully created in &path;
+%put NOTE-;%put NOTE-;%put NOTE-;
+%put NOTE- Check it out here:;
+%put NOTE-;%put NOTE-;%put NOTE-;
 %put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put ;%put ;%put ;%put ;%put ;%put ;
+%put NOTE-;%put NOTE-;%put NOTE-;%put NOTE-;
 
 %mend;

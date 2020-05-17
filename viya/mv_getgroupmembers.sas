@@ -54,11 +54,23 @@
 
 %macro mv_getgroupmembers(group
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
     ,outds=work.viyagroupmembers
   );
-/* initial validation checking */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
   ,mac=&sysmacroname
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
@@ -68,9 +80,12 @@ options noquotelenmax;
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/identities/groups/&group/members?limit=1000";
-  headers "Authorization"="Bearer &&&access_token_var"
+  headers 
+  %if &grant_type=authorization_code %then %do;
+          "Authorization"="Bearer &&&access_token_var"
+  %end;
           "Accept"="application/json";
 run;
 /*data _null_;infile &fname1;input;putlog _infile_;run;*/

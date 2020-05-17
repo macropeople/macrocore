@@ -28,8 +28,25 @@
 
 %macro mv_createfolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
@@ -38,11 +55,6 @@
 %mp_abort(iftrue=(%length(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
-)
-
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
 options noquotelenmax;
@@ -62,9 +74,11 @@ options noquotelenmax;
   %let fname1=%mf_getuniquefileref();
 
   %put &sysmacroname checking to see if &newpath exists;
-  proc http method='GET' out=&fname1
+  proc http method='GET' out=&fname1 &oauth_bearer
       url="http://localhost/folders/folders/@item?path=&newpath";
+  %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
+  %end;
   run;
   data _null_;infile &fname1;input;putlog _infile_;run;
   %local libref1;
@@ -102,8 +116,12 @@ options noquotelenmax;
     proc http method='POST'
         in=&json
         out=&fname2
+        &oauth_bearer
         url=%unquote(%superq(href));
-        headers "Authorization"="Bearer &&&access_token_var"
+        headers 
+      %if &grant_type=authorization_code %then %do;
+                "Authorization"="Bearer &&&access_token_var"
+      %end;
                 'Content-Type'='application/vnd.sas.content.folder+json'
                 'Accept'='application/vnd.sas.content.folder+json';
     run;

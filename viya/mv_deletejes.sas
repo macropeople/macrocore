@@ -1,16 +1,11 @@
 /**
   @file mv_deletejes.sas
   @brief Creates a job execution service if it does not already exist
-  @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  @details If not executed in Studio 5+  will expect oauth token in a global 
+  macro variable (default ACCESS_TOKEN).
 
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %let client=new%sysfunc(ranuni(0));
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
 
     %mv_createwebservice(path=/Public/test, name=blah)
     %mv_deletejes(path=/Public/test, name=blah)
@@ -20,7 +15,7 @@
   @param name= The name of the Job Execution Service to be deleted
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
+    The default is "detect" (which will run in Studio 5+ without a token).
 
 
   @version VIYA V.03.04
@@ -38,9 +33,25 @@
 %macro mv_deletejes(path=
     ,name=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=authorization_code
+    ,grant_type=detect
   );
-
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
 %mp_abort(iftrue=(%mf_isblank(&path)=1)
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
@@ -53,19 +64,17 @@
   ,mac=&sysmacroname
   ,msg=%str(path value must be provided)
 )
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
 
 options noquotelenmax;
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
-proc http method='GET' out=&fname1
+proc http method='GET' out=&fname1 &oauth_bearer
   url="http://localhost/folders/folders/@item?path=&path";
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
   %put &sysmacroname: Folder &path NOT FOUND - nothing to delete!;
@@ -90,9 +99,11 @@ run;
 /* get the children */
 %local fname1a;
 %let fname1a=%mf_getuniquefileref();
-proc http method='GET' out=&fname1a
+proc http method='GET' out=&fname1a &oauth_bearer
   url=%unquote(%superq(mref));
+%if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
+%end;
 run;
 %put &=SYS_PROCHTTP_STATUS_CODE;
 %local libref1a;
@@ -112,8 +123,12 @@ run;
   %put NOTE:;%put NOTE- &sysmacroname: &path/&name NOT FOUND;%put NOTE- ;
   %return;
 %end;
-proc http method="DELETE" url="&uri";
-  headers "Authorization"="Bearer &&&access_token_var" "Accept"="*/*";/**/
+proc http method="DELETE" url="&uri" &oauth_bearer;
+  headers 
+%if &grant_type=authorization_code %then %do;
+      "Authorization"="Bearer &&&access_token_var"
+%end;
+      "Accept"="*/*";/**/
 run;
 %if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
   data _null_; infile &fname2; input; putlog _infile_;run;
