@@ -107,7 +107,7 @@
       filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
       %let rc=%sysfunc(fcopy(_web,_webout));
     %end;
-    %else %do;
+    %else %if %symexist(_metaport) %then %do;
       data _null_;
         if symexist('sysprocessmode')
          then if symget("sysprocessmode")="SAS Stored Process Server"
