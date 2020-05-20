@@ -69,7 +69,7 @@ Usage:
     ,replace=&replace
   )
 %end;
-%else %if &platform=SASMETA %then %do;
+%else %do;
   %if "&path"="HOME" %then %let path=/User Folders/&sysuserid/My Folder;
   %mm_createwebservice(path=&path
     ,name=&name
@@ -79,6 +79,5 @@ Usage:
     ,replace=&replace
   )
 %end;
-%else %put &sysmacroname: &platform not supported;
 
 %mend;
