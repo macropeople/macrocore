@@ -9158,6 +9158,7 @@ run;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -9326,6 +9327,7 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
@@ -9935,6 +9937,7 @@ run;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -10078,6 +10081,7 @@ libname &libref1a clear;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -10474,6 +10478,7 @@ libname &libref clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10611,6 +10616,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10715,6 +10721,7 @@ filename &fname1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10949,6 +10956,7 @@ filename &fref2 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 

@@ -40,6 +40,7 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
