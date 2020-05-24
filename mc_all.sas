@@ -5963,6 +5963,7 @@ data _null_;
   put '    put ",""SYSERRORTEXT"" : ""&syserrortext"" "; ';
   put '    put ",""SYSHOSTNAME"" : ""&syshostname"" "; ';
   put '    put ",""SYSJOBID"" : ""&sysjobid"" "; ';
+  put '    put ",""SYSSITE"" : ""&syssite"" "; ';
   put '    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" "; ';
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}" @; ';
@@ -8995,6 +8996,7 @@ run;
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
     put ",""SYSHOSTNAME"" : ""&syshostname"" ";
     put ",""SYSJOBID"" : ""&sysjobid"" ";
+    put ",""SYSSITE"" : ""&syssite"" ";
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}" @;
@@ -9776,6 +9778,7 @@ data _null_;
   put '    put ",""SYSCC"" : ""&syscc"" "; ';
   put '    put ",""SYSERRORTEXT"" : ""&syserrortext"" "; ';
   put '    put ",""SYSHOSTNAME"" : ""&syshostname"" "; ';
+  put '    put ",""SYSSITE"" : ""&syssite"" "; ';
   put '    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" "; ';
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
@@ -10829,6 +10832,7 @@ libname &libref1 clear;
   <h4> Dependencies </h4>
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
 
 **/
 
@@ -11340,6 +11344,7 @@ libname &libref1 clear;
     put ",""SYSCC"" : ""&syscc"" ";
     put ",""SYSERRORTEXT"" : ""&syserrortext"" ";
     put ",""SYSHOSTNAME"" : ""&syshostname"" ";
+    put ",""SYSSITE"" : ""&syssite"" ";
     put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" ";
     put ',"END_DTTM" : "' "%sysfunc(datetime(),datetime20.3)" '" ';
     put "}";

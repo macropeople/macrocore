@@ -489,6 +489,7 @@ data _null_;
   put '    put ",""SYSCC"" : ""&syscc"" "; ';
   put '    put ",""SYSERRORTEXT"" : ""&syserrortext"" "; ';
   put '    put ",""SYSHOSTNAME"" : ""&syshostname"" "; ';
+  put '    put ",""SYSSITE"" : ""&syssite"" "; ';
   put '    put ",""SYSWARNINGTEXT"" : ""&syswarningtext"" "; ';
   put '    put '',"END_DTTM" : "'' "%sysfunc(datetime(),datetime20.3)" ''" ''; ';
   put '    put "}"; ';
