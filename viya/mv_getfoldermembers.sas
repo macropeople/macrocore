@@ -80,7 +80,7 @@ options noquotelenmax;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
   run;
-  data _null_;infile &fname1;input;putlog _infile_;run;
+  /*data _null_;infile &fname1;input;putlog _infile_;run;*/
   libname &libref1 JSON fileref=&fname1;
   /* now get the followon link to list members */
   data _null_;

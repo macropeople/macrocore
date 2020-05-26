@@ -9219,7 +9219,6 @@ options noquotelenmax;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
   run;
-  data _null_;infile &fname1;input;putlog _infile_;run;
   %local libref1;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
@@ -9266,7 +9265,6 @@ options noquotelenmax;
     run;
     %put &=SYS_PROCHTTP_STATUS_CODE;
     %put &=SYS_PROCHTTP_STATUS_PHRASE;
-    data _null_;infile &fname2;input;putlog _infile_;run;
     %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
       ,mac=&sysmacroname
       ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
@@ -9903,13 +9901,14 @@ data _null_;
   call symputx('url',url);
 run;
 
-%put NOTE:;%put NOTE-;%put NOTE-;%put NOTE-;
-%put NOTE- &sysmacroname: Job &name successfully created in &path;
-%put NOTE-;%put NOTE-;%put NOTE-;
-%put NOTE- Check it out here:;
-%put NOTE-;%put NOTE-;%put NOTE-;
-%put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put NOTE-;%put NOTE-;%put NOTE-;%put NOTE-;
+
+%put &sysmacroname: Job &name successfully created in &path;
+%put &sysmacroname:;
+%put &sysmacroname: Check it out here:;
+%put &sysmacroname:;
+%put &sysmacroname:   &url/SASJobExecution?_PROGRAM=&path/&name;
+%put &sysmacroname:;
+%put &sysmacroname:;
 
 %mend;
 /**
@@ -10297,7 +10296,7 @@ proc http method='POST'
   headers "Accept"="application/json"
           "Content-Type"="application/x-www-form-urlencoded";
 run;
-data _null_;infile &fref1;input;put _infile_;run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
 
 /**
  * Extract access / refresh tokens
@@ -10541,7 +10540,7 @@ options noquotelenmax;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
   run;
-  data _null_;infile &fname1;input;putlog _infile_;run;
+  /*data _null_;infile &fname1;input;putlog _infile_;run;*/
   libname &libref1 JSON fileref=&fname1;
   /* now get the followon link to list members */
   data _null_;
@@ -10881,7 +10880,7 @@ data _null_;
     ,'&password=',symget(pass));
   call symputx('grantstring',cats("'",string,"'"));
 run;
-data _null_;infile &fref1;input;put _infile_;run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
 
 /**
  * Request access token
@@ -10895,7 +10894,7 @@ proc http method='POST' in=&grantstring out=&fref2
   headers "Accept"="application/json"
           "Content-Type"="application/x-www-form-urlencoded";
 run;
-data _null_;infile &fref2;input;put _infile_;run;
+/*data _null_;infile &fref2;input;put _infile_;run;*/
 
 /**
  * Extract access / refresh tokens

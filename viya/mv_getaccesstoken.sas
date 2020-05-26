@@ -95,7 +95,7 @@ proc http method='POST'
   headers "Accept"="application/json"
           "Content-Type"="application/x-www-form-urlencoded";
 run;
-data _null_;infile &fref1;input;put _infile_;run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
 
 /**
  * Extract access / refresh tokens

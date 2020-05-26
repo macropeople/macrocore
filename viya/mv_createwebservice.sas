@@ -614,12 +614,13 @@ data _null_;
   call symputx('url',url);
 run;
 
-%put NOTE:;%put NOTE-;%put NOTE-;%put NOTE-;
-%put NOTE- &sysmacroname: Job &name successfully created in &path;
-%put NOTE-;%put NOTE-;%put NOTE-;
-%put NOTE- Check it out here:;
-%put NOTE-;%put NOTE-;%put NOTE-;
-%put &url/SASJobExecution?_PROGRAM=&path/&name;
-%put NOTE-;%put NOTE-;%put NOTE-;%put NOTE-;
+
+%put &sysmacroname: Job &name successfully created in &path;
+%put &sysmacroname:;
+%put &sysmacroname: Check it out here:;
+%put &sysmacroname:;
+%put &sysmacroname:   &url/SASJobExecution?_PROGRAM=&path/&name;
+%put &sysmacroname:;
+%put &sysmacroname:;
 
 %mend;

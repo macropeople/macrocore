@@ -81,7 +81,6 @@ options noquotelenmax;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
   run;
-  data _null_;infile &fname1;input;putlog _infile_;run;
   %local libref1;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
@@ -128,7 +127,6 @@ options noquotelenmax;
     run;
     %put &=SYS_PROCHTTP_STATUS_CODE;
     %put &=SYS_PROCHTTP_STATUS_PHRASE;
-    data _null_;infile &fname2;input;putlog _infile_;run;
     %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
       ,mac=&sysmacroname
       ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)

@@ -95,7 +95,7 @@ data _null_;
     ,'&password=',symget(pass));
   call symputx('grantstring',cats("'",string,"'"));
 run;
-data _null_;infile &fref1;input;put _infile_;run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
 
 /**
  * Request access token
@@ -109,7 +109,7 @@ proc http method='POST' in=&grantstring out=&fref2
   headers "Accept"="application/json"
           "Content-Type"="application/x-www-form-urlencoded";
 run;
-data _null_;infile &fref2;input;put _infile_;run;
+/*data _null_;infile &fref2;input;put _infile_;run;*/
 
 /**
  * Extract access / refresh tokens
