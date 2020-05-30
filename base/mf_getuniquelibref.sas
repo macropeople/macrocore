@@ -32,7 +32,7 @@
     %let rc=%sysfunc(libname(&libref,%sysfunc(pathname(work))));
     %if &rc %then %put %sysfunc(sysmsg());
     &prefix&x
-    %put &sysmacroname: Libref &libref assigned as WORK and returned;
+    %*put &sysmacroname: Libref &libref assigned as WORK and returned;
     %return;
   %end;
   %end;

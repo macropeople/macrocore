@@ -28,7 +28,7 @@
     %let rc=%sysfunc(filename(fname,,temp));
     %if &rc %then %put %sysfunc(sysmsg());
     &prefix&x
-    %put &sysmacroname: Fileref &prefix&x was assigned and returned;
+    %*put &sysmacroname: Fileref &prefix&x was assigned and returned;
     %return;
   %end;
   %end;

@@ -669,7 +669,7 @@ options noquotelenmax;
     %let rc=%sysfunc(filename(fname,,temp));
     %if &rc %then %put %sysfunc(sysmsg());
     &prefix&x
-    %put &sysmacroname: Fileref &prefix&x was assigned and returned;
+    %*put &sysmacroname: Fileref &prefix&x was assigned and returned;
     %return;
   %end;
   %end;
@@ -708,7 +708,7 @@ options noquotelenmax;
     %let rc=%sysfunc(libname(&libref,%sysfunc(pathname(work))));
     %if &rc %then %put %sysfunc(sysmsg());
     &prefix&x
-    %put &sysmacroname: Libref &libref assigned as WORK and returned;
+    %*put &sysmacroname: Libref &libref assigned as WORK and returned;
     %return;
   %end;
   %end;
