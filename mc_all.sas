@@ -3648,6 +3648,12 @@ proc sql
       contentdisp="attachment; filename=&outname";
   %end;
 %end;
+%else %if &contentype=HTML %then %do;
+  %if &platform=SASVIYA %then %do;
+    filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json"
+      contenttype="text/html"; 
+  %end;
+%end;
 %else %do;
   %put %str(ERR)OR: Content Type &contenttype NOT SUPPORTED by &sysmacroname!;
   %return;
