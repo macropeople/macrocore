@@ -9143,8 +9143,159 @@ run;
 %inc &fref1;
 
 %mend;/**
+  @file mv_createfile.sas
+  @brief Creates a viya file in a particular folder
+  @details Expects oauth token in a global macro variable (default
+    ACCESS_TOKEN).
+
+    options mprint;
+    %mv_createfile(path=/Public,file=somename)
+
+
+  @param path= The full path of the folder in which to create the file
+  @param access_token_var= The global macro variable to contain the access token
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
+    The default is authorization_code.
+
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
+  @li mf_isblank.sas
+
+**/
+
+%macro mv_createfile(path=
+    ,access_token_var=ACCESS_TOKEN
+    ,grant_type=detect
+  );
+%put NOT BUILT YET!!!;
+%return;
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
+
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
+  ,mac=&sysmacroname
+  ,msg=%str(path value must be provided)
+)
+%mp_abort(iftrue=(%length(&path)=1)
+  ,mac=&sysmacroname
+  ,msg=%str(path value must be provided)
+)
+
+options noquotelenmax;
+
+%local subfolder_cnt; /* determine the number of subfolders */
+%let subfolder_cnt=%sysfunc(countw(&path,/));
+
+%local href; /* resource address (none for root) */
+%let href="/folders/folders?parentFolderUri=/folders/folders/none";
+
+%local x newpath subfolder;
+%do x=1 %to &subfolder_cnt;
+  %let subfolder=%scan(&path,&x,%str(/));
+  %let newpath=&newpath/&subfolder;
+
+  %local fname1;
+  %let fname1=%mf_getuniquefileref();
+
+  %put &sysmacroname checking to see if &newpath exists;
+  proc http method='GET' out=&fname1 &oauth_bearer
+      url="http://localhost/folders/folders/@item?path=&newpath";
+  %if &grant_type=authorization_code %then %do;
+      headers "Authorization"="Bearer &&&access_token_var";
+  %end;
+  run;
+  %local libref1;
+  %let libref1=%mf_getuniquelibref();
+  libname &libref1 JSON fileref=&fname1;
+  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
+    ,mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+  %if &SYS_PROCHTTP_STATUS_CODE=200 %then %do;
+    %put &sysmacroname &newpath exists so grab the follow on link ;
+    data _null_;
+      set &libref1..links;
+      if rel='createChild' then
+        call symputx('href',quote(trim(href)),'l');
+    run;
+  %end;
+  %else %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
+    %put &sysmacroname &newpath not found - creating it now;
+    %local fname2;
+    %let fname2=%mf_getuniquefileref();
+    data _null_;
+      length json $1000;
+      json=cats("'"
+        ,'{"name":'
+        ,quote(trim(symget('subfolder')))
+        ,',"description":'
+        ,quote("&subfolder, created by &sysmacroname")
+        ,',"type":"folder"}'
+        ,"'"
+      );
+      call symputx('json',json,'l');
+    run;
+
+    proc http method='POST'
+        in=&json
+        out=&fname2
+        &oauth_bearer
+        url=%unquote(%superq(href));
+        headers 
+      %if &grant_type=authorization_code %then %do;
+                "Authorization"="Bearer &&&access_token_var"
+      %end;
+                'Content-Type'='application/vnd.sas.content.folder+json'
+                'Accept'='application/vnd.sas.content.folder+json';
+    run;
+    %put &=SYS_PROCHTTP_STATUS_CODE;
+    %put &=SYS_PROCHTTP_STATUS_PHRASE;
+    %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
+      ,mac=&sysmacroname
+      ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+    )
+    %local libref2;
+    %let libref2=%mf_getuniquelibref();
+    libname &libref2 JSON fileref=&fname2;
+    %put &sysmacroname &newpath now created. Grabbing the follow on link ;
+    data _null_;
+      set &libref2..links;
+      if rel='createChild' then
+        call symputx('href',quote(trim(href)),'l');
+    run;
+
+    libname &libref2 clear;
+    filename &fname2 clear;
+  %end;
+  filename &fname1 clear;
+  libname &libref1 clear;
+%end;
+%mend;/**
   @file mv_createfolder.sas
-  @brief Creates a viya folder if that foloder does not already exist
+  @brief Creates a viya folder if that folder does not already exist
   @details Expects oauth token in a global macro variable (default
     ACCESS_TOKEN).
 
@@ -10328,7 +10479,7 @@ libname &libref clear;
 filename &fref1 clear;
 
 %mend;/**
-  @file
+  @file mv_getapptoken.sas
   @brief Get an App Token and Secret
   @details When building apps on SAS Viya, an app id and secret is required.
   This macro will obtain the Consul Token and use that to call the Web Service.
@@ -10342,13 +10493,22 @@ filename &fref1 clear;
 
   Usage:
 
+    %* compile macros;
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
-    %mv_getapptoken(client_id=client,client_secret=secret)
+    %* specific client with just openid scope
+    %mv_getapptoken(client_id=YourClient
+		  ,client_secret=YourSecret
+      ,scopes=openid
+    )
 
-  @param client_id= The client name
-  @param client_secret= client secret
+    %* generate random client details with all scopes
+    %mv_getapptoken(scopes=openid *)
+
+  @param client_id= The client name.  Auto generated if blank.
+  @param client_secret= Client secret  Auto generated if client is blank.
+  @param scopes= list of space-seperated unquoted scopes (default is openid)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted)
 
   @version VIYA V.03.04
@@ -10360,11 +10520,13 @@ filename &fref1 clear;
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
+  @li mf_getquotedstr.sas
 
 **/
 
-%macro mv_getapptoken(client_id=someclient
-    ,client_secret=somesecret
+%macro mv_getapptoken(client_id=
+    ,client_secret=
+    ,scopes=
     ,grant_type=authorization_code
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
@@ -10402,13 +10564,21 @@ run;
  * register the new client
  */
 %let fname2=%mf_getuniquefileref();
+%if x&client_id.x=xx %then %do;
+  %let client_id=client_%sysfunc(ranuni(0),hex16.);
+  %let client_secret=secret_%sysfunc(ranuni(0),hex16.);
+%end;
+%local scope;
+%let scopes=%sysfunc(coalescec(&scopes,openid));
+%let scope=%mf_getquotedstr(&scopes,QUOTE=D);
 data _null_;
   file &fname2;
   clientid=quote(trim(symget('client_id')));
   clientsecret=quote(trim(symget('client_secret')));
+  scope=symget('scope');
   granttype=quote(trim(symget('grant_type')));
   put '{"client_id":' clientid ',"client_secret":' clientsecret
-    ',"scope":["openid","*"],"authorized_grant_types": [' granttype ',"refresh_token"],'
+    ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
     '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
 run;
 data _null_;
@@ -10425,11 +10595,20 @@ proc http method='POST' in=&fname2 out=&fname3
 run;
 
 /* show response */
+%let err=NONE;
 data _null_;
   infile &fname3;
   input;
   putlog _infile_;
+  if _infile_=:'{"err'!!'or":' then do;
+    message=scan(_infile_,-2,'"');
+    call symputx('err',message,'l');
+  end;
 run;
+%if &err ne NONE %then %do;
+  %put %str(ERR)OR: &err;
+  %return;
+%end;
 
 /* prepare url */
 %if &grant_type=authorization_code %then %do;
@@ -10464,7 +10643,8 @@ filename &fname2 clear;
 filename &fname3 clear;
 libname &libref clear;
 
-%mend;/**
+%mend;
+/**
   @file mv_getfoldermembers.sas
   @brief Gets a list of folders (and ids) for a given root
   @details Works for both root level and below, oauth or password. Default is

@@ -1,5 +1,5 @@
 /**
-  @file
+  @file mv_getapptoken.sas
   @brief Get an App Token and Secret
   @details When building apps on SAS Viya, an app id and secret is required.
   This macro will obtain the Consul Token and use that to call the Web Service.
@@ -13,13 +13,22 @@
 
   Usage:
 
+    %* compile macros;
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
-    %mv_getapptoken(client_id=client,client_secret=secret)
+    %* specific client with just openid scope
+    %mv_getapptoken(client_id=YourClient
+		  ,client_secret=YourSecret
+      ,scopes=openid
+    )
 
-  @param client_id= The client name
-  @param client_secret= client secret
+    %* generate random client details with all scopes
+    %mv_getapptoken(scopes=openid *)
+
+  @param client_id= The client name.  Auto generated if blank.
+  @param client_secret= Client secret  Auto generated if client is blank.
+  @param scopes= list of space-seperated unquoted scopes (default is openid)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted)
 
   @version VIYA V.03.04
@@ -31,11 +40,13 @@
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
+  @li mf_getquotedstr.sas
 
 **/
 
-%macro mv_getapptoken(client_id=someclient
-    ,client_secret=somesecret
+%macro mv_getapptoken(client_id=
+    ,client_secret=
+    ,scopes=
     ,grant_type=authorization_code
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
@@ -73,13 +84,21 @@ run;
  * register the new client
  */
 %let fname2=%mf_getuniquefileref();
+%if x&client_id.x=xx %then %do;
+  %let client_id=client_%sysfunc(ranuni(0),hex16.);
+  %let client_secret=secret_%sysfunc(ranuni(0),hex16.);
+%end;
+%local scope;
+%let scopes=%sysfunc(coalescec(&scopes,openid));
+%let scope=%mf_getquotedstr(&scopes,QUOTE=D);
 data _null_;
   file &fname2;
   clientid=quote(trim(symget('client_id')));
   clientsecret=quote(trim(symget('client_secret')));
+  scope=symget('scope');
   granttype=quote(trim(symget('grant_type')));
   put '{"client_id":' clientid ',"client_secret":' clientsecret
-    ',"scope":["openid","*"],"authorized_grant_types": [' granttype ',"refresh_token"],'
+    ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
     '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
 run;
 data _null_;
@@ -96,11 +115,20 @@ proc http method='POST' in=&fname2 out=&fname3
 run;
 
 /* show response */
+%let err=NONE;
 data _null_;
   infile &fname3;
   input;
   putlog _infile_;
+  if _infile_=:'{"err'!!'or":' then do;
+    message=scan(_infile_,-2,'"');
+    call symputx('err',message,'l');
+  end;
 run;
+%if &err ne NONE %then %do;
+  %put %str(ERR)OR: &err;
+  %return;
+%end;
 
 /* prepare url */
 %if &grant_type=authorization_code %then %do;

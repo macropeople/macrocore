@@ -3,7 +3,9 @@
   "description": "SAS Macro Library for Application Development",
   "license": "MIT",
   "keywords": [
-    "sas, viya, sasmacro, sasjs"
+    "SAS",
+    "Viya",
+    "SASjs"
   ],
   "author": "Allan Bowe <support@macropeople.com>",
   "repository": {
