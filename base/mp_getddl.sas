@@ -14,7 +14,7 @@
       run;
       proc sql; describe table &syslast;
 
-      %mp_getddl(work,test,flavour=tsql)
+      %mp_getddl(work,test,flavour=tsql,showlog=YES)
 
   @param lib libref of the library to create DDL for.  Should be assigned.
   @param ds dataset to create ddl for
@@ -22,6 +22,10 @@
     be assigned to TEMP.
   @param flavour= The type of DDL to create (default=SAS). Supported=TSQL
   @param showlog= Set to YES to show the DDL in the log
+  @param schema= Choose a preferred schema name (default is to use actual schema
+    ,else libref)
+  @param applydttm= for non SAS DDL, choose if columns are created with native
+   datetime2 format or regular decimal type
 
   @version 9.3
   @author Allan Bowe
@@ -29,7 +33,8 @@
 
 **/
 
-%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS,showlog=NO
+%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS,showlog=NO,schema=
+  ,applydttm=NO
 )/*/STORE SOURCE*/;
 
 /* check fileref is assigned */
@@ -128,28 +133,21 @@ run;
 %end;
 %else %if &flavour=TSQL %then %do;
   /* if schema does not exist, set to be same as libref */
-  %let schema=&libref;
+  %local schemaactual;
   proc sql noprint;
-  select sysvalue into: schema
+  select sysvalue into: schemaactual
     from dictionary.libnames
     where libname="&libref" and engine='SQLSVR';
-  %let schema=&schema; /* trim it  */
+  %let schema=%sysfunc(coalescec(&schemaactual,&schema,&libref));
 
   %do x=1 %to %sysfunc(countw(&dsnlist));
     %let curds=%scan(&dsnlist,&x);
     data _null_;
       file &fref mod;
       put "/* DDL for &schema..&curds */";
-      put 'IF EXISTS (SELECT 1';
-      put '    FROM INFORMATION_SCHEMA.TABLES';
-      put "    WHERE TABLE_NAME = '&curds')";
-      put "  DROP TABLE [&schema].[&curds]";
-      put "GO";
-    run;
     data _null_;
       file &fref mod;
       set &colinfo (where=(upcase(memname)="&curds")) end=last;
-
       if _n_=1 then do;
         if memtype='DATA' then do;
           put "create table [&schema].[&curds](";
@@ -161,10 +159,14 @@ run;
       end;
       else put "   ,"@@;
       format=upcase(format);
-      if format=:'DATETIME' then fmt='[datetime2](7)  ';
+      if 1=0 then; /* dummy if */
+      %if &applydttm=YES %then %do;
+        else if format=:'DATETIME' then fmt='[datetime2](7)  ';
+      %end;
       else if type='num' then fmt='[decimal](18,2)';
-      else fmt='[varchar]('!!cats(length)!!')';
-      if notnull='yes' then notnul=' not null';
+      else if length le 8000 then fmt='[varchar]('!!cats(length)!!')';
+      else fmt=cats('[varchar](max)');
+      if notnull='yes' then notnul=' NOT NULL';
       put name fmt notnul;
     run;
     data _null_;
@@ -173,8 +175,14 @@ run;
       by idxusage indxname;
       if unique='yes' then uniq=' unique';
       ds=cats(libname,'.',memname);
-      if first.indxname and unique='yes' and nomiss='yes' then do;
-        put '  constraint [' indxname '] PRIMARY KEY';
+      if first.indxname then do;
+        if unique='yes' and nomiss='yes' then do;
+          put '  ,constraint [' indxname '] PRIMARY KEY';
+        end;
+        else if unique='yes' then do;
+          /* add nonclustered in case of multiple unique indexes */
+          put '  ,index [' indxname '] UNIQUE NONCLUSTERED';
+        end;
         put '  (';
         put '    [' name ']';
       end;
