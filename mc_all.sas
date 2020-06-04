@@ -2267,7 +2267,7 @@ quit;
       run;
       proc sql; describe table &syslast;
 
-      %mp_getddl(work,test,flavour=tsql)
+      %mp_getddl(work,test,flavour=tsql,showlog=YES)
 
   @param lib libref of the library to create DDL for.  Should be assigned.
   @param ds dataset to create ddl for
@@ -2275,6 +2275,10 @@ quit;
     be assigned to TEMP.
   @param flavour= The type of DDL to create (default=SAS). Supported=TSQL
   @param showlog= Set to YES to show the DDL in the log
+  @param schema= Choose a preferred schema name (default is to use actual schema
+    ,else libref)
+  @param applydttm= for non SAS DDL, choose if columns are created with native
+   datetime2 format or regular decimal type
 
   @version 9.3
   @author Allan Bowe
@@ -2282,7 +2286,8 @@ quit;
 
 **/
 
-%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS,showlog=NO
+%macro mp_getddl(libref,ds,fref=getddl,flavour=SAS,showlog=NO,schema=
+  ,applydttm=NO
 )/*/STORE SOURCE*/;
 
 /* check fileref is assigned */
@@ -2381,28 +2386,21 @@ run;
 %end;
 %else %if &flavour=TSQL %then %do;
   /* if schema does not exist, set to be same as libref */
-  %let schema=&libref;
+  %local schemaactual;
   proc sql noprint;
-  select sysvalue into: schema
+  select sysvalue into: schemaactual
     from dictionary.libnames
     where libname="&libref" and engine='SQLSVR';
-  %let schema=&schema; /* trim it  */
+  %let schema=%sysfunc(coalescec(&schemaactual,&schema,&libref));
 
   %do x=1 %to %sysfunc(countw(&dsnlist));
     %let curds=%scan(&dsnlist,&x);
     data _null_;
       file &fref mod;
       put "/* DDL for &schema..&curds */";
-      put 'IF EXISTS (SELECT 1';
-      put '    FROM INFORMATION_SCHEMA.TABLES';
-      put "    WHERE TABLE_NAME = '&curds')";
-      put "  DROP TABLE [&schema].[&curds]";
-      put "GO";
-    run;
     data _null_;
       file &fref mod;
       set &colinfo (where=(upcase(memname)="&curds")) end=last;
-
       if _n_=1 then do;
         if memtype='DATA' then do;
           put "create table [&schema].[&curds](";
@@ -2414,10 +2412,14 @@ run;
       end;
       else put "   ,"@@;
       format=upcase(format);
-      if format=:'DATETIME' then fmt='[datetime2](7)  ';
+      if 1=0 then; /* dummy if */
+      %if &applydttm=YES %then %do;
+        else if format=:'DATETIME' then fmt='[datetime2](7)  ';
+      %end;
       else if type='num' then fmt='[decimal](18,2)';
-      else fmt='[varchar]('!!cats(length)!!')';
-      if notnull='yes' then notnul=' not null';
+      else if length le 8000 then fmt='[varchar]('!!cats(length)!!')';
+      else fmt=cats('[varchar](max)');
+      if notnull='yes' then notnul=' NOT NULL';
       put name fmt notnul;
     run;
     data _null_;
@@ -2426,8 +2428,14 @@ run;
       by idxusage indxname;
       if unique='yes' then uniq=' unique';
       ds=cats(libname,'.',memname);
-      if first.indxname and unique='yes' and nomiss='yes' then do;
-        put '  constraint [' indxname '] PRIMARY KEY';
+      if first.indxname then do;
+        if unique='yes' and nomiss='yes' then do;
+          put '  ,constraint [' indxname '] PRIMARY KEY';
+        end;
+        else if unique='yes' then do;
+          /* add nonclustered in case of multiple unique indexes */
+          put '  ,index [' indxname '] UNIQUE NONCLUSTERED';
+        end;
         put '  (';
         put '    [' name ']';
       end;
@@ -9143,157 +9151,6 @@ run;
 %inc &fref1;
 
 %mend;/**
-  @file mv_createfile.sas
-  @brief Creates a viya file in a particular folder
-  @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
-
-    options mprint;
-    %mv_createfile(path=/Public,file=somename)
-
-
-  @param path= The full path of the folder in which to create the file
-  @param access_token_var= The global macro variable to contain the access token
-  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
-
-
-  @version VIYA V.03.04
-  @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mp_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
-  @li mf_isblank.sas
-
-**/
-
-%macro mv_createfile(path=
-    ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
-  );
-%put NOT BUILT YET!!!;
-%return;
-%local oauth_bearer;
-%if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
-    %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
-%end;
-%put &sysmacroname: grant_type=&grant_type;
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
-    and &grant_type ne sas_services
-  )
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
-
-%mp_abort(iftrue=(%mf_isblank(&path)=1)
-  ,mac=&sysmacroname
-  ,msg=%str(path value must be provided)
-)
-%mp_abort(iftrue=(%length(&path)=1)
-  ,mac=&sysmacroname
-  ,msg=%str(path value must be provided)
-)
-
-options noquotelenmax;
-
-%local subfolder_cnt; /* determine the number of subfolders */
-%let subfolder_cnt=%sysfunc(countw(&path,/));
-
-%local href; /* resource address (none for root) */
-%let href="/folders/folders?parentFolderUri=/folders/folders/none";
-
-%local x newpath subfolder;
-%do x=1 %to &subfolder_cnt;
-  %let subfolder=%scan(&path,&x,%str(/));
-  %let newpath=&newpath/&subfolder;
-
-  %local fname1;
-  %let fname1=%mf_getuniquefileref();
-
-  %put &sysmacroname checking to see if &newpath exists;
-  proc http method='GET' out=&fname1 &oauth_bearer
-      url="http://localhost/folders/folders/@item?path=&newpath";
-  %if &grant_type=authorization_code %then %do;
-      headers "Authorization"="Bearer &&&access_token_var";
-  %end;
-  run;
-  %local libref1;
-  %let libref1=%mf_getuniquelibref();
-  libname &libref1 JSON fileref=&fname1;
-  %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200 and &SYS_PROCHTTP_STATUS_CODE ne 404)
-    ,mac=&sysmacroname
-    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
-  )
-  %if &SYS_PROCHTTP_STATUS_CODE=200 %then %do;
-    %put &sysmacroname &newpath exists so grab the follow on link ;
-    data _null_;
-      set &libref1..links;
-      if rel='createChild' then
-        call symputx('href',quote(trim(href)),'l');
-    run;
-  %end;
-  %else %if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
-    %put &sysmacroname &newpath not found - creating it now;
-    %local fname2;
-    %let fname2=%mf_getuniquefileref();
-    data _null_;
-      length json $1000;
-      json=cats("'"
-        ,'{"name":'
-        ,quote(trim(symget('subfolder')))
-        ,',"description":'
-        ,quote("&subfolder, created by &sysmacroname")
-        ,',"type":"folder"}'
-        ,"'"
-      );
-      call symputx('json',json,'l');
-    run;
-
-    proc http method='POST'
-        in=&json
-        out=&fname2
-        &oauth_bearer
-        url=%unquote(%superq(href));
-        headers 
-      %if &grant_type=authorization_code %then %do;
-                "Authorization"="Bearer &&&access_token_var"
-      %end;
-                'Content-Type'='application/vnd.sas.content.folder+json'
-                'Accept'='application/vnd.sas.content.folder+json';
-    run;
-    %put &=SYS_PROCHTTP_STATUS_CODE;
-    %put &=SYS_PROCHTTP_STATUS_PHRASE;
-    %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
-      ,mac=&sysmacroname
-      ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
-    )
-    %local libref2;
-    %let libref2=%mf_getuniquelibref();
-    libname &libref2 JSON fileref=&fname2;
-    %put &sysmacroname &newpath now created. Grabbing the follow on link ;
-    data _null_;
-      set &libref2..links;
-      if rel='createChild' then
-        call symputx('href',quote(trim(href)),'l');
-    run;
-
-    libname &libref2 clear;
-    filename &fname2 clear;
-  %end;
-  filename &fname1 clear;
-  libname &libref1 clear;
-%end;
-%mend;/**
   @file mv_createfolder.sas
   @brief Creates a viya folder if that folder does not already exist
   @details Expects oauth token in a global macro variable (default
@@ -10069,6 +9926,155 @@ run;
 
 %mend;
 /**
+  @file mv_deletefoldermember.sas
+  @brief Deletes an item in a Viya folder
+  @details If not executed in Studio 5+  will expect oauth token in a global 
+  macro variable (default ACCESS_TOKEN).
+
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+    %mv_createwebservice(path=/Public/test, name=blah)
+    %mv_deletejes(path=/Public/test, name=blah)
+
+
+  @param path= The full path of the folder containing the item to be deleted
+  @param name= The name of the item to be deleted
+  @param contenttype= The contenttype of the item, eg: file, jobDefinition
+  @param access_token_var= The global macro variable to contain the access token
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
+    The default is "detect" (which will run in Studio 5+ without a token).
+
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_getplatform.sas
+  @li mf_isblank.sas
+
+**/
+
+%macro mv_deletefoldermember(path=
+    ,name=
+    ,contenttype=
+    ,access_token_var=ACCESS_TOKEN
+    ,grant_type=detect
+  );
+%local oauth_bearer;
+%if &grant_type=detect %then %do;
+  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
+    %let grant_type=sas_services;
+    %let &access_token_var=;
+    %let oauth_bearer=oauth_bearer=sas_services;
+  %end;
+  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=password;
+%end;
+%put &sysmacroname: grant_type=&grant_type;
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
+    and &grant_type ne sas_services
+  )
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
+%mp_abort(iftrue=(%mf_isblank(&path)=1)
+  ,mac=&sysmacroname
+  ,msg=%str(path value must be provided)
+)
+%mp_abort(iftrue=(%mf_isblank(&name)=1)
+  ,mac=&sysmacroname
+  ,msg=%str(name value must be provided)
+)
+%mp_abort(iftrue=(%length(&path)=1)
+  ,mac=&sysmacroname
+  ,msg=%str(path value must be provided)
+)
+
+options noquotelenmax;
+
+%put &sysmacroname: fetching details for &path ;
+%local fname1;
+%let fname1=%mf_getuniquefileref();
+proc http method='GET' out=&fname1 &oauth_bearer
+  url="http://localhost/folders/folders/@item?path=&path";
+%if &grant_type=authorization_code %then %do;
+  headers "Authorization"="Bearer &&&access_token_var";
+%end;
+run;
+%if &SYS_PROCHTTP_STATUS_CODE=404 %then %do;
+  %put &sysmacroname: Folder &path NOT FOUND - nothing to delete!;
+  %return;
+%end;
+%else %if &SYS_PROCHTTP_STATUS_CODE ne 200 %then %do;
+  /*data _null_;infile &fname1;input;putlog _infile_;run;*/
+  %mp_abort(mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+%end;
+
+%put &sysmacroname: grab the follow on link ;
+%local libref1;
+%let libref1=%mf_getuniquelibref();
+libname &libref1 JSON fileref=&fname1;
+data _null_;
+  set &libref1..links;
+  if rel='members' then call symputx('mref',quote(trim(href)),'l');
+run;
+
+/* get the children */
+%local fname1a;
+%let fname1a=%mf_getuniquefileref();
+proc http method='GET' out=&fname1a &oauth_bearer
+  url=%unquote(%superq(mref));
+%if &grant_type=authorization_code %then %do;
+  headers "Authorization"="Bearer &&&access_token_var";
+%end;
+run;
+%put &=SYS_PROCHTTP_STATUS_CODE;
+%local libref1a;
+%let libref1a=%mf_getuniquelibref();
+libname &libref1a JSON fileref=&fname1a;
+%local uri found;
+%let found=0;
+%put Getting object uri from &libref1a..items;
+data _null_;
+  set &libref1a..items;
+  if contenttype="&contenttype" and name="&name" then do;
+    call symputx('uri',uri,'l');
+    call symputx('found',1,'l');
+  end;
+run;
+%if &found=0 %then %do;
+  %put NOTE:;%put NOTE- &sysmacroname: &path/&name NOT FOUND;%put NOTE- ;
+  %return;
+%end;
+proc http method="DELETE" url="&uri" &oauth_bearer;
+  headers 
+%if &grant_type=authorization_code %then %do;
+      "Authorization"="Bearer &&&access_token_var"
+%end;
+      "Accept"="*/*";/**/
+run;
+%if &SYS_PROCHTTP_STATUS_CODE ne 204 %then %do;
+  data _null_; infile &fname2; input; putlog _infile_;run;
+  %mp_abort(mac=&sysmacroname
+    ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+  )
+%end;
+%else %put &sysmacroname: &path/&name(&contenttype) successfully deleted;
+
+/* clear refs */
+filename &fname1 clear;
+libname &libref1 clear;
+filename &fname1a clear;
+libname &libref1a clear;
+
+%mend;/**
   @file mv_deletejes.sas
   @brief Creates a job execution service if it does not already exist
   @details If not executed in Studio 5+  will expect oauth token in a global 
