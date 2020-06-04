@@ -1,6 +1,6 @@
 /**
   @file mv_createfolder.sas
-  @brief Creates a viya folder if that foloder does not already exist
+  @brief Creates a viya folder if that folder does not already exist
   @details Expects oauth token in a global macro variable (default
     ACCESS_TOKEN).
 
