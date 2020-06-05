@@ -69,6 +69,7 @@ viya:
     ,grant_type=detect
     ,replace=YES
     ,adapter=sasjs
+    ,debug=0
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
@@ -121,7 +122,13 @@ proc http method='GET' out=&fname1 &oauth_bearer
   headers "Authorization"="Bearer &&&access_token_var";
 %end;
 run;
-/*data _null_;infile &fname1;input;putlog _infile_;run;*/
+%if &debug %then %do;
+  data _null_;
+    infile &fname1;
+    input;
+    putlog _infile_;
+  run;
+%end;
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
   ,mac=&sysmacroname
   ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
@@ -153,6 +160,9 @@ proc http method='GET'
   %end;
             'Accept'='application/vnd.sas.collection+json'
             'Accept-Language'='string';
+%if &debug=1 %then %do;
+   debug level = 3;
+%end;
 run;
 /*data _null_;infile &fname2;input;putlog _infile_;run;*/
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
@@ -584,6 +594,9 @@ proc http method='POST'
             "Authorization"="Bearer &&&access_token_var"
   %end;
             "Accept"="application/vnd.sas.job.definition+json";
+%if &debug=1 %then %do;
+   debug level = 3;
+%end;
 run;
 /*data _null_;infile &fname4;input;putlog _infile_;run;*/
 %mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 201)
@@ -616,7 +629,7 @@ run;
 %put &sysmacroname:;
 %put &sysmacroname: Check it out here:;
 %put &sysmacroname:;
-%put &sysmacroname:   &url/SASJobExecution?_PROGRAM=&path/&name;
+%put    &url/SASJobExecution?_PROGRAM=&path/&name;
 %put &sysmacroname:;
 %put &sysmacroname:;
 

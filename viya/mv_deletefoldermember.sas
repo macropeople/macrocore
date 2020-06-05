@@ -117,7 +117,7 @@ libname &libref1a JSON fileref=&fname1a;
 %put Getting object uri from &libref1a..items;
 data _null_;
   set &libref1a..items;
-  if contenttype="&contenttype" and name="&name" then do;
+  if contenttype="&contenttype" and upcase(name)="%upcase(&name)" then do;
     call symputx('uri',uri,'l');
     call symputx('found',1,'l');
   end;
