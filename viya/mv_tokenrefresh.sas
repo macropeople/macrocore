@@ -56,7 +56,6 @@
     ,client_id=someclient
     ,client_secret=somesecret
     ,grant_type=authorization_code
-    ,code=
     ,user=
     ,pass=
     ,access_token_var=ACCESS_TOKEN

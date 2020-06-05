@@ -10359,6 +10359,61 @@ filename &fname1 clear;
 filename &fname2 clear;
 libname &libref1 clear;
 
+%mend; /**
+   @file mv_getaccesstoken.sas
+   @brief deprecated - replaced by mv_tokenrefresh.sas
+
+   @version VIYA V.03.04
+   @author Allan Bowe
+   @source https://github.com/macropeople/macrocore
+ 
+   <h4> Dependencies </h4>
+   @li mv_getaccesstoken.sas
+
+ **/
+ 
+ %macro mv_getaccesstoken(client_id=someclient
+     ,client_secret=somesecret
+     ,grant_type=authorization_code
+     ,code=
+     ,user=
+     ,pass=
+     ,access_token_var=ACCESS_TOKEN
+     ,refresh_token_var=REFRESH_TOKEN
+   );
+
+%mv_tokenrefresh(client_id=&client_id
+  ,client_secret=&client_secret
+  ,grant_type=&grant_type
+  ,user=&user
+  ,pass=&pass
+  ,access_token_var=&access_token_var
+  ,refresh_token_var=&refresh_token_var
+)
+
+%mend; /**
+   @file
+   @brief deprecated - replaced by mv_registerclient.sas
+
+   @version VIYA V.03.04
+   @author Allan Bowe
+   @source https://github.com/macropeople/macrocore
+ 
+   <h4> Dependencies </h4>
+   @li mv_registerclient.sas
+
+ **/
+ 
+ %macro mv_getapptoken(client_id=someclient
+     ,client_secret=somesecret
+     ,grant_type=authorization_code
+   );
+
+%mv_registerclient(client_id=&client_id
+  ,client_secret=&client_secret
+  ,grant_type=&grant_type
+)
+
 %mend;/**
   @file mv_getfoldermembers.sas
   @brief Gets a list of folders (and ids) for a given root
@@ -10677,6 +10732,39 @@ run;
 /* clear refs */
 filename &fname1 clear;
 libname &libref1 clear;
+
+%mend; /**
+   @file mv_getrefreshtoken.sas
+   @brief deprecated - replaced by mv_tokenauth.sas
+
+   @version VIYA V.03.04
+   @author Allan Bowe
+   @source https://github.com/macropeople/macrocore
+ 
+   <h4> Dependencies </h4>
+   @li mv_tokenauth.sas
+
+ **/
+ 
+ %macro mv_getrefreshtoken(client_id=someclient
+     ,client_secret=somesecret
+     ,grant_type=authorization_code
+     ,code=
+     ,user=
+     ,pass=
+     ,access_token_var=ACCESS_TOKEN
+     ,refresh_token_var=REFRESH_TOKEN
+   );
+
+%mv_tokenauth(client_id=&client_id
+  ,client_secret=&client_secret
+  ,grant_type=&grant_type
+  ,code=&code
+  ,user=&user
+  ,pass=&pass
+  ,access_token_var=&access_token_var
+  ,refresh_token_var=&refresh_token_var
+)
 
 %mend;/**
   @file mv_getusergroups.sas
@@ -11253,7 +11341,6 @@ filename &fref2 clear;
     ,client_id=someclient
     ,client_secret=somesecret
     ,grant_type=authorization_code
-    ,code=
     ,user=
     ,pass=
     ,access_token_var=ACCESS_TOKEN
