@@ -1,14 +1,14 @@
 /**
-  @file mv_getrefreshtoken.sas
-  @brief Get Refresh Token (and initial access token)
+  @file mv_tokenauth.sas
+  @brief Get initial Refresh and Access Tokens
   @details Before a Refresh Token can be obtained, the client must be
     registered by an administrator.  This can be done using the
-    `mv_getapptoken` macro, after which the user must visit a URL to get an
+    `mv_registerclient` macro, after which the user must visit a URL to get an
     additional code (if using oauth).
 
     That code (or username / password) is used here to get the Refresh Token
     (and an initial Access Token).  THIS MACRO CAN ONLY BE USED ONCE - further
-    access tokens can be obtained using the `mv_getaccesstoken` macro.
+    access tokens can be obtained using the `mv_gettokenrefresh` macro.
 
     Access tokens expire frequently (every 10 hours or so) whilst refresh tokens
     expire periodically (every month or so).  This is all configurable.
@@ -18,17 +18,17 @@
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
-    %let client=testings;
-    %let secret=MySecret;
 
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=clientinfo)
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=LD39EpalOf)
+    %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
 
     A great article for explaining all these steps is available here:
 
     https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
 
+  @param inds= A dataset containing client_id and client_secret
+  @param outds= A dataset containing access_token and refresh_token
   @param client_id= The client name
   @param client_secret= client secret
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
@@ -47,10 +47,13 @@
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_existds.sas
 
 **/
 
-%macro mv_getrefreshtoken(client_id=someclient
+%macro mv_tokenauth(inds=mv_registerclient
+    ,outds=mv_tokenauth
+    ,client_id=someclient
     ,client_secret=somesecret
     ,grant_type=authorization_code
     ,code=
@@ -79,10 +82,13 @@
   ,msg=%str(username / password required)
 )
 
-%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
-  ,mac=&sysmacroname
-  ,msg=%str(client / secret must both be provided)
-)
+%if %mf_existds(&inds) %then %do;
+  data _null_;
+    set &inds;
+    call symputx('client_id',client_id,'l');
+    call symputx('client_secret',client_secret,'l');
+  run;
+%end;
 
 /* prepare appropriate grant type */
 %let fref1=%mf_getuniquefileref();
@@ -119,17 +125,12 @@ run;
 libname &libref JSON fileref=&fref2;
 
 /* extract the token */
-data _null_;
-  set &libref..root;
+data &outds;
+  merge &libref..root &inds;
   call symputx("&access_token_var",access_token);
   call symputx("&refresh_token_var",refresh_token);
 run;
 
-%put NOTE:;
-%put NOTE- &access_token_var=&&&access_token_var;
-%put NOTE- ;
-%put NOTE- &refresh_token_var=&&&refresh_token_var;
-%put NOTE- ;
 
 libname &libref clear;
 filename &fref1 clear;

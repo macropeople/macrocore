@@ -1,7 +1,7 @@
 /**
-  @file mv_getapptoken.sas
-  @brief Get an App Token and Secret
-  @details When building apps on SAS Viya, an app id and secret is required.
+  @file mv_registerclient.sas
+  @brief Register Client and Secret (admin task)
+  @details When building apps on SAS Viya, an client id and secret is required.
   This macro will obtain the Consul Token and use that to call the Web Service.
 
     more info: https://developer.sas.com/reference/auth/#register
@@ -18,18 +18,19 @@
     %inc mc;
 
     %* specific client with just openid scope
-    %mv_getapptoken(client_id=YourClient
+    %mv_registerclient(client_id=YourClient
 		  ,client_secret=YourSecret
       ,scopes=openid
     )
 
     %* generate random client details with all scopes
-    %mv_getapptoken(scopes=openid *)
+    %mv_registerclient(scopes=openid *)
 
   @param client_id= The client name.  Auto generated if blank.
   @param client_secret= Client secret  Auto generated if client is blank.
   @param scopes= list of space-seperated unquoted scopes (default is openid)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted)
+  @param outds= the dataset to contain the registered client id and secret
 
   @version VIYA V.03.04
   @author Allan Bowe
@@ -44,10 +45,11 @@
 
 **/
 
-%macro mv_getapptoken(client_id=
+%macro mv_registerclient(client_id=
     ,client_secret=
     ,scopes=
     ,grant_type=authorization_code
+    ,outds=mv_registerclient
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
 
@@ -76,9 +78,8 @@ libname &libref JSON fileref=&fname1;
 /* extract the token */
 data _null_;
   set &libref..root;
-  call symputx('access_token',access_token);
+  call symputx('access_token',access_token,'l');
 run;
-%put &=access_token;
 
 /**
  * register the new client
@@ -101,11 +102,6 @@ data _null_;
     ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
     '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
 run;
-data _null_;
-  infile &fname2;
-  input;
-  putlog _infile_;
-run;
 
 %let fname3=%mf_getuniquefileref();
 proc http method='POST' in=&fname2 out=&fname3
@@ -119,7 +115,6 @@ run;
 data _null_;
   infile &fname3;
   input;
-  putlog _infile_;
   if _infile_=:'{"err'!!'or":' then do;
     message=scan(_infile_,-2,'"');
     call symputx('err',message,'l');
@@ -156,6 +151,11 @@ run;
   %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
   %put NOTE- ;
 %end;
+
+data &outds;
+  client_id=symget('client_id');
+  client_secret=symget('client_secret');
+run;
 
 /* clear refs */
 filename &fname1 clear;

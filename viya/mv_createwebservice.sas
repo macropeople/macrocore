@@ -7,13 +7,10 @@ viya:
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %let client=new%sysfunc(ranuni(0),hex16.);
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
     %* Step 2 - navigate to the url in the log and paste the access code below;
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
     %* Step 3 - Now we can create some code and add it to a web service;
     filename ft15f001 temp;
@@ -53,7 +50,7 @@ viya:
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
-  @param replace= select YES to replace any existing service in that location
+  @param replace= select NO to avoid replacing any existing service in that location
   @param adapter= the macro uses the sasjs adapter by default.  To use another
     adapter, add a (different) fileref here.
 
@@ -67,10 +64,10 @@ viya:
     ,name=
     ,desc=Created by the mv_createwebservice.sas macro
     ,precode=
-    ,code=
+    ,code=ft15f001
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=detect
-    ,replace=NO
+    ,replace=YES
     ,adapter=sasjs
   );
 %local oauth_bearer;

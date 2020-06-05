@@ -1,16 +1,14 @@
 /**
-  @file
+  @file mv_tokenrefresh.sas
   @brief Get an additional access token using a refresh token
   @details Before an access token can be obtained, a refresh token is required
-    For that, check out the `mv_getrefreshtoken` macro.
+    For that, check out the `mv_tokenauth` macro.
 
   Usage:
 
     * prep work - register client, get refresh token, save it for later use ;
-    %let client=testin88gtss;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
+    %mv_registerclient(outds=client)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
     data _null_;
     file "~/refresh.token";
     put "&refresh_token";
@@ -22,7 +20,7 @@
       input;
       call symputx('refresh_token',_infile_);
     run;
-    %mv_getaccesstoken(client_id=&client
+    %mv_tokenrefresh(client_id=&client
       ,client_secret=&secret
     )
 
@@ -30,8 +28,10 @@
 
     https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
 
-  @param client_id= The client name
-  @param client_secret= client secret
+  @param inds= A dataset containing client_id and client_secret
+  @param outds= A dataset containing access_token and refresh_token
+  @param client_id= The client name (alternative to inds)
+  @param client_secret= client secret (alternative to inds)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
   @param user= If grant_type=password then provide the username here
@@ -47,10 +47,13 @@
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
+  @li mf_existds.sas
 
 **/
 
-%macro mv_getaccesstoken(client_id=someclient
+%macro mv_tokenrefresh(inds=mv_registerclient
+    ,outds=mv_tokenrefresh
+    ,client_id=someclient
     ,client_secret=somesecret
     ,grant_type=authorization_code
     ,code=
@@ -75,11 +78,19 @@ options noquotelenmax;
   ,msg=%str(username / password required)
 )
 
-%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
+%if %mf_existds(&inds) %then %do;
+  data _null_;
+    set &inds;
+    call symputx('client_id',client_id,'l');
+    call symputx('client_secret',client_secret,'l');
+    call symputx("&refresh_token_var",&refresh_token_var,'l');
+  run;
+%end;
+
+%mp_abort(iftrue=(%str(&client_id)=%str() or %str(&client_secret)=%str())
   ,mac=&sysmacroname
   ,msg=%str(client / secret must both be provided)
 )
-
 
 /**
  * Request access token
@@ -105,17 +116,12 @@ run;
 libname &libref JSON fileref=&fref1;
 
 /* extract the token */
-data _null_;
+data &outds;
   set &libref..root;
   call symputx("&access_token_var",access_token);
   call symputx("&refresh_token_var",refresh_token);
 run;
 
-%put NOTE:;
-%put NOTE- &access_token_var=&&&access_token_var;
-%put NOTE- ;
-%put NOTE- &refresh_token_var=&&&refresh_token_var;
-%put NOTE- ;
 
 libname &libref clear;
 filename &fref1 clear;

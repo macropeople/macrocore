@@ -9308,13 +9308,10 @@ viya:
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %let client=new%sysfunc(ranuni(0),hex16.);
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
     %* Step 2 - navigate to the url in the log and paste the access code below;
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
     %* Step 3 - Now we can create some code and add it to a web service;
     filename ft15f001 temp;
@@ -9354,7 +9351,7 @@ viya:
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
     The default is authorization_code.
-  @param replace= select YES to replace any existing service in that location
+  @param replace= select NO to avoid replacing any existing service in that location
   @param adapter= the macro uses the sasjs adapter by default.  To use another
     adapter, add a (different) fileref here.
 
@@ -9368,10 +9365,10 @@ viya:
     ,name=
     ,desc=Created by the mv_createwebservice.sas macro
     ,precode=
-    ,code=
+    ,code=ft15f001
     ,access_token_var=ACCESS_TOKEN
     ,grant_type=detect
-    ,replace=NO
+    ,replace=YES
     ,adapter=sasjs
   );
 %local oauth_bearer;
@@ -10363,294 +10360,6 @@ filename &fname2 clear;
 libname &libref1 clear;
 
 %mend;/**
-  @file
-  @brief Get an additional access token using a refresh token
-  @details Before an access token can be obtained, a refresh token is required
-    For that, check out the `mv_getrefreshtoken` macro.
-
-  Usage:
-
-    * prep work - register client, get refresh token, save it for later use ;
-    %let client=testin88gtss;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    data _null_;
-    file "~/refresh.token";
-    put "&refresh_token";
-    run;
-
-    * now do the things n stuff;
-    data _null_;
-      infile "~/refresh.token";
-      input;
-      call symputx('refresh_token',_infile_);
-    run;
-    %mv_getaccesstoken(client_id=&client
-      ,client_secret=&secret
-    )
-
-    A great article for explaining all these steps is available here:
-
-    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
-
-  @param client_id= The client name
-  @param client_secret= client secret
-  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
-  @param user= If grant_type=password then provide the username here
-  @param pass= If grant_type=password then provide the password here
-  @param access_token_var= The global macro variable to contain the access token
-  @param refresh_token_var= The global macro variable containing the refresh token
-
-  @version VIYA V.03.04
-  @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mp_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-
-**/
-
-%macro mv_getaccesstoken(client_id=someclient
-    ,client_secret=somesecret
-    ,grant_type=authorization_code
-    ,code=
-    ,user=
-    ,pass=
-    ,access_token_var=ACCESS_TOKEN
-    ,refresh_token_var=REFRESH_TOKEN
-  );
-%global &access_token_var &refresh_token_var;
-options noquotelenmax;
-
-%local fref1 libref;
-
-/* test the validity of inputs */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
-
-%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
-  ,mac=&sysmacroname
-  ,msg=%str(username / password required)
-)
-
-%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
-  ,mac=&sysmacroname
-  ,msg=%str(client / secret must both be provided)
-)
-
-
-/**
- * Request access token
- */
-%let fref1=%mf_getuniquefileref();
-proc http method='POST'
-  in="grant_type=refresh_token%nrstr(&)refresh_token=&&&refresh_token_var"
-  out=&fref1
-  url='localhost/SASLogon/oauth/token'
-  WEBUSERNAME="&client_id"
-  WEBPASSWORD="&client_secret"
-  AUTH_BASIC;
-  headers "Accept"="application/json"
-          "Content-Type"="application/x-www-form-urlencoded";
-run;
-/*data _null_;infile &fref1;input;put _infile_;run;*/
-
-/**
- * Extract access / refresh tokens
- */
-
-%let libref=%mf_getuniquelibref();
-libname &libref JSON fileref=&fref1;
-
-/* extract the token */
-data _null_;
-  set &libref..root;
-  call symputx("&access_token_var",access_token);
-  call symputx("&refresh_token_var",refresh_token);
-run;
-
-%put NOTE:;
-%put NOTE- &access_token_var=&&&access_token_var;
-%put NOTE- ;
-%put NOTE- &refresh_token_var=&&&refresh_token_var;
-%put NOTE- ;
-
-libname &libref clear;
-filename &fref1 clear;
-
-%mend;/**
-  @file mv_getapptoken.sas
-  @brief Get an App Token and Secret
-  @details When building apps on SAS Viya, an app id and secret is required.
-  This macro will obtain the Consul Token and use that to call the Web Service.
-
-    more info: https://developer.sas.com/reference/auth/#register
-    and: http://proc-x.com/2019/01/authentication-to-sas-viya-a-couple-of-approaches/
-
-  The default viyaroot location is /opt/sas/viya/config
-
-  M3 required due to proc http headers
-
-  Usage:
-
-    %* compile macros;
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
-
-    %* specific client with just openid scope
-    %mv_getapptoken(client_id=YourClient
-		  ,client_secret=YourSecret
-      ,scopes=openid
-    )
-
-    %* generate random client details with all scopes
-    %mv_getapptoken(scopes=openid *)
-
-  @param client_id= The client name.  Auto generated if blank.
-  @param client_secret= Client secret  Auto generated if client is blank.
-  @param scopes= list of space-seperated unquoted scopes (default is openid)
-  @param grant_type= valid values are "password" or "authorization_code" (unquoted)
-
-  @version VIYA V.03.04
-  @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mp_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-  @li mf_loc.sas
-  @li mf_getquotedstr.sas
-
-**/
-
-%macro mv_getapptoken(client_id=
-    ,client_secret=
-    ,scopes=
-    ,grant_type=authorization_code
-  );
-%local consul_token fname1 fname2 fname3 libref access_token url;
-
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
-options noquotelenmax;
-/* first, get consul token needed to get client id / secret */
-data _null_;
-  infile "%mf_loc(VIYACONFIG)/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token";
-  input token:$64.;
-  call symputx('consul_token',token);
-run;
-
-/* request the client details */
-%let fname1=%mf_getuniquefileref();
-proc http method='POST' out=&fname1
-    url='http://localhost/SASLogon/oauth/clients/consul?callback=false&serviceId=app';
-    headers "X-Consul-Token"="&consul_token";
-run;
-
-%let libref=%mf_getuniquelibref();
-libname &libref JSON fileref=&fname1;
-
-/* extract the token */
-data _null_;
-  set &libref..root;
-  call symputx('access_token',access_token);
-run;
-%put &=access_token;
-
-/**
- * register the new client
- */
-%let fname2=%mf_getuniquefileref();
-%if x&client_id.x=xx %then %do;
-  %let client_id=client_%sysfunc(ranuni(0),hex16.);
-  %let client_secret=secret_%sysfunc(ranuni(0),hex16.);
-%end;
-%local scope;
-%let scopes=%sysfunc(coalescec(&scopes,openid));
-%let scope=%mf_getquotedstr(&scopes,QUOTE=D);
-data _null_;
-  file &fname2;
-  clientid=quote(trim(symget('client_id')));
-  clientsecret=quote(trim(symget('client_secret')));
-  scope=symget('scope');
-  granttype=quote(trim(symget('grant_type')));
-  put '{"client_id":' clientid ',"client_secret":' clientsecret
-    ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
-    '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
-run;
-data _null_;
-  infile &fname2;
-  input;
-  putlog _infile_;
-run;
-
-%let fname3=%mf_getuniquefileref();
-proc http method='POST' in=&fname2 out=&fname3
-    url='http://localhost/SASLogon/oauth/clients';
-    headers "Content-Type"="application/json"
-            "Authorization"="Bearer &access_token";
-run;
-
-/* show response */
-%let err=NONE;
-data _null_;
-  infile &fname3;
-  input;
-  putlog _infile_;
-  if _infile_=:'{"err'!!'or":' then do;
-    message=scan(_infile_,-2,'"');
-    call symputx('err',message,'l');
-  end;
-run;
-%if &err ne NONE %then %do;
-  %put %str(ERR)OR: &err;
-  %return;
-%end;
-
-/* prepare url */
-%if &grant_type=authorization_code %then %do;
-  data _null_;
-    if symexist('_baseurl') then do;
-      url=symget('_baseurl');
-      if subpad(url,length(url)-9,9)='SASStudio'
-        then url=substr(url,1,length(url)-11);
-      else url="&systcpiphostname";
-    end;
-    else url="&systcpiphostname";
-    call symputx('url',url);
-  run;
-%end;
-
-%put Please provide the following details to the developer:;
-%put ;
-%put CLIENT_ID=&client_id;
-%put CLIENT_SECRET=&client_secret;
-%put GRANT_TYPE=&grant_type;
-%put;
-%if &grant_type=authorization_code %then %do;
-  %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
-  %put NOTE- ;
-  %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
-  %put NOTE- ;
-%end;
-
-/* clear refs */
-filename &fname1 clear;
-filename &fname2 clear;
-filename &fname3 clear;
-libname &libref clear;
-
-%mend;
-/**
   @file mv_getfoldermembers.sas
   @brief Gets a list of folders (and ids) for a given root
   @details Works for both root level and below, oauth or password. Default is
@@ -10774,15 +10483,12 @@ libname &libref1 clear;
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
@@ -10889,15 +10595,12 @@ filename &fname1 clear;
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
@@ -10976,143 +10679,6 @@ filename &fname1 clear;
 libname &libref1 clear;
 
 %mend;/**
-  @file mv_getrefreshtoken.sas
-  @brief Get Refresh Token (and initial access token)
-  @details Before a Refresh Token can be obtained, the client must be
-    registered by an administrator.  This can be done using the
-    `mv_getapptoken` macro, after which the user must visit a URL to get an
-    additional code (if using oauth).
-
-    That code (or username / password) is used here to get the Refresh Token
-    (and an initial Access Token).  THIS MACRO CAN ONLY BE USED ONCE - further
-    access tokens can be obtained using the `mv_getaccesstoken` macro.
-
-    Access tokens expire frequently (every 10 hours or so) whilst refresh tokens
-    expire periodically (every month or so).  This is all configurable.
-
-  Usage:
-
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
-
-    %let client=testings;
-    %let secret=MySecret;
-
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
-
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=LD39EpalOf)
-
-    A great article for explaining all these steps is available here:
-
-    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
-
-  @param client_id= The client name
-  @param client_secret= client secret
-  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
-    The default is authorization_code.
-  @param code= If grant_type=authorization_code then provide the necessary code here
-  @param user= If grant_type=password then provide the username here
-  @param pass= If grant_type=password then provide the password here
-  @param access_token_var= The global macro variable to contain the access token
-  @param refresh_token_var= The global macro variable to contain the refresh token
-
-  @version VIYA V.03.04
-  @author Allan Bowe
-  @source https://github.com/macropeople/macrocore
-
-  <h4> Dependencies </h4>
-  @li mp_abort.sas
-  @li mf_getuniquefileref.sas
-  @li mf_getuniquelibref.sas
-
-**/
-
-%macro mv_getrefreshtoken(client_id=someclient
-    ,client_secret=somesecret
-    ,grant_type=authorization_code
-    ,code=
-    ,user=
-    ,pass=
-    ,access_token_var=ACCESS_TOKEN
-    ,refresh_token_var=REFRESH_TOKEN
-  );
-%global &access_token_var &refresh_token_var;
-
-%local fref1 fref2 libref;
-
-/* test the validity of inputs */
-%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
-  ,mac=&sysmacroname
-  ,msg=%str(Invalid value for grant_type: &grant_type)
-)
-
-%mp_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
-  ,mac=&sysmacroname
-  ,msg=%str(Authorization code required)
-)
-
-%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
-  ,mac=&sysmacroname
-  ,msg=%str(username / password required)
-)
-
-%mp_abort(iftrue=(%str(&client)=%str() or %str(&secret)=%str())
-  ,mac=&sysmacroname
-  ,msg=%str(client / secret must both be provided)
-)
-
-/* prepare appropriate grant type */
-%let fref1=%mf_getuniquefileref();
-
-data _null_;
-  file &fref1;
-  if "&grant_type"='authorization_code' then string=cats(
-   'grant_type=authorization_code&code=',symget('code'));
-  else string=cats('grant_type=password&username=',symget('user')
-    ,'&password=',symget(pass));
-  call symputx('grantstring',cats("'",string,"'"));
-run;
-/*data _null_;infile &fref1;input;put _infile_;run;*/
-
-/**
- * Request access token
- */
-%let fref2=%mf_getuniquefileref();
-proc http method='POST' in=&grantstring out=&fref2
-  url='localhost/SASLogon/oauth/token'
-  WEBUSERNAME="&client_id"
-  WEBPASSWORD="&client_secret"
-  AUTH_BASIC;
-  headers "Accept"="application/json"
-          "Content-Type"="application/x-www-form-urlencoded";
-run;
-/*data _null_;infile &fref2;input;put _infile_;run;*/
-
-/**
- * Extract access / refresh tokens
- */
-
-%let libref=%mf_getuniquelibref();
-libname &libref JSON fileref=&fref2;
-
-/* extract the token */
-data _null_;
-  set &libref..root;
-  call symputx("&access_token_var",access_token);
-  call symputx("&refresh_token_var",refresh_token);
-run;
-
-%put NOTE:;
-%put NOTE- &access_token_var=&&&access_token_var;
-%put NOTE- ;
-%put NOTE- &refresh_token_var=&&&refresh_token_var;
-%put NOTE- ;
-
-libname &libref clear;
-filename &fref1 clear;
-filename &fref2 clear;
-
-%mend;/**
   @file mv_getusergroups.sas
   @brief Creates a dataset with a list of groups for a particular user
   @details First, be sure you have an access token (which requires an app token).
@@ -11125,15 +10691,12 @@ filename &fref2 clear;
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
@@ -11227,15 +10790,12 @@ libname &libref1 clear;
 
   An administrator needs to set you up with an access code:
 
-      %let client=someclient;
-      %let secret=MySecret;
-      %mv_getapptoken(client_id=&client,client_secret=&secret)
+      %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-      %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-      %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
@@ -11330,6 +10890,438 @@ run;
 /* clear refs */
 filename &fname1 clear;
 libname &libref1 clear;
+
+%mend;/**
+  @file mv_registerclient.sas
+  @brief Register Client and Secret (admin task)
+  @details When building apps on SAS Viya, an client id and secret is required.
+  This macro will obtain the Consul Token and use that to call the Web Service.
+
+    more info: https://developer.sas.com/reference/auth/#register
+    and: http://proc-x.com/2019/01/authentication-to-sas-viya-a-couple-of-approaches/
+
+  The default viyaroot location is /opt/sas/viya/config
+
+  M3 required due to proc http headers
+
+  Usage:
+
+    %* compile macros;
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+    %* specific client with just openid scope
+    %mv_registerclient(client_id=YourClient
+		  ,client_secret=YourSecret
+      ,scopes=openid
+    )
+
+    %* generate random client details with all scopes
+    %mv_registerclient(scopes=openid *)
+
+  @param client_id= The client name.  Auto generated if blank.
+  @param client_secret= Client secret  Auto generated if client is blank.
+  @param scopes= list of space-seperated unquoted scopes (default is openid)
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted)
+  @param outds= the dataset to contain the registered client id and secret
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_loc.sas
+  @li mf_getquotedstr.sas
+
+**/
+
+%macro mv_registerclient(client_id=
+    ,client_secret=
+    ,scopes=
+    ,grant_type=authorization_code
+    ,outds=mv_registerclient
+  );
+%local consul_token fname1 fname2 fname3 libref access_token url;
+
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
+options noquotelenmax;
+/* first, get consul token needed to get client id / secret */
+data _null_;
+  infile "%mf_loc(VIYACONFIG)/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token";
+  input token:$64.;
+  call symputx('consul_token',token);
+run;
+
+/* request the client details */
+%let fname1=%mf_getuniquefileref();
+proc http method='POST' out=&fname1
+    url='http://localhost/SASLogon/oauth/clients/consul?callback=false&serviceId=app';
+    headers "X-Consul-Token"="&consul_token";
+run;
+
+%let libref=%mf_getuniquelibref();
+libname &libref JSON fileref=&fname1;
+
+/* extract the token */
+data _null_;
+  set &libref..root;
+  call symputx('access_token',access_token,'l');
+run;
+
+/**
+ * register the new client
+ */
+%let fname2=%mf_getuniquefileref();
+%if x&client_id.x=xx %then %do;
+  %let client_id=client_%sysfunc(ranuni(0),hex16.);
+  %let client_secret=secret_%sysfunc(ranuni(0),hex16.);
+%end;
+%local scope;
+%let scopes=%sysfunc(coalescec(&scopes,openid));
+%let scope=%mf_getquotedstr(&scopes,QUOTE=D);
+data _null_;
+  file &fname2;
+  clientid=quote(trim(symget('client_id')));
+  clientsecret=quote(trim(symget('client_secret')));
+  scope=symget('scope');
+  granttype=quote(trim(symget('grant_type')));
+  put '{"client_id":' clientid ',"client_secret":' clientsecret
+    ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
+    '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
+run;
+
+%let fname3=%mf_getuniquefileref();
+proc http method='POST' in=&fname2 out=&fname3
+    url='http://localhost/SASLogon/oauth/clients';
+    headers "Content-Type"="application/json"
+            "Authorization"="Bearer &access_token";
+run;
+
+/* show response */
+%let err=NONE;
+data _null_;
+  infile &fname3;
+  input;
+  if _infile_=:'{"err'!!'or":' then do;
+    message=scan(_infile_,-2,'"');
+    call symputx('err',message,'l');
+  end;
+run;
+%if &err ne NONE %then %do;
+  %put %str(ERR)OR: &err;
+  %return;
+%end;
+
+/* prepare url */
+%if &grant_type=authorization_code %then %do;
+  data _null_;
+    if symexist('_baseurl') then do;
+      url=symget('_baseurl');
+      if subpad(url,length(url)-9,9)='SASStudio'
+        then url=substr(url,1,length(url)-11);
+      else url="&systcpiphostname";
+    end;
+    else url="&systcpiphostname";
+    call symputx('url',url);
+  run;
+%end;
+
+%put Please provide the following details to the developer:;
+%put ;
+%put CLIENT_ID=&client_id;
+%put CLIENT_SECRET=&client_secret;
+%put GRANT_TYPE=&grant_type;
+%put;
+%if &grant_type=authorization_code %then %do;
+  %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
+  %put NOTE- ;
+  %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
+  %put NOTE- ;
+%end;
+
+data &outds;
+  client_id=symget('client_id');
+  client_secret=symget('client_secret');
+run;
+
+/* clear refs */
+filename &fname1 clear;
+filename &fname2 clear;
+filename &fname3 clear;
+libname &libref clear;
+
+%mend;
+/**
+  @file mv_tokenauth.sas
+  @brief Get initial Refresh and Access Tokens
+  @details Before a Refresh Token can be obtained, the client must be
+    registered by an administrator.  This can be done using the
+    `mv_registerclient` macro, after which the user must visit a URL to get an
+    additional code (if using oauth).
+
+    That code (or username / password) is used here to get the Refresh Token
+    (and an initial Access Token).  THIS MACRO CAN ONLY BE USED ONCE - further
+    access tokens can be obtained using the `mv_gettokenrefresh` macro.
+
+    Access tokens expire frequently (every 10 hours or so) whilst refresh tokens
+    expire periodically (every month or so).  This is all configurable.
+
+  Usage:
+
+    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+    %inc mc;
+
+
+    %mv_registerclient(outds=clientinfo)
+
+    %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
+
+    A great article for explaining all these steps is available here:
+
+    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
+
+  @param inds= A dataset containing client_id and client_secret
+  @param outds= A dataset containing access_token and refresh_token
+  @param client_id= The client name
+  @param client_secret= client secret
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
+    The default is authorization_code.
+  @param code= If grant_type=authorization_code then provide the necessary code here
+  @param user= If grant_type=password then provide the username here
+  @param pass= If grant_type=password then provide the password here
+  @param access_token_var= The global macro variable to contain the access token
+  @param refresh_token_var= The global macro variable to contain the refresh token
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_existds.sas
+
+**/
+
+%macro mv_tokenauth(inds=mv_registerclient
+    ,outds=mv_tokenauth
+    ,client_id=someclient
+    ,client_secret=somesecret
+    ,grant_type=authorization_code
+    ,code=
+    ,user=
+    ,pass=
+    ,access_token_var=ACCESS_TOKEN
+    ,refresh_token_var=REFRESH_TOKEN
+  );
+%global &access_token_var &refresh_token_var;
+
+%local fref1 fref2 libref;
+
+/* test the validity of inputs */
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
+
+%mp_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
+  ,mac=&sysmacroname
+  ,msg=%str(Authorization code required)
+)
+
+%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
+  ,mac=&sysmacroname
+  ,msg=%str(username / password required)
+)
+
+%if %mf_existds(&inds) %then %do;
+  data _null_;
+    set &inds;
+    call symputx('client_id',client_id,'l');
+    call symputx('client_secret',client_secret,'l');
+  run;
+%end;
+
+/* prepare appropriate grant type */
+%let fref1=%mf_getuniquefileref();
+
+data _null_;
+  file &fref1;
+  if "&grant_type"='authorization_code' then string=cats(
+   'grant_type=authorization_code&code=',symget('code'));
+  else string=cats('grant_type=password&username=',symget('user')
+    ,'&password=',symget(pass));
+  call symputx('grantstring',cats("'",string,"'"));
+run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
+
+/**
+ * Request access token
+ */
+%let fref2=%mf_getuniquefileref();
+proc http method='POST' in=&grantstring out=&fref2
+  url='localhost/SASLogon/oauth/token'
+  WEBUSERNAME="&client_id"
+  WEBPASSWORD="&client_secret"
+  AUTH_BASIC;
+  headers "Accept"="application/json"
+          "Content-Type"="application/x-www-form-urlencoded";
+run;
+/*data _null_;infile &fref2;input;put _infile_;run;*/
+
+/**
+ * Extract access / refresh tokens
+ */
+
+%let libref=%mf_getuniquelibref();
+libname &libref JSON fileref=&fref2;
+
+/* extract the token */
+data &outds;
+  merge &libref..root &inds;
+  call symputx("&access_token_var",access_token);
+  call symputx("&refresh_token_var",refresh_token);
+run;
+
+
+libname &libref clear;
+filename &fref1 clear;
+filename &fref2 clear;
+
+%mend;/**
+  @file mv_tokenrefresh.sas
+  @brief Get an additional access token using a refresh token
+  @details Before an access token can be obtained, a refresh token is required
+    For that, check out the `mv_tokenauth` macro.
+
+  Usage:
+
+    * prep work - register client, get refresh token, save it for later use ;
+    %mv_registerclient(outds=client)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+    data _null_;
+    file "~/refresh.token";
+    put "&refresh_token";
+    run;
+
+    * now do the things n stuff;
+    data _null_;
+      infile "~/refresh.token";
+      input;
+      call symputx('refresh_token',_infile_);
+    run;
+    %mv_tokenrefresh(client_id=&client
+      ,client_secret=&secret
+    )
+
+    A great article for explaining all these steps is available here:
+
+    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
+
+  @param inds= A dataset containing client_id and client_secret
+  @param outds= A dataset containing access_token and refresh_token
+  @param client_id= The client name (alternative to inds)
+  @param client_secret= client secret (alternative to inds)
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
+    The default is authorization_code.
+  @param user= If grant_type=password then provide the username here
+  @param pass= If grant_type=password then provide the password here
+  @param access_token_var= The global macro variable to contain the access token
+  @param refresh_token_var= The global macro variable containing the refresh token
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_existds.sas
+
+**/
+
+%macro mv_tokenrefresh(inds=mv_registerclient
+    ,outds=mv_tokenrefresh
+    ,client_id=someclient
+    ,client_secret=somesecret
+    ,grant_type=authorization_code
+    ,code=
+    ,user=
+    ,pass=
+    ,access_token_var=ACCESS_TOKEN
+    ,refresh_token_var=REFRESH_TOKEN
+  );
+%global &access_token_var &refresh_token_var;
+options noquotelenmax;
+
+%local fref1 libref;
+
+/* test the validity of inputs */
+%mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password)
+  ,mac=&sysmacroname
+  ,msg=%str(Invalid value for grant_type: &grant_type)
+)
+
+%mp_abort(iftrue=(&grant_type=password and (%str(&user)=%str() or %str(&pass)=%str()))
+  ,mac=&sysmacroname
+  ,msg=%str(username / password required)
+)
+
+%if %mf_existds(&inds) %then %do;
+  data _null_;
+    set &inds;
+    call symputx('client_id',client_id,'l');
+    call symputx('client_secret',client_secret,'l');
+    call symputx("&refresh_token_var",&refresh_token_var,'l');
+  run;
+%end;
+
+%mp_abort(iftrue=(%str(&client_id)=%str() or %str(&client_secret)=%str())
+  ,mac=&sysmacroname
+  ,msg=%str(client / secret must both be provided)
+)
+
+/**
+ * Request access token
+ */
+%let fref1=%mf_getuniquefileref();
+proc http method='POST'
+  in="grant_type=refresh_token%nrstr(&)refresh_token=&&&refresh_token_var"
+  out=&fref1
+  url='localhost/SASLogon/oauth/token'
+  WEBUSERNAME="&client_id"
+  WEBPASSWORD="&client_secret"
+  AUTH_BASIC;
+  headers "Accept"="application/json"
+          "Content-Type"="application/x-www-form-urlencoded";
+run;
+/*data _null_;infile &fref1;input;put _infile_;run;*/
+
+/**
+ * Extract access / refresh tokens
+ */
+
+%let libref=%mf_getuniquelibref();
+libname &libref JSON fileref=&fref1;
+
+/* extract the token */
+data &outds;
+  set &libref..root;
+  call symputx("&access_token_var",access_token);
+  call symputx("&refresh_token_var",refresh_token);
+run;
+
+
+libname &libref clear;
+filename &fref1 clear;
 
 %mend;/**
   @file mv_webout.sas

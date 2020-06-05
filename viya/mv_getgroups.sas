@@ -11,15 +11,12 @@
 
   An administrator needs to set you up with an access code:
 
-    %let client=someclient;
-    %let secret=MySecret;
-    %mv_getapptoken(client_id=&client,client_secret=&secret)
+    %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_getrefreshtoken(client_id=&client,client_secret=&secret,code=wKDZYTEPK6)
-    %mv_getaccesstoken(client_id=&client,client_secret=&secret)
+    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
