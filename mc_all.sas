@@ -230,7 +230,7 @@ options noquotelenmax;
     the var if it does.
     Usage:
 
-        %put %mf_existVar(work.someds, somevar)
+        %put %mf_existvar(work.someds, somevar)
 
   @param libds (positional) - 2 part dataset or view reference
   @param var (positional) - variable name
@@ -3733,6 +3733,67 @@ data _null_;
     !!trim(memname)!!'" recfm=n;data _null_; rc=fcopy("&fname2","&fname3");run;'
     !!'filename &fname2 clear; filename &fname3 clear;');
 run;
+
+%mend;/**
+  @file mp_updatevarlength.sas
+  @brief Change the length of a variable
+  @details The library is assumed to be assigned.  Simple character updates
+  currently supported, numerics are more complicated and will follow.
+
+        data example;
+          a='1';
+          b='12';
+          c='123';
+        run;
+        %mp_updatevarlength(example,a,3)
+        %mp_updatevarlength(example,c,1)
+        proc sql;
+        describe table example;
+
+  @param libds the library.dataset to be modified
+  @param var The variable to modify
+  @param len The new length to apply
+
+  <h4> Dependencies </h4>
+  @li mf_existds.sas
+  @li mp_abort.sas
+  @li mf_existvar.sas
+  @li mf_getvarlen.sas
+  @li mf_getvartype.sas
+
+  @version 9.2
+  @author Allan Bowe
+
+**/
+
+%macro mp_updatevarlength(libds,var,len
+)/*/STORE SOURCE*/;
+
+%mp_abort(iftrue=(%mf_existds(&libds)=0)
+  ,mac=&sysmacroname
+  ,msg=%str(Table &libds not found!)
+)
+
+%mp_abort(iftrue=(%mf_existvar(&libds,&var)=0)
+  ,mac=&sysmacroname
+  ,msg=%str(Variable &var not found on &libds!)
+)
+
+/* not possible to in-place modify a numeric length, to add later */
+%mp_abort(iftrue=(%mf_getvartype(&libds,&var)=0)
+  ,mac=&sysmacroname
+  ,msg=%str(Only character resizings are currently supported)
+)
+
+%local oldlen;
+%let oldlen=%mf_getvarlen(&libds,&var);
+%if  &oldlen=&len %then %do;
+  %put &sysmacroname: Old and new lengths (&len) match!;
+  %return;
+%end;
+
+proc sql;
+alter table &libds modify &var char(&len);
 
 %mend;/**
   @file
@@ -10994,18 +11055,18 @@ libname &libref1 clear;
 
   Usage:
 
-    %* compile macros;
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      %* compile macros;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %* specific client with just openid scope
-    %mv_registerclient(client_id=YourClient
-		  ,client_secret=YourSecret
-      ,scopes=openid
-    )
+      %* specific client with just openid scope
+      %mv_registerclient(client_id=YourClient
+        ,client_secret=YourSecret
+        ,scopes=openid
+      )
 
-    %* generate random client details with all scopes
-    %mv_registerclient(scopes=openid *)
+      %* generate random client details with all scopes
+      %mv_registerclient(scopes=openid *)
 
   @param client_id= The client name.  Auto generated if blank.
   @param client_secret= Client secret  Auto generated if client is blank.
@@ -11162,13 +11223,13 @@ libname &libref clear;
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
 
-    %mv_registerclient(outds=clientinfo)
+      %mv_registerclient(outds=clientinfo)
 
-    %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
+      %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
 
     A great article for explaining all these steps is available here:
 
@@ -11291,27 +11352,27 @@ filename &fref2 clear;
 
   Usage:
 
-    * prep work - register client, get refresh token, save it for later use ;
-    %mv_registerclient(outds=client)
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-    data _null_;
-    file "~/refresh.token";
-    put "&refresh_token";
-    run;
+      * prep work - register client, get refresh token, save it for later use ;
+      %mv_registerclient(outds=client)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      data _null_;
+      file "~/refresh.token";
+      put "&refresh_token";
+      run;
 
-    * now do the things n stuff;
-    data _null_;
-      infile "~/refresh.token";
-      input;
-      call symputx('refresh_token',_infile_);
-    run;
-    %mv_tokenrefresh(client_id=&client
-      ,client_secret=&secret
-    )
+      * now do the things n stuff;
+      data _null_;
+        infile "~/refresh.token";
+        input;
+        call symputx('refresh_token',_infile_);
+      run;
+      %mv_tokenrefresh(client_id=&client
+        ,client_secret=&secret
+      )
 
-    A great article for explaining all these steps is available here:
+  A great article for explaining all these steps is available here:
 
-    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
+  https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
 
   @param inds= A dataset containing client_id and client_secret
   @param outds= A dataset containing access_token and refresh_token

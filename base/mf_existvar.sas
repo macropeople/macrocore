@@ -5,7 +5,7 @@
     the var if it does.
     Usage:
 
-        %put %mf_existVar(work.someds, somevar)
+        %put %mf_existvar(work.someds, somevar)
 
   @param libds (positional) - 2 part dataset or view reference
   @param var (positional) - variable name
