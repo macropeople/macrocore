@@ -32,7 +32,7 @@ git clone git@github.com:macropeople/macrocore.github.io.git
 cd macrocore.github.io
 git rm -r *
 mv $BUILD_FOLDER/out/doxy/* .
-echo 'core.macropeople.com' > CNAME
+echo 'core.sasjs.io' > CNAME
 git add *
 git commit -m "build.sh build on $(date +%F:%H:%M:%S)"
 git push
