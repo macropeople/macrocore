@@ -6,27 +6,27 @@
 
   Usage:
 
-    * prep work - register client, get refresh token, save it for later use ;
-    %mv_registerclient(outds=client)
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-    data _null_;
-    file "~/refresh.token";
-    put "&refresh_token";
-    run;
+      * prep work - register client, get refresh token, save it for later use ;
+      %mv_registerclient(outds=client)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      data _null_;
+      file "~/refresh.token";
+      put "&refresh_token";
+      run;
 
-    * now do the things n stuff;
-    data _null_;
-      infile "~/refresh.token";
-      input;
-      call symputx('refresh_token',_infile_);
-    run;
-    %mv_tokenrefresh(client_id=&client
-      ,client_secret=&secret
-    )
+      * now do the things n stuff;
+      data _null_;
+        infile "~/refresh.token";
+        input;
+        call symputx('refresh_token',_infile_);
+      run;
+      %mv_tokenrefresh(client_id=&client
+        ,client_secret=&secret
+      )
 
-    A great article for explaining all these steps is available here:
+  A great article for explaining all these steps is available here:
 
-    https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
+  https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
 
   @param inds= A dataset containing client_id and client_secret
   @param outds= A dataset containing access_token and refresh_token

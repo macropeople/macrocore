@@ -13,18 +13,18 @@
 
   Usage:
 
-    %* compile macros;
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      %* compile macros;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %* specific client with just openid scope
-    %mv_registerclient(client_id=YourClient
-		  ,client_secret=YourSecret
-      ,scopes=openid
-    )
+      %* specific client with just openid scope
+      %mv_registerclient(client_id=YourClient
+        ,client_secret=YourSecret
+        ,scopes=openid
+      )
 
-    %* generate random client details with all scopes
-    %mv_registerclient(scopes=openid *)
+      %* generate random client details with all scopes
+      %mv_registerclient(scopes=openid *)
 
   @param client_id= The client name.  Auto generated if blank.
   @param client_secret= Client secret  Auto generated if client is blank.

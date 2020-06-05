@@ -15,13 +15,13 @@
 
   Usage:
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
 
-    %mv_registerclient(outds=clientinfo)
+      %mv_registerclient(outds=clientinfo)
 
-    %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
+      %mv_tokenauth(inds=clientinfo,code=LD39EpalOf)
 
     A great article for explaining all these steps is available here:
 
