@@ -11248,7 +11248,7 @@ libname &libref clear;
 
     https://blogs.sas.com/content/sgf/2019/01/25/authentication-to-sas-viya/
 
-  @param inds= A dataset containing client_id and client_secret
+  @param inds= A dataset containing client_id, client_secret, and auth_code
   @param outds= A dataset containing access_token and refresh_token
   @param client_id= The client name
   @param client_secret= client secret
@@ -11308,6 +11308,7 @@ libname &libref clear;
     set &inds;
     call symputx('client_id',client_id,'l');
     call symputx('client_secret',client_secret,'l');
+    if not missing(auth_code) then call symputx('code',auth_code,'l');
   run;
 %end;
 
@@ -11345,9 +11346,9 @@ run;
 %let libref=%mf_getuniquelibref();
 libname &libref JSON fileref=&fref2;
 
-/* extract the token */
+/* extract the tokens */
 data &outds;
-  merge &libref..root &inds;
+  set &libref..root;
   call symputx("&access_token_var",access_token);
   call symputx("&refresh_token_var",refresh_token);
 run;
