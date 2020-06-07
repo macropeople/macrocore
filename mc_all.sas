@@ -11293,6 +11293,15 @@ libname &libref clear;
   ,msg=%str(Invalid value for grant_type: &grant_type)
 )
 
+%if %mf_existds(&inds) %then %do;
+  data _null_;
+    set &inds;
+    call symputx('client_id',client_id,'l');
+    call symputx('client_secret',client_secret,'l');
+    if not missing(auth_code) then call symputx('code',auth_code,'l');
+  run;
+%end;
+
 %mp_abort(iftrue=(&grant_type=authorization_code and %str(&code)=%str())
   ,mac=&sysmacroname
   ,msg=%str(Authorization code required)
@@ -11302,15 +11311,6 @@ libname &libref clear;
   ,mac=&sysmacroname
   ,msg=%str(username / password required)
 )
-
-%if %mf_existds(&inds) %then %do;
-  data _null_;
-    set &inds;
-    call symputx('client_id',client_id,'l');
-    call symputx('client_secret',client_secret,'l');
-    if not missing(auth_code) then call symputx('code',auth_code,'l');
-  run;
-%end;
 
 /* prepare appropriate grant type */
 %let fref1=%mf_getuniquefileref();
