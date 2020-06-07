@@ -4,11 +4,11 @@
   @details If not executed in Studio 5+  will expect oauth token in a global 
   macro variable (default ACCESS_TOKEN).
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %mv_createwebservice(path=/Public/test, name=blah)
-    %mv_deletejes(path=/Public/test, name=blah)
+      %mv_createwebservice(path=/Public/test, name=blah)
+      %mv_deletejes(path=/Public/test, name=blah)
 
 
   @param path= The full path of the folder containing the item to be deleted

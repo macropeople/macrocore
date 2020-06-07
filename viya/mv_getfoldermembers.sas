@@ -4,7 +4,7 @@
   @details Works for both root level and below, oauth or password. Default is
     oauth, and the token is expected in a global ACCESS_TOKEN variable.
 
-    %mv_getfoldermembers(root=/Public)
+        %mv_getfoldermembers(root=/Public)
 
 
   @param root= The path for which to return the list of folders

@@ -5,22 +5,22 @@
 
   Using the macros here:
 
-    filename mc url
-      "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %mv_registerclient(outds=client)
+      %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
-    %mv_getusergroups(&sysuserid,outds=users)
+      %mv_getusergroups(&sysuserid,outds=users)
 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).

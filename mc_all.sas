@@ -9215,10 +9215,10 @@ run;
   @file mv_createfolder.sas
   @brief Creates a viya folder if that folder does not already exist
   @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  ACCESS_TOKEN).
 
-    options mprint;
-    %mv_createfolder(path=/Public)
+      options mprint;
+      %mv_createfolder(path=/Public)
 
 
   @param path= The full path of the folder to be created
@@ -10002,11 +10002,11 @@ run;
   @details If not executed in Studio 5+  will expect oauth token in a global 
   macro variable (default ACCESS_TOKEN).
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %mv_createwebservice(path=/Public/test, name=blah)
-    %mv_deletejes(path=/Public/test, name=blah)
+      %mv_createwebservice(path=/Public/test, name=blah)
+      %mv_deletejes(path=/Public/test, name=blah)
 
 
   @param path= The full path of the folder containing the item to be deleted
@@ -10151,11 +10151,11 @@ libname &libref1a clear;
   @details If not executed in Studio 5+  will expect oauth token in a global 
   macro variable (default ACCESS_TOKEN).
 
-    filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
-    %mv_createwebservice(path=/Public/test, name=blah)
-    %mv_deletejes(path=/Public/test, name=blah)
+      %mv_createwebservice(path=/Public/test, name=blah)
+      %mv_deletejes(path=/Public/test, name=blah)
 
 
   @param path= The full path of the folder containing the Job Execution Service
@@ -10298,9 +10298,9 @@ libname &libref1a clear;
   @details If not running in Studo 5 +, will expect an oauth token in a global 
   macro variable (default ACCESS_TOKEN).
 
-    options mprint;
-    %mv_createfolder(path=/Public/test/blah)
-    %mv_deleteviyafolder(path=/Public/test)
+      options mprint;
+      %mv_createfolder(path=/Public/test/blah)
+      %mv_deleteviyafolder(path=/Public/test)
 
 
   @param path= The full path of the folder to be deleted
@@ -10494,7 +10494,7 @@ libname &libref1 clear;
   @details Works for both root level and below, oauth or password. Default is
     oauth, and the token is expected in a global ACCESS_TOKEN variable.
 
-    %mv_getfoldermembers(root=/Public)
+        %mv_getfoldermembers(root=/Public)
 
 
   @param root= The path for which to return the list of folders
@@ -10606,22 +10606,22 @@ libname &libref1 clear;
 
   Using the macros here:
 
-    filename mc url
-      "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %mv_registerclient(outds=client)
+      %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
-    %mv_getgroupmembers(All Users)
+      %mv_getgroupmembers(All Users)
 
   outputs:
 
@@ -10718,22 +10718,22 @@ filename &fname1 clear;
 
   Using the macros here:
 
-    filename mc url
-      "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %mv_registerclient(outds=client)
+      %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
-    %mv_getgroups()
+      %mv_getgroups()
 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).
@@ -10847,22 +10847,22 @@ libname &libref1 clear;
 
   Using the macros here:
 
-    filename mc url
-      "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
-    %inc mc;
+      filename mc url
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
 
   An administrator needs to set you up with an access code:
 
-    %mv_registerclient(outds=client)
+      %mv_registerclient(outds=client)
 
   Navigate to the url from the log (opting in to the groups) and paste the
   access code below:
 
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
 
   Now we can run the macro!
 
-    %mv_getusergroups(&sysuserid,outds=users)
+      %mv_getusergroups(&sysuserid,outds=users)
 
   @param access_token_var= The global macro variable to contain the access token
   @param grant_type= valid values are "password" or "authorization_code" (unquoted).

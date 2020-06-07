@@ -2,10 +2,10 @@
   @file mv_createfolder.sas
   @brief Creates a viya folder if that folder does not already exist
   @details Expects oauth token in a global macro variable (default
-    ACCESS_TOKEN).
+  ACCESS_TOKEN).
 
-    options mprint;
-    %mv_createfolder(path=/Public)
+      options mprint;
+      %mv_createfolder(path=/Public)
 
 
   @param path= The full path of the folder to be created
