@@ -10442,7 +10442,7 @@ libname &libref1 clear;
    @source https://github.com/macropeople/macrocore
  
    <h4> Dependencies </h4>
-   @li mv_getaccesstoken.sas
+   @li mv_tokenrefresh.sas
 
  **/
  
