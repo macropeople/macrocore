@@ -26,11 +26,18 @@
       %* generate random client details with all scopes
       %mv_registerclient(scopes=openid *)
 
+      %* generate random client details with all scopes and 30 min expiry
+      %mv_registerclient(scopes=openid *
+        ,access_token_validity=1800
+      )
+
   @param client_id= The client name.  Auto generated if blank.
   @param client_secret= Client secret  Auto generated if client is blank.
   @param scopes= list of space-seperated unquoted scopes (default is openid)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted)
   @param outds= the dataset to contain the registered client id and secret
+  @param access_token_validity= The duration of validity of the access token.
+    Default is set to 36000 seconds (10 hours)
 
   @version VIYA V.03.04
   @author Allan Bowe
@@ -50,6 +57,7 @@
     ,scopes=
     ,grant_type=authorization_code
     ,outds=mv_registerclient
+    ,access_token_validity=36000
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
 
@@ -99,6 +107,7 @@ data _null_;
   scope=symget('scope');
   granttype=quote(trim(symget('grant_type')));
   put '{"client_id":' clientid ',"client_secret":' clientsecret
+    ',"access_token_validity":' "&access_token_validity"
     ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
     '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
 run;
@@ -116,6 +125,7 @@ data _null_;
   infile &fname3;
   input;
   if _infile_=:'{"err'!!'or":' then do;
+    length message $32767;
     message=scan(_infile_,-2,'"');
     call symputx('err',message,'l');
   end;
