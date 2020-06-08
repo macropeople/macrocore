@@ -17,18 +17,19 @@
       filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
-      %* specific client with just openid scope
+      %* specific client with just openid scope;
       %mv_registerclient(client_id=YourClient
         ,client_secret=YourSecret
         ,scopes=openid
       )
 
-      %* generate random client details with all scopes
+      %* generate random client details with all scopes;
       %mv_registerclient(scopes=openid *)
 
-      %* generate random client details with all scopes and 30 min expiry
+      %* generate random client with 90/180 second access/refresh token expiry;
       %mv_registerclient(scopes=openid *
-        ,access_token_validity=1800
+        ,access_token_validity=90
+        ,refresh_token_validity=180
       )
 
   @param client_id= The client name.  Auto generated if blank.
@@ -36,9 +37,11 @@
   @param scopes= list of space-seperated unquoted scopes (default is openid)
   @param grant_type= valid values are "password" or "authorization_code" (unquoted)
   @param outds= the dataset to contain the registered client id and secret
-  @param access_token_validity= The duration of validity of the access token.
-    Default is set to 36000 seconds (10 hours)
-
+  @param access_token_validity= The duration of validity of the access token 
+    in seconds.  A value of DEFAULT will omit the entry (and use system default)
+  @param refresh_token_validity= The duration of validity of the refresh token
+    in seconds.  A value of DEFAULT will omit the entry (and use system default)
+    
   @version VIYA V.03.04
   @author Allan Bowe
   @source https://github.com/macropeople/macrocore
@@ -57,7 +60,8 @@
     ,scopes=
     ,grant_type=authorization_code
     ,outds=mv_registerclient
-    ,access_token_validity=36000
+    ,access_token_validity=DEFAULT
+    ,refresh_token_validity=DEFAULT
   );
 %local consul_token fname1 fname2 fname3 libref access_token url;
 
@@ -107,7 +111,12 @@ data _null_;
   scope=symget('scope');
   granttype=quote(trim(symget('grant_type')));
   put '{"client_id":' clientid ',"client_secret":' clientsecret
+%if &access_token_validity ne DEFAULT %then %do;
     ',"access_token_validity":' "&access_token_validity"
+%end;
+%if &refresh_token_validity ne DEFAULT %then %do;
+    ',"refresh_token_validity":' "&refresh_token_validity"
+%end;
     ',"scope":[' scope '],"authorized_grant_types": [' granttype ',"refresh_token"],'
     '"redirect_uri": "urn:ietf:wg:oauth:2.0:oob"}';
 run;
