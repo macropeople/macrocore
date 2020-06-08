@@ -91,6 +91,10 @@
         _METAPERSON=quote(trim(symget('_METAPERSON')));
         put ',"_METAPERSON": ' _METAPERSON;
       end;
+      if symexist('SYS_JES_JOB_URI') then do;
+        SYS_JES_JOB_URI=quote(trim(symget('SYS_JES_JOB_URI')));
+        put ',"SYS_JES_JOB_URI": ' SYS_JES_JOB_URI;
+      end;
       _PROGRAM=quote(trim(resolve(symget('_PROGRAM'))));
       put ',"_PROGRAM" : ' _PROGRAM ;
       put ",""SYSCC"" : ""&syscc"" ";
