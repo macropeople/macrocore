@@ -37,7 +37,6 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
@@ -66,20 +65,19 @@ viya:
     ,precode=
     ,code=ft15f001
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,replace=YES
     ,adapter=sasjs
     ,debug=0
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 
@@ -628,8 +626,8 @@ run;
 %put &sysmacroname: Job &name successfully created in &path;
 %put &sysmacroname:;
 %put &sysmacroname: Check it out here:;
-%put &sysmacroname:;
-%put    &url/SASJobExecution?_PROGRAM=&path/&name;
+%put &sysmacroname:;%put;
+%put    &url/SASJobExecution?_PROGRAM=&path/&name;%put;
 %put &sysmacroname:;
 %put &sysmacroname:;
 

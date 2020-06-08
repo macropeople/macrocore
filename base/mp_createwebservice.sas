@@ -48,9 +48,9 @@ Usage:
 %macro mp_createwebservice(path=HOME
     ,name=initService
     ,precode=
-    ,code=
+    ,code=ft15f001
     ,desc=This service was created by the mp_createwebservice macro
-    ,replace=NO
+    ,replace=YES
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;

@@ -1737,9 +1737,9 @@ Usage:
 %macro mp_createwebservice(path=HOME
     ,name=initService
     ,precode=
-    ,code=
+    ,code=ft15f001
     ,desc=This service was created by the mp_createwebservice macro
-    ,replace=NO
+    ,replace=YES
 )/*/STORE SOURCE*/;
 
 %if &syscc ge 4 %then %do;
@@ -9239,25 +9239,24 @@ run;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
 
 %macro mv_createfolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
-    %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
 %end;
+%if &grant_type=sas_services %then %do;
+    %let oauth_bearer=oauth_bearer=sas_services;
+    %let &access_token_var=;
+%end;
+
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
     and &grant_type ne sas_services
@@ -9403,7 +9402,6 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
@@ -9432,20 +9430,19 @@ viya:
     ,precode=
     ,code=ft15f001
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,replace=YES
     ,adapter=sasjs
     ,debug=0
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 
@@ -9994,8 +9991,8 @@ run;
 %put &sysmacroname: Job &name successfully created in &path;
 %put &sysmacroname:;
 %put &sysmacroname: Check it out here:;
-%put &sysmacroname:;
-%put    &url/SASJobExecution?_PROGRAM=&path/&name;
+%put &sysmacroname:;%put;
+%put    &url/SASJobExecution?_PROGRAM=&path/&name;%put;
 %put &sysmacroname:;
 %put &sysmacroname:;
 
@@ -10029,7 +10026,6 @@ run;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -10038,17 +10034,16 @@ run;
     ,name=
     ,contenttype=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10177,7 +10172,6 @@ libname &libref1a clear;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -10185,17 +10179,16 @@ libname &libref1a clear;
 %macro mv_deletejes(path=
     ,name=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10321,24 +10314,22 @@ libname &libref1a clear;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
 
 %macro mv_deleteviyafolder(path=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10514,7 +10505,6 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
-  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10523,18 +10513,17 @@ libname &libref1 clear;
 
 %macro mv_getfoldermembers(root=/
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,outds=mv_getfolders
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10614,15 +10603,6 @@ libname &libref1 clear;
         "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
-  An administrator needs to set you up with an access code:
-
-      %mv_registerclient(outds=client)
-
-  Navigate to the url from the log (opting in to the groups) and paste the
-  access code below:
-
-      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-
   Now we can run the macro!
 
       %mv_getgroupmembers(All Users)
@@ -10649,7 +10629,6 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
-  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10657,18 +10636,17 @@ libname &libref1 clear;
 
 %macro mv_getgroupmembers(group
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,outds=work.viyagroupmembers
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10707,6 +10685,7 @@ run;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
   data &outds;
+    length id name $43;
     set &libref1..items;
   run;
   libname &libref1 clear;
@@ -10751,25 +10730,23 @@ filename &fname1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
-  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
 **/
 
 %macro mv_getgroups(access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,outds=work.viyagroups
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10880,7 +10857,6 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
-  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10889,17 +10865,16 @@ libname &libref1 clear;
 %macro mv_getusergroups(user
     ,outds=work.mv_getusergroups
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -10999,23 +10974,21 @@ libname &libref1 clear;
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
 
 **/
 
 %macro mv_getusers(outds=work.mv_getusers
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 

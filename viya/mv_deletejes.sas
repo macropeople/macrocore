@@ -26,7 +26,6 @@
   @li mp_abort.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
-  @li mf_getplatform.sas
   @li mf_isblank.sas
 
 **/
@@ -34,17 +33,16 @@
 %macro mv_deletejes(path=
     ,name=
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 

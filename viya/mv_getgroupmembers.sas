@@ -9,15 +9,6 @@
         "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
       %inc mc;
 
-  An administrator needs to set you up with an access code:
-
-      %mv_registerclient(outds=client)
-
-  Navigate to the url from the log (opting in to the groups) and paste the
-  access code below:
-
-      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-
   Now we can run the macro!
 
       %mv_getgroupmembers(All Users)
@@ -44,7 +35,6 @@
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
-  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -52,18 +42,17 @@
 
 %macro mv_getgroupmembers(group
     ,access_token_var=ACCESS_TOKEN
-    ,grant_type=detect
+    ,grant_type=sas_services
     ,outds=work.viyagroupmembers
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
-  %if %mf_getplatform(SASSTUDIO) ge 5 %then %do;
-    %let grant_type=sas_services;
-    %let &access_token_var=;
+  %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
+  %else %let grant_type=sas_services;
+%end;
+%if &grant_type=sas_services %then %do;
     %let oauth_bearer=oauth_bearer=sas_services;
-  %end;
-  %else %if %symexist(&access_token_var) %then %let grant_type=authorization_code;
-  %else %let grant_type=password;
+    %let &access_token_var=;
 %end;
 %put &sysmacroname: grant_type=&grant_type;
 %mp_abort(iftrue=(&grant_type ne authorization_code and &grant_type ne password 
@@ -102,6 +91,7 @@ run;
   %let libref1=%mf_getuniquelibref();
   libname &libref1 JSON fileref=&fname1;
   data &outds;
+    length id name $43;
     set &libref1..items;
   run;
   libname &libref1 clear;
