@@ -64,6 +64,11 @@
       %end;
     %end;
 
+    %if %symexist(SYS_JES_JOB_URI) %then %do;
+      /* refer web service output to file service in one hit */
+      filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
+    %end;
+
     /* send response in SASjs JSON format */
     data _null_;
       file _webout mod lrecl=32000;
@@ -106,11 +111,6 @@
       if debug ge '"131"' then put '>>weboutEND<<';
     run;
     %let syscc=0;
-    %if %symexist(SYS_JES_JOB_URI) %then %do;
-      /* refer web service output to file service in one hit */
-      filename _webout filesrvc parenturi="&SYS_JES_JOB_URI" name="_webout.json";
-      %let rc=%sysfunc(fcopy(_web,_webout));
-    %end;
     %else %if %symexist(_metaport) %then %do;
       data _null_;
         if symexist('sysprocessmode')
