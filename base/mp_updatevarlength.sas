@@ -33,6 +33,8 @@
 %macro mp_updatevarlength(libds,var,len
 )/*/STORE SOURCE*/;
 
+%if %index(&libds,.)=0 %then %let libds=WORK.&libds;
+
 %mp_abort(iftrue=(%mf_existds(&libds)=0)
   ,mac=&sysmacroname
   ,msg=%str(Table &libds not found!)
@@ -56,7 +58,18 @@
   %return;
 %end;
 
+%let libds=%upcase(&libds);
+
+/* must use SQL as proc datasets does not support length changes */
 proc sql;
-alter table &libds modify &var char(&len);
+create table _data_ as 
+  select * from dictionary.TABLE_CONSTRAINTS
+  where TABLE_CATALOG="%scan(&libds,1,.)"
+    and TABLE_NAME="%scan(&libds,2,.)";
+%local dsconst; %let dsconst=&syslast;
+%if &sqlobs=0 %then %do;
+  alter table &libds modify &var char(&len);
+  %return;
+%end;
 
 %mend;

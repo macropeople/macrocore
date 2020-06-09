@@ -1,5 +1,5 @@
 /**
-  @file
+  @file mf_existds.sas
   @brief Checks whether a dataset OR a view exists.
   @details Can be used in open code, eg as follows:
 

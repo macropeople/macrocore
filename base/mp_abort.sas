@@ -110,8 +110,9 @@
       put "}" @;
       if debug ge '"131"' then put '>>weboutEND<<';
     run;
+
     %let syscc=0;
-    %else %if %symexist(_metaport) %then %do;
+    %if %symexist(_metaport) %then %do;
       data _null_;
         if symexist('sysprocessmode')
          then if symget("sysprocessmode")="SAS Stored Process Server"
