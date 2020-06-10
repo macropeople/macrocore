@@ -1689,6 +1689,71 @@ Usage:
     end;
   run;
 %mend;/**
+  @file mp_createconstraints.sas
+  @brief Creates constraints
+  @details Takes the output from mp_getconstraints.sas as input
+
+        proc sql;
+        create table work.example(
+          TX_FROM float format=datetime19.,
+          DD_TYPE char(16),
+          DD_SOURCE char(2048),
+          DD_SHORTDESC char(256),
+          constraint pk primary key(tx_from, dd_type,dd_source),
+          constraint unq unique(tx_from, dd_type),
+          constraint nnn not null(DD_SHORTDESC)
+        );
+      
+      %mp_getconstraints(lib=work,ds=example,outds=work.constraints)
+      %mp_deleteconstraints(inds=work.constraints,outds=dropped,execute=YES)
+      %mp_createconstraints(inds=work.constraints,outds=created,execute=YES)
+
+  @param inds= The input table containing the constraint info
+  @param outds= a table containing the create statements (create_statement column)
+  @param execute= `YES|NO` - default is NO. To actually create, use YES.
+
+  <h4> Dependencies </h4>
+
+  @version 9.2
+  @author Allan Bowe
+
+**/
+
+%macro mp_createconstraints(inds=mp_getconstraints
+  ,outds=mp_createconstraints
+  ,execute=NO
+)/*/STORE SOURCE*/;
+
+proc sort data=&inds out=&outds;
+  by libref table_name constraint_name;
+run;
+
+data &outds;
+  set &outds;
+  by libref table_name constraint_name;
+  length create_statement $500;
+  if _n_=1 and "&execute"="YES" then call execute('proc sql;');
+  if first.constraint_name then do;
+    if constraint_type='PRIMARY' then type='PRIMARY KEY';
+    else type=constraint_type;
+    create_statement=catx(" ","alter table",libref,".",table_name
+      ,"add constraint",constraint_name,type,"(");
+    if last.constraint_name then 
+      create_statement=cats(create_statement,column_name,");");
+    if "&execute"="YES" then call execute(create_statement);
+  end;
+  else if last.constraint_name then do;
+    create_statement=cats(column_name,");");
+    if "&execute"="YES" then call execute(create_statement);
+  end;
+  else do;
+    create_statement=cats(column_name,",");
+    if "&execute"="YES" then call execute(create_statement);
+  end;
+  output;
+run;
+
+%mend;/**
   @file mp_createwebservice.sas
   @brief Create a web service in SAS 9 or Viya
   @details Creates a SASJS ready Stored Process in SAS 9 or Job Execution
@@ -1772,6 +1837,57 @@ Usage:
 
 %mend;
 /**
+  @file mp_deleteconstraints.sas
+  @brief Delete constraionts
+  @details Takes the output from mp_getconstraints.sas as input
+
+        proc sql;
+        create table work.example(
+          TX_FROM float format=datetime19.,
+          DD_TYPE char(16),
+          DD_SOURCE char(2048),
+          DD_SHORTDESC char(256),
+          constraint pk primary key(tx_from, dd_type,dd_source),
+          constraint unq unique(tx_from, dd_type),
+          constraint nnn not null(DD_SHORTDESC)
+        );
+      
+      %mp_getconstraints(lib=work,ds=example,outds=work.constraints)
+      %mp_deleteconstraints(inds=work.constraints,outds=dropped,execute=YES)
+
+  @param inds= The input table containing the constraint info
+  @param outds= a table containing the drop statements (drop_statement column)
+  @param execute= `YES|NO` - default is NO. To actually drop, use YES.
+
+
+  @version 9.2
+  @author Allan Bowe
+
+**/
+
+%macro mp_deleteconstraints(inds=mp_getconstraints
+  ,outds=mp_deleteconstraints
+  ,execute=NO
+)/*/STORE SOURCE*/;
+
+proc sort data=&inds out=&outds;
+  by libref table_name constraint_name;
+run;
+
+data &outds;
+  set &outds;
+  by libref table_name constraint_name;
+  length drop_statement $500;
+  if _n_=1 and "&execute"="YES" then call execute('proc sql;');
+  if first.constraint_name then do;
+    drop_statement=catx(" ","alter table",libref,".",table_name
+      ,"drop constraint",constraint_name,";");
+    output;
+    if "&execute"="YES" then call execute(drop_statement);
+  end;
+run;
+
+%mend;/**
   @file
   @brief Returns all files and subdirectories within a specified parent
   @details When used with getattrs=NO, is not OS specific (uses dopen / dread). 
@@ -2256,6 +2372,65 @@ quit;
 %put NOTE-;%put NOTE-;
 %put NOTE- %sysfunc(dequote(&cards_file.));
 %put NOTE-;%put NOTE-;
+%mend;/**
+  @file mp_getconstraints.sas
+  @brief Get constraint details at column level
+  @details Useful for capturing constraints before they are dropped / reapplied
+  during an update.
+
+        proc sql;
+        create table work.example(
+          TX_FROM float format=datetime19.,
+          DD_TYPE char(16),
+          DD_SOURCE char(2048),
+          DD_SHORTDESC char(256),
+          constraint pk primary key(tx_from, dd_type,dd_source),
+          constraint unq unique(tx_from, dd_type),
+          constraint nnn not null(DD_SHORTDESC)
+        );
+      
+      %mp_getconstraints(lib=work,ds=example,outds=work.constraints)
+
+  @param lib= The target library (default=WORK)
+  @param ds= The target dataset.  Leave blank (default) for all datasets.
+  @param outds the output dataset
+
+  <h4> Dependencies </h4>
+
+  @version 9.2
+  @author Allan Bowe
+
+**/
+
+%macro mp_getconstraints(lib=WORK
+  ,ds=
+  ,outds=mp_getconstraints
+)/*/STORE SOURCE*/;
+
+%let lib=%upcase(&lib);
+%let ds=%upcase(&ds);
+
+/* must use SQL as proc datasets does not support length changes */
+proc sql noprint;
+create table &outds as
+  select a.TABLE_CATALOG as libref
+    ,a.TABLE_NAME
+    ,a.constraint_type
+    ,a.constraint_name
+    ,b.column_name
+  from dictionary.TABLE_CONSTRAINTS a
+  left join dictionary.constraint_column_usage  b
+  on a.TABLE_CATALOG=b.TABLE_CATALOG
+    and a.TABLE_NAME=b.TABLE_NAME
+    and a.constraint_name=b.constraint_name
+  where a.TABLE_CATALOG="&lib"  
+    and b.TABLE_CATALOG="&lib"  
+  %if "&ds" ne "" %then %do;
+    and a.TABLE_NAME="&ds"
+    and b.TABLE_NAME="&ds"
+  %end;
+  ;
+
 %mend;/**
   @file mp_getddl.sas
   @brief Extract DDL in various formats, by table or library
@@ -3765,6 +3940,10 @@ run;
   @li mf_existvar.sas
   @li mf_getvarlen.sas
   @li mf_getvartype.sas
+  @li mf_getnobs.sas
+  @li mp_createconstraints.sas
+  @li mp_getconstraints.sas
+  @li mp_deleteconstraints.sas
 
   @version 9.2
   @author Allan Bowe
@@ -3801,19 +3980,34 @@ run;
 
 %let libds=%upcase(&libds);
 
-/* must use SQL as proc datasets does not support length changes */
-proc sql;
-create table _data_ as 
-  select * from dictionary.TABLE_CONSTRAINTS
-  where TABLE_CATALOG="%scan(&libds,1,.)"
-    and TABLE_NAME="%scan(&libds,2,.)";
+
+data;run;
 %local dsconst; %let dsconst=&syslast;
-%if &sqlobs=0 %then %do;
+%mp_getconstraints(lib=%scan(&libds,1,.),ds=%scan(&libds,2,.),outds=&dsconst)
+
+%mp_abort(iftrue=(&syscc ne 0)
+  ,mac=&sysmacroname
+  ,msg=%str(syscc=&syscc)
+)
+
+%if %mf_getnobs(&dscont)=0 %then %do;
+  /* must use SQL as proc datasets does not support length changes */
+  proc sql;
   alter table &libds modify &var char(&len);
   %return;
 %end;
 
-%mend;/**
+/* we have constraints! */
+
+%mp_deleteconstraints(inds=&dsconst,outds=&dsconst._dropd,execute=YES)
+
+proc sql;
+alter table &libds modify &var char(&len);
+
+%mp_createconstraints(inds=&dsconst,outds=&dsconst._addd,execute=YES)
+
+%mend;
+/**
   @file
   @brief Creates a zip file
   @details For DIRECTORY usage, will ignore subfolders. For DATASET usage,

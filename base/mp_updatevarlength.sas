@@ -24,6 +24,10 @@
   @li mf_existvar.sas
   @li mf_getvarlen.sas
   @li mf_getvartype.sas
+  @li mf_getnobs.sas
+  @li mp_createconstraints.sas
+  @li mp_getconstraints.sas
+  @li mp_deleteconstraints.sas
 
   @version 9.2
   @author Allan Bowe
@@ -60,16 +64,30 @@
 
 %let libds=%upcase(&libds);
 
-/* must use SQL as proc datasets does not support length changes */
-proc sql;
-create table _data_ as 
-  select * from dictionary.TABLE_CONSTRAINTS
-  where TABLE_CATALOG="%scan(&libds,1,.)"
-    and TABLE_NAME="%scan(&libds,2,.)";
+
+data;run;
 %local dsconst; %let dsconst=&syslast;
-%if &sqlobs=0 %then %do;
+%mp_getconstraints(lib=%scan(&libds,1,.),ds=%scan(&libds,2,.),outds=&dsconst)
+
+%mp_abort(iftrue=(&syscc ne 0)
+  ,mac=&sysmacroname
+  ,msg=%str(syscc=&syscc)
+)
+
+%if %mf_getnobs(&dscont)=0 %then %do;
+  /* must use SQL as proc datasets does not support length changes */
+  proc sql;
   alter table &libds modify &var char(&len);
   %return;
 %end;
+
+/* we have constraints! */
+
+%mp_deleteconstraints(inds=&dsconst,outds=&dsconst._dropd,execute=YES)
+
+proc sql;
+alter table &libds modify &var char(&len);
+
+%mp_createconstraints(inds=&dsconst,outds=&dsconst._addd,execute=YES)
 
 %mend;
