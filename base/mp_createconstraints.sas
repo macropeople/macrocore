@@ -50,6 +50,7 @@ data &outds;
       ,"add constraint",constraint_name,type,"(");
     if last.constraint_name then 
       create_statement=cats(create_statement,column_name,");");
+    else create_statement=cats(create_statement,column_name,",");
     if "&execute"="YES" then call execute(create_statement);
   end;
   else if last.constraint_name then do;

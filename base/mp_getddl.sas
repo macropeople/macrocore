@@ -91,6 +91,7 @@ run;
     %let curds=%scan(&dsnlist,&x);
     data _null_;
       file &fref mod;
+      length nm lab $1024;
       set &colinfo (where=(upcase(memname)="&curds")) end=last;
 
       if _n_=1 then do;
@@ -112,6 +113,7 @@ run;
     run;
 
     data _null_;
+      length ds $128;
       set &idxinfo (where=(memname="&curds")) end=last;
       file &fref mod;
       by idxusage indxname;
@@ -200,6 +202,7 @@ run;
     /* add extended properties for labels */
     data _null_;
       file &fref mod;
+      length nm $64 lab $1024;
       set &colinfo (where=(upcase(memname)="&curds" and label ne '')) end=last;
       nm=cats("N'",tranwrd(name,"'","''"),"'");
       lab=cats("N'",tranwrd(label,"'","''"),"'");
