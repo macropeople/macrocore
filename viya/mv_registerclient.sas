@@ -48,6 +48,7 @@
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
@@ -77,10 +78,13 @@ data _null_;
   call symputx('consul_token',token);
 run;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* request the client details */
 %let fname1=%mf_getuniquefileref();
 proc http method='POST' out=&fname1
-    url='http://localhost/SASLogon/oauth/clients/consul?callback=false&serviceId=app';
+    url="&base_uri/SASLogon/oauth/clients/consul?callback=false%str(&)serviceId=app";
     headers "X-Consul-Token"="&consul_token";
 run;
 
@@ -123,7 +127,7 @@ run;
 
 %let fname3=%mf_getuniquefileref();
 proc http method='POST' in=&fname2 out=&fname3
-    url='http://localhost/SASLogon/oauth/clients';
+    url="&base_uri/SASLogon/oauth/clients";
     headers "Content-Type"="application/json"
             "Authorization"="Bearer &access_token";
 run;
@@ -165,6 +169,7 @@ run;
 %put GRANT_TYPE=&grant_type;
 %put;
 %if &grant_type=authorization_code %then %do;
+  /* cannot use base_uri here as it includes the protocol which may be incorrect externally */
   %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
   %put NOTE- ;
   %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;

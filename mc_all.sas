@@ -554,6 +554,9 @@ options noquotelenmax;
   %end;
   %else 0;
 %end;
+%else %if &switch=VIYARESTAPI %then %do;
+  %sysfunc(getoption(servicesbaseurl))
+%end;
 %mend;/**
   @file
   @brief Adds custom quotes / delimiters to a space delimited string
@@ -9453,6 +9456,7 @@ run;
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
+  @li mf_getplatform.sas
 
 **/
 
@@ -9495,6 +9499,9 @@ options noquotelenmax;
 %local href; /* resource address (none for root) */
 %let href="/folders/folders?parentFolderUri=/folders/folders/none";
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %local x newpath subfolder;
 %do x=1 %to &subfolder_cnt;
   %let subfolder=%scan(&path,&x,%str(/));
@@ -9505,7 +9512,7 @@ options noquotelenmax;
 
   %put &sysmacroname checking to see if &newpath exists;
   proc http method='GET' out=&fname1 &oauth_bearer
-      url="http://localhost/folders/folders/@item?path=&newpath";
+      url="&base_uri/folders/folders/@item?path=&newpath";
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
@@ -9585,12 +9592,8 @@ viya:
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %mv_registerclient(outds=client)
 
-    %* Step 2 - navigate to the url in the log and paste the access code below;
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-
-    %* Step 3 - Now we can create some code and add it to a web service;
+    %* Step 2 - Create some code and add it to a web service;
     filename ft15f001 temp;
     parmcards4;
         %webout(FETCH) %* fetch any tables sent from frontend;
@@ -9599,6 +9602,7 @@ viya:
           set sashelp.class;
         run;
         %* send data back;
+        %webout(OPEN)
         %webout(ARR,example1) * Array format, fast, suitable for large tables ;
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
@@ -9615,6 +9619,7 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
@@ -9689,11 +9694,14 @@ options noquotelenmax;
 %put &sysmacroname: Path &path being checked / created;
 %mv_createfolder(path=&path)
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/folders/folders/@item?path=&path";
+  url="&base_uri/folders/folders/@item?path=&path";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
 %end;
@@ -9924,6 +9932,7 @@ data _null_;
   put ' ';
   put '  %if %symexist(sasjs_tables) %then %do; ';
   put '    /* small volumes of non-special data are sent as params for responsiveness */ ';
+  put '    /* to do - deal with escaped values  */ ';
   put '    filename _sasjs "%sysfunc(pathname(work))/sasjs.lua"; ';
   put '    data _null_; ';
   put '      file _sasjs; ';
@@ -10237,6 +10246,7 @@ run;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10280,11 +10290,14 @@ run;
 
 options noquotelenmax;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/folders/folders/@item?path=&path";
+  url="&base_uri/folders/folders/@item?path=&path";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
 %end;
@@ -10383,6 +10396,7 @@ libname &libref1a clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10424,12 +10438,14 @@ libname &libref1a clear;
 )
 
 options noquotelenmax;
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/folders/folders/@item?path=&path";
+  url="&base_uri/folders/folders/@item?path=&path";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
 %end;
@@ -10525,6 +10541,7 @@ libname &libref1a clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10561,12 +10578,14 @@ libname &libref1a clear;
 )
 
 options noquotelenmax;
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
 
 %put &sysmacroname: fetching details for &path ;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/folders/folders/@item?path=&path";
+  url="&base_uri/folders/folders/@item?path=&path";
   %if &grant_type=authorization_code %then %do;
     headers "Authorization"="Bearer &&&access_token_var";
   %end;
@@ -10718,6 +10737,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -10755,10 +10775,13 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %if "&root"="/" %then %do;
   /* if root just list root folders */
   proc http method='GET' out=&fname1 &oauth_bearer
-      url='http://localhost/folders/rootFolders';
+      url='%sysfunc(getoption(servicesbaseurl))/folders/rootFolders';
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
@@ -10771,7 +10794,7 @@ options noquotelenmax;
 %else %do;
   /* first get parent folder id */
   proc http method='GET' out=&fname1 &oauth_bearer
-      url="http://localhost/folders/folders/@item?path=&root";
+      url="&base_uri/folders/folders/@item?path=&root";
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
@@ -10842,6 +10865,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10871,11 +10895,14 @@ libname &libref1 clear;
 
 options noquotelenmax;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/groups/&group/members?limit=1000";
+  url="&base_uri/identities/groups/&group/members?limit=1000";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"
@@ -10943,6 +10970,7 @@ filename &fname1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -10970,6 +10998,8 @@ filename &fname1 clear;
 )
 
 options noquotelenmax;
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
 
 /* fetching folder details for provided path */
 %local fname1;
@@ -10977,7 +11007,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/groups";
+  url="&base_uri/identities/groups";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"
@@ -11070,6 +11100,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -11098,13 +11129,16 @@ libname &libref1 clear;
 )
 options noquotelenmax;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/users/&user/memberships?limit=2000";
+  url="&base_uri/identities/users/&user/memberships?limit=2000";
   headers 
 %if &grant_type=authorization_code %then %do;
          "Authorization"="Bearer &&&access_token_var"
@@ -11185,6 +11219,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -11213,13 +11248,16 @@ libname &libref1 clear;
 
 options noquotelenmax;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/users?limit=2000";
+  url="&base_uri/identities/users?limit=2000";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var"
           "Accept"="application/json";
@@ -11293,6 +11331,7 @@ libname &libref1 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_loc.sas
@@ -11322,10 +11361,13 @@ data _null_;
   call symputx('consul_token',token);
 run;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* request the client details */
 %let fname1=%mf_getuniquefileref();
 proc http method='POST' out=&fname1
-    url='http://localhost/SASLogon/oauth/clients/consul?callback=false&serviceId=app';
+    url="&base_uri/SASLogon/oauth/clients/consul?callback=false%str(&)serviceId=app";
     headers "X-Consul-Token"="&consul_token";
 run;
 
@@ -11368,7 +11410,7 @@ run;
 
 %let fname3=%mf_getuniquefileref();
 proc http method='POST' in=&fname2 out=&fname3
-    url='http://localhost/SASLogon/oauth/clients';
+    url="&base_uri/SASLogon/oauth/clients";
     headers "Content-Type"="application/json"
             "Authorization"="Bearer &access_token";
 run;
@@ -11410,6 +11452,7 @@ run;
 %put GRANT_TYPE=&grant_type;
 %put;
 %if &grant_type=authorization_code %then %do;
+  /* cannot use base_uri here as it includes the protocol which may be incorrect externally */
   %put NOTE: The developer must also register below and select 'openid' to get the grant code:;
   %put NOTE- ;
   %put NOTE- &url/SASLogon/oauth/authorize?client_id=&client_id%str(&)response_type=code;
@@ -11475,6 +11518,7 @@ libname &libref clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_existds.sas
@@ -11537,9 +11581,12 @@ run;
 /**
  * Request access token
  */
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %let fref2=%mf_getuniquefileref();
 proc http method='POST' in=&grantstring out=&fref2
-  url='localhost/SASLogon/oauth/token'
+  url="&base_uri/SASLogon/oauth/token"
   WEBUSERNAME="&client_id"
   WEBPASSWORD="&client_secret"
   AUTH_BASIC;
@@ -11614,6 +11661,7 @@ filename &fref2 clear;
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_existds.sas
@@ -11663,11 +11711,14 @@ options noquotelenmax;
 /**
  * Request access token
  */
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %let fref1=%mf_getuniquefileref();
 proc http method='POST'
   in="grant_type=refresh_token%nrstr(&)refresh_token=&&&refresh_token_var"
   out=&fref1
-  url='localhost/SASLogon/oauth/token'
+  url="&base_uri/SASLogon/oauth/token"
   WEBUSERNAME="&client_id"
   WEBPASSWORD="&client_secret"
   AUTH_BASIC;
@@ -11750,6 +11801,7 @@ filename &fref1 clear;
 
   %if %symexist(sasjs_tables) %then %do;
     /* small volumes of non-special data are sent as params for responsiveness */
+    /* to do - deal with escaped values  */
     filename _sasjs "%sysfunc(pathname(work))/sasjs.lua";
     data _null_;
       file _sasjs;

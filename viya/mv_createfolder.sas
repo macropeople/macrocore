@@ -23,6 +23,7 @@
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
+  @li mf_getplatform.sas
 
 **/
 
@@ -65,6 +66,9 @@ options noquotelenmax;
 %local href; /* resource address (none for root) */
 %let href="/folders/folders?parentFolderUri=/folders/folders/none";
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %local x newpath subfolder;
 %do x=1 %to &subfolder_cnt;
   %let subfolder=%scan(&path,&x,%str(/));
@@ -75,7 +79,7 @@ options noquotelenmax;
 
   %put &sysmacroname checking to see if &newpath exists;
   proc http method='GET' out=&fname1 &oauth_bearer
-      url="http://localhost/folders/folders/@item?path=&newpath";
+      url="&base_uri/folders/folders/@item?path=&newpath";
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;

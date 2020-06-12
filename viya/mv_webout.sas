@@ -54,6 +54,7 @@
 
   %if %symexist(sasjs_tables) %then %do;
     /* small volumes of non-special data are sent as params for responsiveness */
+    /* to do - deal with escaped values  */
     filename _sasjs "%sysfunc(pathname(work))/sasjs.lua";
     data _null_;
       file _sasjs;

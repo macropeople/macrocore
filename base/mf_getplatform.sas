@@ -56,4 +56,7 @@
   %end;
   %else 0;
 %end;
+%else %if &switch=VIYARESTAPI %then %do;
+  %sysfunc(getoption(servicesbaseurl))
+%end;
 %mend;
