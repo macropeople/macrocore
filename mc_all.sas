@@ -2606,6 +2606,7 @@ run;
       put name fmt notnul;
     run;
     data _null_;
+      length ds $128;
       set &idxinfo (where=(memname="&curds"));
       file &fref mod;
       by idxusage indxname;
