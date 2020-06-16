@@ -72,7 +72,7 @@ options noquotelenmax;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="&base_uri/identities/groups/&group/members?limit=1000";
+  url="&base_uri/identities/groups/&group/members?limit=10000";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"
