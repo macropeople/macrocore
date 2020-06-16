@@ -7,12 +7,8 @@ viya:
     %* Step 1 - load macros and obtain refresh token (must be ADMIN);
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
-    %mv_registerclient(outds=client)
 
-    %* Step 2 - navigate to the url in the log and paste the access code below;
-    %mv_tokenauth(inds=client,code=wKDZYTEPK6)
-
-    %* Step 3 - Now we can create some code and add it to a web service;
+    %* Step 2 - Create some code and add it to a web service;
     filename ft15f001 temp;
     parmcards4;
         %webout(FETCH) %* fetch any tables sent from frontend;
@@ -21,6 +17,7 @@ viya:
           set sashelp.class;
         run;
         %* send data back;
+        %webout(OPEN)
         %webout(ARR,example1) * Array format, fast, suitable for large tables ;
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
@@ -37,6 +34,7 @@ viya:
   @li mv_createfolder.sas
   @li mf_getuniquelibref.sas
   @li mf_getuniquefileref.sas
+  @li mf_getplatform.sas
   @li mf_isblank.sas
   @li mv_deletejes.sas
 
@@ -111,11 +109,14 @@ options noquotelenmax;
 %put &sysmacroname: Path &path being checked / created;
 %mv_createfolder(path=&path)
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/folders/folders/@item?path=&path";
+  url="&base_uri/folders/folders/@item?path=&path";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var";
 %end;
@@ -346,6 +347,7 @@ data _null_;
   put ' ';
   put '  %if %symexist(sasjs_tables) %then %do; ';
   put '    /* small volumes of non-special data are sent as params for responsiveness */ ';
+  put '    /* to do - deal with escaped values  */ ';
   put '    filename _sasjs "%sysfunc(pathname(work))/sasjs.lua"; ';
   put '    data _null_; ';
   put '      file _sasjs; ';

@@ -34,6 +34,7 @@
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
 
@@ -62,13 +63,16 @@
 )
 options noquotelenmax;
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 /* fetching folder details for provided path */
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/users/&user/memberships?limit=5000";
+  url="&base_uri/identities/users/&user/memberships?limit=10000";
   headers 
 %if &grant_type=authorization_code %then %do;
          "Authorization"="Bearer &&&access_token_var"

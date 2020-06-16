@@ -20,6 +20,7 @@
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_isblank.sas
@@ -57,10 +58,13 @@ options noquotelenmax;
 %let fname1=%mf_getuniquefileref();
 %let libref1=%mf_getuniquelibref();
 
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %if "&root"="/" %then %do;
   /* if root just list root folders */
   proc http method='GET' out=&fname1 &oauth_bearer
-      url='http://localhost/folders/rootFolders';
+      url='%sysfunc(getoption(servicesbaseurl))/folders/rootFolders';
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;
@@ -73,7 +77,7 @@ options noquotelenmax;
 %else %do;
   /* first get parent folder id */
   proc http method='GET' out=&fname1 &oauth_bearer
-      url="http://localhost/folders/folders/@item?path=&root";
+      url="&base_uri/folders/folders/@item?path=&root";
   %if &grant_type=authorization_code %then %do;
       headers "Authorization"="Bearer &&&access_token_var";
   %end;

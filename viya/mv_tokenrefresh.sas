@@ -45,6 +45,7 @@
 
   <h4> Dependencies </h4>
   @li mp_abort.sas
+  @li mf_getplatform.sas
   @li mf_getuniquefileref.sas
   @li mf_getuniquelibref.sas
   @li mf_existds.sas
@@ -94,11 +95,14 @@ options noquotelenmax;
 /**
  * Request access token
  */
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
 %let fref1=%mf_getuniquefileref();
 proc http method='POST'
   in="grant_type=refresh_token%nrstr(&)refresh_token=&&&refresh_token_var"
   out=&fref1
-  url='localhost/SASLogon/oauth/token'
+  url="&base_uri/SASLogon/oauth/token"
   WEBUSERNAME="&client_id"
   WEBPASSWORD="&client_secret"
   AUTH_BASIC;
