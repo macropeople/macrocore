@@ -68,7 +68,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/groups";
+  url="http://localhost/identities/groups?limit=5000";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"

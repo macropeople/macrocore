@@ -68,7 +68,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="http://localhost/identities/users/&user/memberships?limit=2000";
+  url="http://localhost/identities/users/&user/memberships?limit=5000";
   headers 
 %if &grant_type=authorization_code %then %do;
          "Authorization"="Bearer &&&access_token_var"

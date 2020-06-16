@@ -57,6 +57,7 @@
 
 %macro mv_registerclient(client_id=
     ,client_secret=
+    ,client_name=
     ,scopes=
     ,grant_type=authorization_code
     ,outds=mv_registerclient
