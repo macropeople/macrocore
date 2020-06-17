@@ -2666,13 +2666,13 @@ run;
 
 %mend;
 /**
-  @file
+  @file mp_getmaxvarlengths.sas
   @brief Scans a dataset to find the max length of the variable values
-  @details
+  @details  
   This macro will scan a base dataset and produce an output dataset with two
   columns:
 
-  - COL    Name of the base dataset column
+  - NAME    Name of the base dataset column
   - MAXLEN Maximum length of the data contained therein.
 
   Character fields may be allocated very large widths (eg 32000) of which the maximum
@@ -2683,10 +2683,15 @@ run;
   Numeric fields are converted using the relevant format to determine the width.
   Usage:
 
-      %mp_getmaxvarlengths(sashelp.class,outds=work.myds);
+      %mp_getmaxvarlengths(sashelp.class,outds=work.myds)
 
   @param libds Two part dataset (or view) reference.
   @param outds= The output dataset to create
+
+  <h4> Dependencies </h4>
+  @li mf_getvarlist.sas
+  @li mf_getvartype.sas
+  @li mf_getvarformat.sas
 
   @version 9.2
   @author Allan Bowe
@@ -2699,12 +2704,12 @@ run;
 )/*/STORE SOURCE*/;
 
 %local vars x var fmt;
-%let vars=%getvars(libds=&libds);
+%let vars=%mf_getvarlist(libds=&libds);
 
 proc sql;
 create table &outds (rename=(
     %do x=1 %to %sysfunc(countw(&vars,%str( )));
-      _&x=%scan(&vars,&x)
+      ________&x=%scan(&vars,&x)
     %end;
     ))
   as select
@@ -2712,23 +2717,23 @@ create table &outds (rename=(
       %let var=%scan(&vars,&x);
       %if &x>1 %then ,;
       %if %mf_getvartype(&libds,&var)=C %then %do;
-        max(length(&var)) as _&x
+        max(length(&var)) as ________&x
       %end;
       %else %do;
         %let fmt=%mf_getvarformat(&libds,&var);
         %put fmt=&fmt;
         %if %str(&fmt)=%str() %then %do;
-          max(length(cats(&var))) as _&x
+          max(length(cats(&var))) as ________&x
         %end;
         %else %do;
-          max(length(put(&var,&fmt))) as _&x
+          max(length(put(&var,&fmt))) as ________&x
         %end;
       %end;
     %end;
   from &libds;
 
   proc transpose data=&outds
-    out=&outds(rename=(_name_=name COL1=ACTMAXLEN));
+    out=&outds(rename=(_name_=NAME COL1=MAXLEN));
   run;
 
 %mend;/**
@@ -2755,7 +2760,7 @@ create table &outds (rename=(
   @param min_rows= The minimum number of rows a table should have in order to try
     and guess the PK.  Default=5.
 
-  @dependencies
+  <h4> Dependencies </h4>
   @li mf_getvarlist.sas
   @li mf_getuniquename.sas
   @li mf_nobs.sas
@@ -10716,6 +10721,107 @@ libname &libref1 clear;
 )
 
 %mend;/**
+  @file mv_getgroups.sas
+  @brief Creates a dataset with a list of viya groups
+  @details First, be sure you have an access token (which requires an app token).
+
+  Using the macros here:
+
+      filename mc url
+        "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
+      %inc mc;
+
+  An administrator needs to set you up with an access code:
+
+      %mv_registerclient(outds=client)
+
+  Navigate to the url from the log (opting in to the groups) and paste the
+  access code below:
+
+      %mv_tokenauth(inds=client,code=wKDZYTEPK6)
+
+  Now we can run the macro!
+
+      %mv_getgroups()
+
+  @param access_token_var= The global macro variable to contain the access token
+  @param grant_type= valid values are "password" or "authorization_code" (unquoted).
+    The default is authorization_code.
+  @param outds= The library.dataset to be created that contains the list of groups
+
+
+  @version VIYA V.03.04
+  @author Allan Bowe
+  @source https://github.com/macropeople/macrocore
+
+  <h4> Dependencies </h4>
+  @li mp_abort.sas
+  @li mf_getplatform.sas
+  @li mf_getuniquefileref.sas
+  @li mf_getuniquelibref.sas
+  @li mf_loc.sas
+
+**/
+
+%macro mv_getclients(outds=work.mv_getclients
+)/*/STORE SOURCE*/;
+
+options noquotelenmax;
+%local base_uri; /* location of rest apis */
+%let base_uri=%mf_getplatform(VIYARESTAPI);
+
+/* first, get consul token needed to get client id / secret */
+data _null_;
+  infile "%mf_loc(VIYACONFIG)/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token";
+  input token:$64.;
+  call symputx('consul_token',token);
+run;
+
+/* request the client details */
+%local fname1;
+%let fname1=%mf_getuniquefileref();
+proc http method='POST' out=&fname1
+    url="&base_uri/SASLogon/oauth/clients/consul?callback=false%str(&)serviceId=app";
+    headers "X-Consul-Token"="&consul_token";
+run;
+
+%local libref1;
+%let libref1=%mf_getuniquelibref();
+libname &libref1 JSON fileref=&fname1;
+
+/* extract the token */
+data _null_;
+  set &libref1..root;
+  call symputx('access_token',access_token,'l');
+run;
+
+/* fetching folder details for provided path */
+%local fname2;
+%let fname2=%mf_getuniquefileref();
+%let libref2=%mf_getuniquelibref();
+
+proc http method='GET' out=&fname2 oauth_bearer=sas_services
+  url="&base_uri/SASLogon/oauth/clients";
+  headers "Accept"="application/json";
+run;
+/*data _null_;infile &fname1;input;putlog _infile_;run;*/
+%mp_abort(iftrue=(&SYS_PROCHTTP_STATUS_CODE ne 200)
+  ,mac=&sysmacroname
+  ,msg=%str(&SYS_PROCHTTP_STATUS_CODE &SYS_PROCHTTP_STATUS_PHRASE)
+)
+libname &libref2 JSON fileref=&fname1;
+
+data &outds;
+  set &libref2..items;
+run;
+
+
+
+/* clear refs 
+filename &fname1 clear;
+libname &libref1 clear;
+*/
+%mend;/**
   @file mv_getfoldermembers.sas
   @brief Gets a list of folders (and ids) for a given root
   @details Works for both root level and below, oauth or password. Default is
@@ -10902,7 +11008,7 @@ options noquotelenmax;
 %local fname1;
 %let fname1=%mf_getuniquefileref();
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="&base_uri/identities/groups/&group/members?limit=1000";
+  url="&base_uri/identities/groups/&group/members?limit=10000";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"
@@ -11007,7 +11113,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="&base_uri/identities/groups";
+  url="&base_uri/identities/groups?limit=10000";
   headers 
   %if &grant_type=authorization_code %then %do;
           "Authorization"="Bearer &&&access_token_var"
@@ -11138,7 +11244,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="&base_uri/identities/users/&user/memberships?limit=2000";
+  url="&base_uri/identities/users/&user/memberships?limit=10000";
   headers 
 %if &grant_type=authorization_code %then %do;
          "Authorization"="Bearer &&&access_token_var"
@@ -11257,7 +11363,7 @@ options noquotelenmax;
 %let libref1=%mf_getuniquelibref();
 
 proc http method='GET' out=&fname1 &oauth_bearer
-  url="&base_uri/identities/users?limit=2000";
+  url="&base_uri/identities/users?limit=10000";
 %if &grant_type=authorization_code %then %do;
   headers "Authorization"="Bearer &&&access_token_var"
           "Accept"="application/json";
@@ -11341,6 +11447,7 @@ libname &libref1 clear;
 
 %macro mv_registerclient(client_id=
     ,client_secret=
+    ,client_name=
     ,scopes=
     ,grant_type=authorization_code
     ,outds=mv_registerclient

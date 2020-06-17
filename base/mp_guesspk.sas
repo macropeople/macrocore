@@ -22,7 +22,7 @@
   @param min_rows= The minimum number of rows a table should have in order to try
     and guess the PK.  Default=5.
 
-  @dependencies
+  <h4> Dependencies </h4>
   @li mf_getvarlist.sas
   @li mf_getuniquename.sas
   @li mf_nobs.sas

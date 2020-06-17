@@ -1,11 +1,11 @@
 /**
-  @file
+  @file mp_getmaxvarlengths.sas
   @brief Scans a dataset to find the max length of the variable values
-  @details
+  @details  
   This macro will scan a base dataset and produce an output dataset with two
   columns:
 
-  - COL    Name of the base dataset column
+  - NAME    Name of the base dataset column
   - MAXLEN Maximum length of the data contained therein.
 
   Character fields may be allocated very large widths (eg 32000) of which the maximum
@@ -16,10 +16,15 @@
   Numeric fields are converted using the relevant format to determine the width.
   Usage:
 
-      %mp_getmaxvarlengths(sashelp.class,outds=work.myds);
+      %mp_getmaxvarlengths(sashelp.class,outds=work.myds)
 
   @param libds Two part dataset (or view) reference.
   @param outds= The output dataset to create
+
+  <h4> Dependencies </h4>
+  @li mf_getvarlist.sas
+  @li mf_getvartype.sas
+  @li mf_getvarformat.sas
 
   @version 9.2
   @author Allan Bowe
@@ -32,12 +37,12 @@
 )/*/STORE SOURCE*/;
 
 %local vars x var fmt;
-%let vars=%getvars(libds=&libds);
+%let vars=%mf_getvarlist(libds=&libds);
 
 proc sql;
 create table &outds (rename=(
     %do x=1 %to %sysfunc(countw(&vars,%str( )));
-      _&x=%scan(&vars,&x)
+      ________&x=%scan(&vars,&x)
     %end;
     ))
   as select
@@ -45,23 +50,23 @@ create table &outds (rename=(
       %let var=%scan(&vars,&x);
       %if &x>1 %then ,;
       %if %mf_getvartype(&libds,&var)=C %then %do;
-        max(length(&var)) as _&x
+        max(length(&var)) as ________&x
       %end;
       %else %do;
         %let fmt=%mf_getvarformat(&libds,&var);
         %put fmt=&fmt;
         %if %str(&fmt)=%str() %then %do;
-          max(length(cats(&var))) as _&x
+          max(length(cats(&var))) as ________&x
         %end;
         %else %do;
-          max(length(put(&var,&fmt))) as _&x
+          max(length(put(&var,&fmt))) as ________&x
         %end;
       %end;
     %end;
   from &libds;
 
   proc transpose data=&outds
-    out=&outds(rename=(_name_=name COL1=ACTMAXLEN));
+    out=&outds(rename=(_name_=NAME COL1=MAXLEN));
   run;
 
 %mend;
