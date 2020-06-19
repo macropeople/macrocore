@@ -559,7 +559,7 @@ options noquotelenmax;
 %end;
 %mend;/**
   @file
-  @brief Adds custom quotes / delimiters to a space delimited string
+  @brief Adds custom quotes / delimiters to a  delimited string
   @details Can be used in open code, eg as follows:
 
     %put %mf_getquotedstr(blah   blah  blah);
@@ -568,8 +568,9 @@ options noquotelenmax;
 > 'blah','blah','blah'
 
   @param in_str the unquoted, spaced delimited string to transform
-  @param dlm the delimeter to be applied to the output (default comma)
-  @param quote the quote mark to apply (S=Single, D=Double). If any other value
+  @param dlm= the delimeter to be applied to the output (default comma)
+  @param indlm= the delimeter used for the input (default is space)
+  @param quote= the quote mark to apply (S=Single, D=Double). If any other value
     than uppercase S or D is supplied, then that value will be used as the
     quoting character.
   @return output returns a string with the newly quoted / delimited output.
@@ -579,15 +580,15 @@ options noquotelenmax;
 **/
 
 
-%macro mf_getquotedstr(IN_STR,DLM=%str(,),QUOTE=S
+%macro mf_getquotedstr(IN_STR,DLM=%str(,),QUOTE=S,indlm=%str( )
 )/*/STORE SOURCE*/;
   %if &quote=S %then %let quote=%str(%');
   %else %if &quote=D %then %let quote=%str(%");
   %else %let quote=%str();
   %local i item buffer;
   %let i=1;
-  %do %while (%qscan(&IN_STR,&i,%str( )) ne %str() ) ;
-    %let item=%qscan(&IN_STR,&i,%str( ));
+  %do %while (%qscan(&IN_STR,&i,%str(&indlm)) ne %str() ) ;
+    %let item=%qscan(&IN_STR,&i,%str(&indlm));
     %if %bquote(&QUOTE) ne %then %let item=&QUOTE%qtrim(&item)&QUOTE;
     %else %let item=%qtrim(&item);
 
@@ -601,8 +602,7 @@ options noquotelenmax;
 
   &buffer
 
-%mend;
-/**
+%mend;/**
   @file mf_getschema.sas
   @brief Returns the database schema of a SAS library
   @details Usage:
