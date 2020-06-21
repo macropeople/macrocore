@@ -1,10 +1,9 @@
 /**
   @file mv_createwebservice.sas
   @brief Creates a JobExecution web service if it doesn't already exist
-  @details  There are a number of steps involved in building a web service on
-viya:
+  @details  Code is passed in as one or more filerefs.
 
-    %* Step 1 - load macros and obtain refresh token (must be ADMIN);
+    %* Step 1 - compile macros ;
     filename mc url "https://raw.githubusercontent.com/macropeople/macrocore/master/mc_all.sas";
     %inc mc;
 
@@ -22,7 +21,7 @@ viya:
         %webout(OBJ,example2) * Object format, easier to work with ;
         %webout(CLOSE)
     ;;;;
-    %mv_createwebservice(path=/Public/app/common,name=appInit,code=ft15f001,replace=YES)
+    %mv_createwebservice(path=/Public/app/common,name=appinit)
 
 
   Notes:
@@ -50,6 +49,9 @@ viya:
   @param replace= select NO to avoid replacing any existing service in that location
   @param adapter= the macro uses the sasjs adapter by default.  To use another
     adapter, add a (different) fileref here.
+  @param contextname= Choose a specific context on which to run the Job.  Leave
+    blank to use the default context.  From Viya 3.5 it is possible to configure
+    a shared context - see https://go.documentation.sas.com/?docsetId=calcontexts&docsetTarget=n1hjn8eobk5pyhn1wg3ja0drdl6h.htm&docsetVersion=3.5&locale=en
 
   @version VIYA V.03.04
   @author Allan Bowe
@@ -67,6 +69,7 @@ viya:
     ,replace=YES
     ,adapter=sasjs
     ,debug=0
+    ,contextname=
   );
 %local oauth_bearer;
 %if &grant_type=detect %then %do;
@@ -195,11 +198,17 @@ run;
 %let fname3=%mf_getuniquefileref();
 data _null_;
   file &fname3 TERMSTR=' ';
+  length string $32767;
   string=cats('{"version": 0,"name":"'
   	,"&name"
   	,'","type":"Compute","parameters":[{"name":"_addjesbeginendmacros"'
-    ,',"type":"CHARACTER","defaultValue":"false"}]'
-    ,',"code":"');
+    ,',"type":"CHARACTER","defaultValue":"false"}');
+  context=quote(cats(symget('contextname')));
+  if context ne '""' then do;
+    string=cats(string,',{"version": 1,"name": "_contextName","defaultValue":'
+     ,context,',"type":"CHARACTER","label":"Context Name","required": false}');
+  end;
+  string=cats(string,'],"code":"');
   put string;
 run;
 
