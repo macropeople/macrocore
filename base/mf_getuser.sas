@@ -18,7 +18,8 @@
     a password change).
 
   @return sysuserid (if workspace server)
-  @return _secureusername or _metaperson (if stored process server)
+  @return _METAPERSON (if stored process server) or SYS_COMPUTE_SESSION_OWNER
+   (if Viya compute session).
 
   @version 9.2
   @author Allan Bowe
