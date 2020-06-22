@@ -36,7 +36,7 @@
 
 **/
 %macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
-%global _webin_file_count _webout_fileuri _debug _omittextlog ;
+%global _webin_file_count _webin_fileuri _debug _omittextlog ;
 %if %index("&_debug",log) %then %let _debug=131; 
 
 %local i tempds;
@@ -47,9 +47,9 @@
     options mprint notes mprintnest;
   %end;
 
-  %if not %symexist(_webout_fileuri1) %then %do;
+  %if not %symexist(_webin_fileuri1) %then %do;
     %let _webin_file_count=%eval(&_webin_file_count+0);
-    %let _webout_fileuri1=&_webout_fileuri;
+    %let _webin_fileuri1=&_webin_fileuri;
   %end;
 
   %if %symexist(sasjs_tables) %then %do;
@@ -115,7 +115,7 @@
   %end;
   %else %do i=1 %to &_webin_file_count;
     /* read in any files that are sent */
-    filename indata filesrvc "&&_webout_fileuri&i" lrecl=999999;
+    filename indata filesrvc "&&_webin_fileuri&i" lrecl=999999;
     data _null_;
       infile indata termstr=crlf ;
       input;

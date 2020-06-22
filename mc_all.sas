@@ -739,8 +739,7 @@ options noquotelenmax;
   &prefix.%substr(%sysfunc(compress(%sysfunc(uuidgen()),-)),1,32-%length(&prefix))
 %mend;/**
   @file
-  @brief Returns <code>&sysuserid</code> in Workspace session, <code>
-    &_secureusername</code> in Stored Process session.
+  @brief Returns a userid according to session context
   @details In a workspace session, a user is generally represented by <code>
     &sysuserid</code> or <code>SYS_COMPUTE_SESSION_OWNER</code> if it exists.  
     In a Stored Process session, <code>&sysuserid</code>
@@ -752,13 +751,12 @@ options noquotelenmax;
 
         %let user= %mf_getUser();
         %put &user;
-  @param type META returns _metaperson, OS returns _secureusername.  Each of
-    these are scanned to remove any @domain extensions (which can happen after
-    a password change).
+        
+  @param type - do not use, may be deprecated in a future release
 
-  @return sysuserid (if workspace server)
-  @return _METAPERSON (if stored process server) or SYS_COMPUTE_SESSION_OWNER
-   (if Viya compute session).
+  @return SYSUSERID (if workspace server)
+  @return _METAPERSON (if stored process server)
+  @return SYS_COMPUTE_SESSION_OWNER (if Viya compute session)
 
   @version 9.2
   @author Allan Bowe
@@ -9929,7 +9927,7 @@ data _null_;
   put '%end; ';
   put '%mend; ';
   put '%macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y); ';
-  put '%global _webin_file_count _webout_fileuri _debug _omittextlog ; ';
+  put '%global _webin_file_count _webin_fileuri _debug _omittextlog ; ';
   put '%if %index("&_debug",log) %then %let _debug=131; ';
   put ' ';
   put '%local i tempds; ';
@@ -9940,9 +9938,9 @@ data _null_;
   put '    options mprint notes mprintnest; ';
   put '  %end; ';
   put ' ';
-  put '  %if not %symexist(_webout_fileuri1) %then %do; ';
+  put '  %if not %symexist(_webin_fileuri1) %then %do; ';
   put '    %let _webin_file_count=%eval(&_webin_file_count+0); ';
-  put '    %let _webout_fileuri1=&_webout_fileuri; ';
+  put '    %let _webin_fileuri1=&_webin_fileuri; ';
   put '  %end; ';
   put ' ';
   put '  %if %symexist(sasjs_tables) %then %do; ';
@@ -10008,7 +10006,7 @@ data _null_;
   put '  %end; ';
   put '  %else %do i=1 %to &_webin_file_count; ';
   put '    /* read in any files that are sent */ ';
-  put '    filename indata filesrvc "&&_webout_fileuri&i" lrecl=999999; ';
+  put '    filename indata filesrvc "&&_webin_fileuri&i" lrecl=999999; ';
   put '    data _null_; ';
   put '      infile indata termstr=crlf ; ';
   put '      input; ';
@@ -11944,7 +11942,7 @@ filename &fref1 clear;
 
 **/
 %macro mv_webout(action,ds,fref=_mvwtemp,dslabel=,fmt=Y);
-%global _webin_file_count _webout_fileuri _debug _omittextlog ;
+%global _webin_file_count _webin_fileuri _debug _omittextlog ;
 %if %index("&_debug",log) %then %let _debug=131; 
 
 %local i tempds;
@@ -11955,9 +11953,9 @@ filename &fref1 clear;
     options mprint notes mprintnest;
   %end;
 
-  %if not %symexist(_webout_fileuri1) %then %do;
+  %if not %symexist(_webin_fileuri1) %then %do;
     %let _webin_file_count=%eval(&_webin_file_count+0);
-    %let _webout_fileuri1=&_webout_fileuri;
+    %let _webin_fileuri1=&_webin_fileuri;
   %end;
 
   %if %symexist(sasjs_tables) %then %do;
@@ -12023,7 +12021,7 @@ filename &fref1 clear;
   %end;
   %else %do i=1 %to &_webin_file_count;
     /* read in any files that are sent */
-    filename indata filesrvc "&&_webout_fileuri&i" lrecl=999999;
+    filename indata filesrvc "&&_webin_fileuri&i" lrecl=999999;
     data _null_;
       infile indata termstr=crlf ;
       input;
