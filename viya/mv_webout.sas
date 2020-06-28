@@ -115,9 +115,10 @@
   %end;
   %else %do i=1 %to &_webin_file_count;
     /* read in any files that are sent */
+    /* this part needs refactoring for wide files */
     filename indata filesrvc "&&_webin_fileuri&i" lrecl=999999;
     data _null_;
-      infile indata termstr=crlf ;
+      infile indata termstr=crlf lrecl=32767;
       input;
       if _n_=1 then call symputx('input_statement',_infile_);
       %if %str(&_debug) ge 131 %then %do;

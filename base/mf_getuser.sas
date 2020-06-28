@@ -1,7 +1,6 @@
 /**
   @file
-  @brief Returns <code>&sysuserid</code> in Workspace session, <code>
-    &_secureusername</code> in Stored Process session.
+  @brief Returns a userid according to session context
   @details In a workspace session, a user is generally represented by <code>
     &sysuserid</code> or <code>SYS_COMPUTE_SESSION_OWNER</code> if it exists.  
     In a Stored Process session, <code>&sysuserid</code>
@@ -13,13 +12,12 @@
 
         %let user= %mf_getUser();
         %put &user;
-  @param type META returns _metaperson, OS returns _secureusername.  Each of
-    these are scanned to remove any @domain extensions (which can happen after
-    a password change).
+        
+  @param type - do not use, may be deprecated in a future release
 
-  @return sysuserid (if workspace server)
-  @return _METAPERSON (if stored process server) or SYS_COMPUTE_SESSION_OWNER
-   (if Viya compute session).
+  @return SYSUSERID (if workspace server)
+  @return _METAPERSON (if stored process server)
+  @return SYS_COMPUTE_SESSION_OWNER (if Viya compute session)
 
   @version 9.2
   @author Allan Bowe
