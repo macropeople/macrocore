@@ -537,6 +537,11 @@ data _null_;
   put ' ';
   put '%mend; ';
 /* WEBOUT END */
+  put '/* if calling viya service with _job param, _program will conflict */';
+  put '/* so it is provided by SASjs instead as __program */';
+  put '%global __program _program;';
+  put '%let _program=%sysfunc(coalescec(&__program,&_program));';
+  put ' ';
   put '%macro webout(action,ds,dslabel=,fmt=);';
   put '  %mv_webout(&action,ds=&ds,dslabel=&dslabel,fmt=&fmt)';
   put '%mend;';
