@@ -7970,6 +7970,9 @@ run;
 
   @param outds the dataset to create that contains the list of tables
   @param uri the uri of the library for which to return tables
+  @param getauth= YES|NO - fetch the authdomain used in database connections.
+  Set to NO to improve runtimes in larger environments, as there can be a
+  performance hit on the `metadata_getattr(domainuri, "Name", AuthDomain)` call.
 
   @returns outds  dataset containing all groups in a column named "metagroup"
     (defaults to work.mm_getlibs). The following columns are provided:
@@ -7987,6 +7990,7 @@ run;
 %macro mm_gettables(
     uri=
     ,outds=work.mm_gettables
+    ,getauth=YES
 )/*/STORE SOURCE*/;
 
 
@@ -8020,7 +8024,7 @@ data &outds;
 
     /*** If the library is a DBMS library, get the Authentication Domain
           associated with the DBMS connection credentials ***/
-  if IsDBMSLibname="1" then do;
+  if IsDBMSLibname="1" and "&getauth"='YES' then do;
     rc= metadata_getnasn(uri, "LibraryConnection", 1, conn_uri);
     if rc>0 then do;
       rc2= metadata_getnasn(conn_uri, "Domain", 1, domainuri);
