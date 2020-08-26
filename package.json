@@ -1,6 +1,7 @@
 {
   "name": "macrocore",
   "description": "SAS Macro Library for Application Development",
+  "version": "7.6.1",
   "license": "MIT",
   "keywords": [
     "SAS",
