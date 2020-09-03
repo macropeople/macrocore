@@ -123,6 +123,7 @@ data _null_;
         when ('&quot;') rec='"'  ;
         when ('&#x0a;') rec='0A'x;
         when ('&#x0d;') rec='0D'x;
+        when ('&#x09;') rec='09'x;
         when ('&#36;' ) rec='$'  ;
         otherwise putlog "WARNING: missing value for " entity=;
       end;
