@@ -1,3 +1,5 @@
+%put THESE MACROS ARE DEPRECATED;
+%put Visit git@github.com:macropeople/macrocore.git instead!!
 
 /**
   @file
@@ -12602,3 +12604,7 @@ data _null_;
   put 'return json2sas ';
 run;
 %mend;
+
+%put THESE MACROS ARE DEPRECATED!!!;
+%put visit git@github.com:macropeople/macrocore.git instead!!;
+
