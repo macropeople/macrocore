@@ -1,5 +1,7 @@
-%put THESE MACROS ARE DEPRECATED;
-%put Visit git@github.com:macropeople/macrocore.git instead!!
+/* macros have been deprecated for 2 months - start adding ERRORS */
+/* files will be removed after another 2 months */
+%put ERROR: MACROS ARE DEPRECATED;
+%put ERROR: Use https://github.com/sasjs/core instead!!
 
 /**
   @file
@@ -12605,6 +12607,9 @@ data _null_;
 run;
 %mend;
 
-%put THESE MACROS ARE DEPRECATED!!!;
-%put visit git@github.com:macropeople/macrocore.git instead!!;
+/* macros have been deprecated for 2 months - start adding ERRORS */
+/* files will be removed after another 2 months */
+%put ERROR: MACROS ARE DEPRECATED;
+%put ERROR: Use https://github.com/sasjs/core instead!!
+
 
