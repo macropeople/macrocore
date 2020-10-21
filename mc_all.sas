@@ -12612,4 +12612,4 @@ run;
 %put ERROR: MACROS ARE DEPRECATED;
 %put ERROR: Use https://github.com/sasjs/core instead!!
 
-
+%abort;
