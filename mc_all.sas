@@ -1,7 +1,7 @@
 /* macros have been deprecated for 2 months - start adding ERRORS */
 /* files will be removed after another 2 months */
 %put ERROR: MACROS ARE DEPRECATED;
-%put ERROR: Use https://github.com/sasjs/core instead!!
+%put ERROR: Use https://github.com/sasjs/core instead!!;
 
 /**
   @file
@@ -12610,6 +12610,6 @@ run;
 /* macros have been deprecated for 2 months - start adding ERRORS */
 /* files will be removed after another 2 months */
 %put ERROR: MACROS ARE DEPRECATED;
-%put ERROR: Use https://github.com/sasjs/core instead!!
+%put ERROR: Use https://github.com/sasjs/core instead!!;
 
 %abort;
